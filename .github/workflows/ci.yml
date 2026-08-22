@@ -1,0 +1,75 @@
+# CI for plugin.
+#
+# At P0 there are no ports, so this is the two jobs that guard the
+# contract itself: the spec artifact regenerates from its source, and the
+# canonical API list is checked. Both are cheap and both are the things
+# that go quietly wrong.
+#
+# The per-port matrix arrives with the ports (P1 adds typescript; P4 go
+# and python; P5 and P6 the rest), modelled on omni's ci.yml — one job per
+# port with `fail-fast: false`, so a single failing language is named in
+# the UI rather than buried in a multi-language log.
+#
+# Action SHAs are pinned rather than floating on a tag: a tag can move, and
+# a supply-chain change to a CI action is a change to everything it builds.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # spec/plugin.json is generated from spec/plugin.aontu and committed so
+  # that no port needs a Node toolchain. Recompile it here and fail if the
+  # committed copy differs — a corpus edit cannot land with a stale
+  # artifact, which is prime directive 5 enforced rather than asked for.
+  spec-freshness:
+    name: spec regenerates from *.aontu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+      - run: make spec
+      # Not `git diff --exit-code`: that ignores untracked files, so a
+      # commit adding a new spec/*.aontu without its generated JSON would
+      # pass while the artifact the ports read was never committed at all.
+      - name: Fail if a committed spec JSON is stale or missing
+        run: |
+          if [ -n "$(git status --porcelain -- spec/)" ]; then
+            git status --porcelain -- spec/
+            echo
+            echo "spec/ is out of sync with its .aontu sources."
+            echo "Run 'make spec' and commit the result."
+            exit 1
+          fi
+      # A well-formed corpus, not just a fresh artifact: unify each source
+      # with the format shape (spec/def/plugin-spec.aontu), which is itself
+      # aontu. --self-test proves the shape can still go red — a shape that
+      # only ever says ok is not a check.
+      - name: Check spec sources against the format shape
+        run: cd tools && npm run --silent check-spec-shape
+
+  # The property that makes N ports one library rather than N lookalikes.
+  # Green over zero ports today; wired now so the first port is checked
+  # from its first commit rather than after there is drift to find.
+  parity:
+    name: api parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - run: make parity
