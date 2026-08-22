@@ -119,7 +119,48 @@ job is worse than no guard**, because it also removes the suspicion
 that would have found the gap.
 
 
-## 5. Open, and deliberately so
+## 5. `ref` is marked pure but two of its listed behaviours are not
+
+Found writing the section. §15.3's table marks `ref` **pure**, and lists
+it as pinning "name/tag grammar, parse, format, canonicalization,
+**auto-tag**, and **`pos` vs `seq` across a redeclaration**".
+
+The last two are not reachable from the pure surface:
+
+| | why not |
+|---|---|
+| **auto-tag** | reached only through `declare(name, {tag: '?'})`, a host operation. There is no `autotag` in the canonical API — `parseref`, `formatref`, `checkname`, `checktag` is the whole pure surface. |
+| **`seq`** | defined as "a monotonic counter **from the host**". It is host state by construction; no pure function can observe it. |
+| **`pos`** | "the document's array index, or the sorted-ref index for the map form" — assigned by document normalization, so it belongs to `config`, not `ref`. |
+
+**Why this is not cosmetic.** C1 must be dischargeable *before* C2,
+because C2 is what brings the driver contract and station needs `ref`
+before its Stage 2. If `ref` requires a driver to run, C1 lands behind
+C2 and the ordering the whole contract rests on inverts. A section
+marked `pure` that needs a driver is also exactly the defect AGENTS.md
+warns about from the other direction.
+
+**What the section does.** It pins the genuinely pure part — grammar,
+parse, format, canonicalization, both predicates, and the 1024-character
+bound — 93 entries, no host. The three behaviours above are left out
+and the omission is documented in the corpus header rather than left to
+be noticed.
+
+**What is still owed.** A decision, not a fix:
+
+- `pos` assignment moves to the `config` section, where normalization
+  already lives. Cheap and non-controversial.
+- auto-tag and `seq` move to a driver section — `declare` is the
+  natural home, since both are declaration behaviour.
+- §15.3's `ref` row is corrected to match.
+
+Doing that properly means editing the design, which is a larger change
+than the corpus section it blocks; the section ships pure and correct
+in the meantime, and this row is the reason it looks incomplete against
+§15.3.
+
+
+## 6. Open, and deliberately so
 
 | | |
 |---|---|

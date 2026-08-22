@@ -18,14 +18,14 @@ through #6 merged); station `main` is `088f204`, which carries station's
 half of the `active`/`live` decision and pins `P§n` to plugin's
 `56f48e1`.
 
-The only work in flight is this register itself — P1 item 1.0.
+The only work in flight is P1's first corpus sections.
 
 
 ## Pick this up first
 
-**P1 item 1.1 — the `ref` corpus section**, then 1.2 `config`. Together
-they are **C1**, and C1 is owed to station **before its Stage 2**,
-which is earlier than P1's own exit.
+**P1 item 1.2 — the `config` corpus section.** 1.1 `ref` is done (93
+entries, pure); `config` is the other half of **C1**, owed to station
+**before its Stage 2**, which is earlier than P1's own exit.
 
 The reason for that ordering is not politeness. Station's Stage 1 lands
 the ref grammar and Stage 2 lands the identity re-key; if `ref` arrives

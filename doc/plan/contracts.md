@@ -21,7 +21,7 @@ States: `NOT STARTED`, `IN PROGRESS` (a PR is open), `DONE` (merged),
 
 | # | owed by | to | what | due | state | discharged by |
 |---|---|---|---|---|---|---|
-| **C1** | plugin | station | `ref` and `config` corpus sections, as pure data | **before station Stage 2** — earlier than P1's exit | NOT STARTED | — |
+| **C1** | plugin | station | `ref` and `config` corpus sections, as pure data | **before station Stage 2** — earlier than P1's exit | IN PROGRESS | `ref` written (93 entries, pure); `config` outstanding |
 | **C2** | plugin | station | `lifecycle` and `order` corpus sections **plus** the draft language-neutral driver contract in `DOCS.md` (§15.2 — probes, command vocabulary, canonical observable) | before P1's exit | NOT STARTED | — |
 | **C3** | station | plugin | a working Stages 2–**3b** implementation to extract from, and its own suites as the bar | before plugin P3 | NOT STARTED | — |
 | **C4a** | station | plugin | conformance on the pure sections: station runs C1's `ref` and `config` against its own implementation and reports divergence as a plugin issue rather than absorbing it | **continuous** from Stage 2 | NOT STARTED | — |

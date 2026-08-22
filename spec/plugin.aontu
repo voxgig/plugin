@@ -48,3 +48,215 @@
 # runner: unknown fields, multiple argument sources, `err` beside `out`,
 # and empty sets all fail rather than passing silently.
 PLUGIN: version: 1
+
+
+# ---------------------------------------------------------------------------
+# ref — name/tag identity. THE FIRST SECTION A PORT PASSES.
+#
+# Pure (§15.3): every entry calls one of the four pure functions, so a port
+# runs this with no host and no driver contract. That is what makes it
+# deliverable to station ahead of its Stage 2 (C1) — see doc/plan/contracts.md.
+#
+# The group name selects the subject:
+#   parse / parsebad   parseref(str)      -> {name, tag}
+#   format / formatbad formatref(name,tag)-> str        (positional args)
+#   canon              formatref(parseref(str))         -> str
+#   name               checkname(str)     -> boolean
+#   tag                checktag(str)      -> boolean
+#   bound              the 1024-character limit, both functions
+#
+# GRAMMAR (§4), and the asymmetry between the two is deliberate:
+#   name  ^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$   max 1024
+#   tag   ^[a-zA-Z0-9.~_-]+$              max 1024, or empty
+# A tag may START WITH A DIGIT and a name may not, because auto-tagging
+# assigns integer tags (stripe$1). A tag admits neither `@` nor `/`, because
+# a name is a package specifier and a tag is not.
+#
+# TWO THINGS THIS SECTION PINS THAT THE PROSE DOES NOT STATE:
+#
+# 1. `a$b$c` splits on the FIRST `$`, giving name `a` and tag `b$c`, so it
+#    fails as plugin_bad_tag rather than plugin_bad_name. Splitting on the
+#    last `$` would be equally consistent with §4 and would blame the name.
+#    Neither reading is derivable from the grammar — `$` is in neither
+#    character class — so the corpus is the arbiter (§4 rule 5), and it
+#    chooses the error that names the part actually at fault.
+#
+# 2. The empty string is plugin_bad_name, not a name with an empty tag.
+#
+# WHAT THIS SECTION DOES NOT PIN, and why it is not an oversight:
+# §15.3 lists `ref` as also covering **auto-tag** and **`pos` vs `seq`
+# across a redeclaration**. Neither is reachable from the canonical pure
+# surface — there is no `autotag` function, `seq` is by definition a
+# counter held by the host, and `pos` is assigned by document
+# normalization. Pinning them here would make a section marked `pure`
+# require a driver, which would put C1 behind C2 and break the ordering
+# station's Stage 2 depends on. They are tracked in
+# doc/plan/handover.md §6 and belong to `config` and the driver sections.
+# ---------------------------------------------------------------------------
+
+primary: ref: {
+
+  # The pair, from the written form. The tag is '' when absent — never null,
+  # never missing, because a port that returns three shapes for two states
+  # makes every downstream comparison a special case.
+  parse: set: [
+    { id: 'ref/parse#bare', doc: true, in: 'stripe', out: { name: 'stripe', tag: '' } }
+    { in: 'stripe$test', out: { name: 'stripe', tag: 'test' } }
+    { in: 'retry$fast', out: { name: 'retry', tag: 'fast' } }
+
+    # Canonicalization: a trailing `$` is an empty tag written out loud.
+    { in: 'stripe$', out: { name: 'stripe', tag: '' } }
+
+    # A name is a package specifier, so it carries @ / . - _ ~
+    { in: '@voxgig/plugin-retry', out: { name: '@voxgig/plugin-retry', tag: '' } }
+    { in: '@voxgig/plugin-retry$eu', out: { name: '@voxgig/plugin-retry', tag: 'eu' } }
+    { in: 'a.b.c', out: { name: 'a.b.c', tag: '' } }
+    { in: 'a_b-c~d', out: { name: 'a_b-c~d', tag: '' } }
+    { in: 'a/b/c$x', out: { name: 'a/b/c', tag: 'x' } }
+    { in: 'A', out: { name: 'A', tag: '' } }
+    { in: 'a1', out: { name: 'a1', tag: '' } }
+
+    # Integer tags are what auto-tagging assigns, so they must parse as
+    # ordinary tags — nothing distinguishes stripe$1 from stripe$test here.
+    { in: 'stripe$1', out: { name: 'stripe', tag: '1' } }
+    { in: 'stripe$0', out: { name: 'stripe', tag: '0' } }
+    { in: 'stripe$99', out: { name: 'stripe', tag: '99' } }
+    { in: 'x$a.b', out: { name: 'x', tag: 'a.b' } }
+    { in: 'x$a_b-c~d', out: { name: 'x', tag: 'a_b-c~d' } }
+  ]
+
+
+  # Grammar violations. The code says which HALF is wrong, which is the
+  # whole reason there are two codes rather than one plugin_bad_ref.
+  parsebad: set: [
+    { id: 'ref/parsebad#empty', doc: true, in: '', err: 'plugin_bad_name' }
+    { in: '$test', err: 'plugin_bad_name' }
+    { in: '$', err: 'plugin_bad_name' }
+    { in: '1abc', err: 'plugin_bad_name' }
+    { in: '-abc', err: 'plugin_bad_name' }
+    { in: '.abc', err: 'plugin_bad_name' }
+    { in: '/abc', err: 'plugin_bad_name' }
+    { in: '~abc', err: 'plugin_bad_name' }
+    { in: '_abc', err: 'plugin_bad_name' }
+    { in: 'a b', err: 'plugin_bad_name' }
+    { in: 'a!b', err: 'plugin_bad_name' }
+    { in: 'a#b', err: 'plugin_bad_name' }
+
+    # Splits on the FIRST `$`, so the name is `a` and the tag is `b$c`.
+    # See the header note: this is a corpus decision, not a grammar one.
+    { in: 'a$b$c', err: 'plugin_bad_tag' }
+    { in: 'a$b/c', err: 'plugin_bad_tag' }
+    { in: 'a$@b', err: 'plugin_bad_tag' }
+    { in: 'a$b c', err: 'plugin_bad_tag' }
+    { in: 'a$b!c', err: 'plugin_bad_tag' }
+  ]
+
+
+  # The written form, from the pair. Positional args: [name, tag].
+  format: set: [
+    { id: 'ref/format#bare', doc: true, args: ['stripe', ''], out: 'stripe' }
+    { args: ['stripe', 'test'], out: 'stripe$test' }
+    { args: ['@voxgig/plugin-retry', 'eu'], out: '@voxgig/plugin-retry$eu' }
+    { args: ['stripe', '1'], out: 'stripe$1' }
+    { args: ['a.b.c', 'x~y'], out: 'a.b.c$x~y' }
+
+    # An empty tag NEVER writes the separator. This is the half of
+    # canonicalization that formatref owns: parse tolerates `stripe$`,
+    # format never produces it, so a round trip is idempotent.
+    { args: ['stripe', ''], out: 'stripe' }
+  ]
+
+
+  formatbad: set: [
+    { id: 'ref/formatbad#emptyname', doc: true, args: ['', ''], err: 'plugin_bad_name' }
+    { args: ['', 'test'], err: 'plugin_bad_name' }
+    { args: ['1abc', ''], err: 'plugin_bad_name' }
+    { args: ['a$b', ''], err: 'plugin_bad_name' }
+    { args: ['stripe', 'a/b'], err: 'plugin_bad_tag' }
+    { args: ['stripe', 'a$b'], err: 'plugin_bad_tag' }
+    { args: ['stripe', '@x'], err: 'plugin_bad_tag' }
+  ]
+
+
+  # formatref(parseref(s)) — the canonical spelling of s. §4 rule 5: ports
+  # must canonicalize before comparison, and this group is the arbiter.
+  # Every entry is also an idempotence check, because the output of canon
+  # is itself a valid input to canon.
+  canon: set: [
+    { id: 'ref/canon#trailing', doc: true, in: 'stripe$', out: 'stripe' }
+    { in: 'stripe', out: 'stripe' }
+    { in: 'stripe$test', out: 'stripe$test' }
+    { in: '@voxgig/plugin-retry$', out: '@voxgig/plugin-retry' }
+    { in: 'a.b.c$1', out: 'a.b.c$1' }
+  ]
+
+
+  # checkname(str) -> boolean. A predicate, not a raiser: the caller that
+  # wants an error has parseref for that.
+  name: set: [
+    { id: 'ref/name#simple', doc: true, in: 'stripe', out: true }
+    { in: 'a', out: true }
+    { in: 'A', out: true }
+    { in: '@scope/pkg', out: true }
+    { in: '@voxgig/plugin-retry', out: true }
+    { in: 'a.b.c', out: true }
+    { in: 'a_b', out: true }
+    { in: 'a-b', out: true }
+    { in: 'a~b', out: true }
+    { in: 'a/b', out: true }
+    { in: 'a1', out: true }
+    { in: 'a123._~-/', out: true }
+
+    { in: '', out: false }
+    { in: '1a', out: false }
+    { in: '-a', out: false }
+    { in: '.a', out: false }
+    { in: '_a', out: false }
+    { in: '~a', out: false }
+    { in: '/a', out: false }
+    { in: 'a$b', out: false }
+    { in: 'a b', out: false }
+    { in: 'a!b', out: false }
+    { in: 'a%b', out: false }
+  ]
+
+
+  # checktag(str) -> boolean. The empty tag is VALID and ordinary (§4 rule
+  # 2) — the single-instance case writes no tag and never learns tags exist.
+  tag: set: [
+    { id: 'ref/tag#empty', doc: true, in: '', out: true }
+    { in: 'test', out: true }
+    { in: '1', out: true }
+    { in: '0', out: true }
+    { in: '99', out: true }
+    { in: 'a.b', out: true }
+    { in: 'a_b', out: true }
+    { in: 'a-b', out: true }
+    { in: 'a~b', out: true }
+    { in: 'A1._~-', out: true }
+
+    # A tag is not a package specifier: no @, no /.
+    { in: '@x', out: false }
+    { in: 'a/b', out: false }
+    { in: 'a$b', out: false }
+    { in: 'a b', out: false }
+    { in: 'a!b', out: false }
+  ]
+
+
+  # The 1024-character bound, pinned at the boundary in both directions.
+  # A bound stated in prose and absent from the corpus is not a contract,
+  # and off-by-one at a length limit is the classic per-port divergence.
+  bound: set: [
+    { id: 'ref/bound#name-max', doc: true, in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', out: true }
+    { in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', out: false }
+  ]
+
+
+  # checktag at the same boundary. Separate group because the subject
+  # differs — `bound` runs checkname, `boundtag` runs checktag.
+  boundtag: set: [
+    { id: 'ref/boundtag#max', doc: true, in: 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', out: true }
+    { in: 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', out: false }
+  ]
+}
