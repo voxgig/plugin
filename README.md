@@ -9,10 +9,11 @@ language set the rest of the Voxgig stack targets, so that a library —
 can be extended by the developers using it, in the same way, with the
 same vocabulary, in whatever language they are writing.
 
-A **definition** is a plugin kind. An **instance** is a live, named,
-stateful incarnation of one — `stripe` and `stripe-test`, or `retry$fast`
-and `retry$slow`, coexisting in one host and individually addressable.
-An instance is **declared** (a name and its config, nothing executed),
+A **definition** is a plugin kind. An **instance** is a live, stateful
+incarnation of one, addressed by **name+tag** — `stripe` and
+`stripe$test`, or `retry$fast` and `retry$slow`, coexisting in one host
+and individually addressable. The name is always the definition; the tag
+says which instance. An instance is **declared** (a name and its config, nothing executed),
 **loaded** (defined, stateful, inert) or **active** (bound into the
 host's extension points, holding resources). Activation is a separate,
 reversible, runtime-controllable transition, and it is the only thing

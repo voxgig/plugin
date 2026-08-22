@@ -13,9 +13,10 @@ naming, configuration, lifecycle, ordering and teardown. Nothing about
 it is specific to station, to HTTP, or to SDKs.
 
 > **The one-paragraph version.** A **definition** is a plugin kind. An
-> **instance** is a live, named, stateful incarnation of a definition —
-> `retry$fast` and `retry$slow` are two instances of one definition, in
-> one host, at the same time. An instance is **loaded** (configured,
+> **instance** is a live, stateful incarnation of a definition,
+> addressed by **name+tag** — `retry$fast` and `retry$slow` are two
+> instances of one definition, in one host, at the same time; the name
+> is always the definition, the tag says which one. An instance is **loaded** (configured,
 > stateful, inert) or **active** (bound into the host's extension
 > points, holding resources). Activation is a separate, reversible,
 > runtime-controllable transition, and **it is the only thing that
@@ -197,8 +198,8 @@ up to four lifecycle callbacks (§5.3). A definition is a *value*: the
 same definition object may back many instances, and may be registered in
 many hosts.
 
-**Instance** — a live incarnation of a definition inside one host. Has an
-identity (§4), resolved options, plugin-owned persistent state, a status
+**Instance** — one live incarnation of a definition inside one host,
+addressed by name+tag (§4). Has resolved options, plugin-owned persistent state, a status
 (§5.1), a set of bindings into the host's extension points, and a
 resource scope (§8). An instance is the unit of naming, configuration,
 activation and teardown.
@@ -239,71 +240,70 @@ belongs to exactly one.
 
 ## 4. Naming and referencing
 
-Multiple instances of one definition is a first-class requirement, so
-identity is specified before anything else.
+**One identity, two parts.**
 
-**An instance has a name of its own, and points at the definition it
-instantiates.** That ordering is deliberate and it is a correction: the
-first draft made the ref a *derivation* of the definition name
-(`retry$fast` = definition `retry`, tag `fast`) with aliasing as a
-footnote. The first real consumer wants the opposite — station (§17.1)
-names instances `stripe-test`, `github-ent`, `slack-alerts` and says
-which api each one is, because at twenty integrations the instance name
-is what a human reads in a config file, a log line and a status page,
-and "an instance of stripe, tagged test" is a worse name for it than
-`stripe-test`.
+- **name** — the definition. `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$`, max 1024
+  chars. `retry`, `stripe`, `@voxgig/plugin-retry`.
+- **tag** — which instance of it. `^[a-zA-Z0-9.~_-]+$`, max 1024 chars,
+  or empty.
 
-- **ref** — the instance's address, and the primary identity.
-  `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*(\$[a-zA-Z0-9.~_-]+)?$`, max 1024 chars.
-  `stripe-test`, `solar-eu`, `retry$fast` and `@voxgig/plugin-retry` are
-  all legal refs.
-- **define** — the definition this instance instantiates. Given
-  explicitly (`{ ref: 'stripe-test', define: 'stripe' }`), and when it
-  is not, **derived from the ref**: the part before the `$`. So
-  `retry$fast` still means definition `retry` with nobody writing it
-  down, and `stripe-test` means definition `stripe-test` unless told
-  otherwise.
-- **name** / **tag** — the two halves of a ref that carries a `$`. Still
-  parsed, still addressable, now understood as *sugar for the common
-  case* rather than as the identity model: when the instance really is
-  "an instance of X, distinguished by Y", `X$Y` says so in one token and
-  needs no `define`. When it is not — and at twenty SDKs it usually is
-  not — a plain name plus `define` is the plainer thing.
-- **id** — `ref#n`, a **derived incarnation** of a declared ref. Two
-  things use it, and they do not collide because both mean "the nth
-  live thing behind this declared name": the host's monotonic counter,
-  so events from `retry$fast#3` are never confused with a later
-  `retry$fast#7` after an unload/reload; and a host that hands out
-  uncached instances from one declared ref (station's `create()`, a
-  per-request credential scope) registering each under `name#n`. An id
-  is an identity, never an address: `host.instance()` takes refs.
+Written `name$tag`, or just `name` when the tag is empty. That written
+form is called a **ref**, and it is a spelling of the pair rather than a
+third thing: `parseref` and `formatref` convert between them, and every
+public API takes either.
+
+That is the whole model. An instance *is* "the `test` one of `stripe`",
+and `stripe$test` says exactly that in one token. There is no separate
+instance name, no alias field pointing at a definition, and no
+incarnation suffix — **the name is always the definition name**, which
+is the invariant that makes everything downstream cheap: a registry
+groups by the part before the `$`, a config file's key is its own
+documentation, and nothing has to be told twice what a thing is an
+instance of.
 
 Rules, all pinned by the corpus:
 
-1. **A ref addresses at most one instance in a host.** Loading a ref
-   that is already registered is `plugin_ref_duplicate` — not a silent
-   overwrite (seneca) and not an impossibility (sdkgen).
-2. **The untagged ref is an ordinary ref**, not a wildcard. `retry` and
-   `retry$fast` are two different instances of one definition, and both
-   may exist.
-3. **Auto-tagging is explicit.** `load('retry', {tag: '?'})` assigns the
-   lowest unused positive integer tag (`retry$1`, `retry$2`, …). Without
-   `'?'`, a collision is an error. Auto-assignment never produces a ref
-   that collides with an explicit tag, and the assigned ref is returned.
-4. **`define` is recorded on the instance either way** — given or
-   derived — so nothing downstream has to re-derive it, and
-   `host.list()` can group twenty-six instances by the six definitions
-   behind them without parsing anything.
-5. **Refs are canonicalized on the way in.** `"retry$"`, `"retry"` and
-   `{name:'retry', tag:''}` all normalize to the ref `retry`. Ports must
+1. **A name+tag pair addresses at most one instance in a host.**
+   Declaring a pair that is already registered is `plugin_ref_duplicate`
+   — not a silent overwrite (seneca) and not an impossibility (sdkgen).
+2. **The empty tag is an ordinary tag.** `stripe` and `stripe$test` are
+   two different instances of one definition, and both may exist. The
+   single-instance case writes no tag and never learns tags exist.
+3. **Auto-tagging is explicit.** `declare('stripe', {tag: '?'})` assigns
+   the lowest unused positive integer tag — `stripe$1`, `stripe$2`, … —
+   and returns the assigned pair. Without `'?'`, a collision is an
+   error. This is also the answer for a host handing out uncached
+   instances from one declared name (a per-request credential scope,
+   station's `create()`): they are ordinary tagged instances, not a
+   parallel identity scheme.
+4. **Sequence is metadata, not identity.** Each instance carries a
+   monotonic `seq` from the host's counter, so a trace can tell one
+   incarnation of `stripe$test` from the next after an unload and
+   reload. It travels *beside* the ref in trace records and status
+   rows; it is never part of the address.
+5. **Refs are canonicalized on the way in.** `"stripe$"`, `"stripe"` and
+   `{name: 'stripe', tag: ''}` all normalize to `stripe`. Ports must
    canonicalize before comparison; the corpus's `ref` section is the
    arbiter.
 
-Canonical functions: `parseref(str) -> {ref, name, tag, define}`,
-`formatref(name, tag) -> str`, `checkref`/`checkname`/`checktag`,
-`deriveid(ref, n)`. These are pure, which is why they are the first
-thing a new port implements and the first section of the corpus it
-passes.
+Canonical functions: `parseref(str) -> {name, tag}`, `formatref(name,
+tag) -> str`, `checkname`/`checktag`. Pure, which is why they are the
+first thing a new port implements and the first section of the corpus
+it passes.
+
+**What this replaced.** Two earlier drafts of this section carried more
+machinery than the job needs: first a `$tag` identity with an
+`define`/alias escape hatch, then — on station's evidence (§17.1) — a
+free-form instance name *plus* a `define` field naming the definition,
+*plus* `ref#n` for derived incarnations. Four concepts where two do the
+work. The free-form form let station write `stripe-test` and say
+`api: stripe` separately, which reads well in a config file and costs a
+second name to keep consistent, a field that can disagree with it, and
+an "is this the instance or the definition?" question at every use
+site. `stripe$test` answers that question in the token itself. The one
+real forfeit is **aliasing** — an instance of `memcache` called
+`cache$hot` — which now has to be `memcache$hot`. That is a cosmetic
+loss and the invariant is worth more than the cosmetics.
 
 
 ## 5. States, transitions and lifecycle
@@ -340,7 +340,8 @@ that adds an eighth is diverging.
 
   This state is here because the first real consumer cannot work
   without it. Station (§17.1) declares twenty-plus SDK instances in one
-  config file and constructs each on first use — and the *reason* it is
+  config file — `stripe`, `stripe$test`, `github$ent`, … — and
+  constructs each on first use — and the *reason* it is
   built that way is that resolving twenty SDK packages at startup,
   whether or not the process touches them, is the specific defect its
   declarative design set out to remove. A model whose cheapest state
@@ -634,7 +635,7 @@ Three rules keep this from becoming a graph:
   grandparent's. A host that genuinely wants to share passes the
   capability down explicitly, `inst.host({ inherit: ['clock'] })`,
   which is a decision written in one place rather than an ambient rule.
-- **Trace records carry the path** — `stripe-test/retry`, not `retry` —
+- **Trace records carry the path** — `stripe$test/retry`, not `retry` —
   so a fleet view of twenty SDKs each with six features is readable.
 
 The nesting is not recursive by ambition; nothing stops a third level,
@@ -840,11 +841,11 @@ exactly the sequence of API calls the programmatic path makes.
   "instance": {
     "retry":       { "active": true,  "options": { "retries": 3 } },
     "retry$slow":  { "active": false, "options": { "retries": 10, "minDelay": 500 } },
-    "cache$hot":   { "define": "memcache", "active": true,
-                     "order": { "after": "retry" },
-                     "options": { "max": 1000 } },
-    "stripe-test": { "define": "stripe", "active": true, "start": "lazy",
-                     "options": { "base": "https://api.stripe.test" } }
+    "memcache$hot":  { "active": true,
+                       "order": { "after": "retry" },
+                       "options": { "max": 1000 } },
+    "stripe$test":   { "active": true, "start": "lazy",
+                       "options": { "base": "https://api.stripe.test" } }
   },
 
   // Profiles overlay the base. Selected by name at host construction
@@ -864,7 +865,7 @@ form works:
 { "plugin": 1,
   "instance": [
     { "ref": "retry",      "active": true,  "options": { "retries": 3 } },
-    { "ref": "cache$hot",  "define": "memcache", "active": true }
+    { "ref": "memcache$hot", "active": true }
   ] }
 ```
 
@@ -875,7 +876,7 @@ the same question:
   `false` declares it and bars it: it appears in `host.list()`, and
   `activate` and `ready` on it fail rather than quietly doing nothing.
   That is how a profile switches an integration off without deleting
-  its configuration (§17.1's `stripe-test` in prod).
+  its configuration (§17.1's `stripe$test` in prod).
 - **`start`** (default `"eager"`) — *when* does it run? `eager` means
   `apply` activates it. `"lazy"` means `apply` leaves it `declared` and
   the first `ready(ref)` walks it up. A host whose instances are
@@ -901,11 +902,10 @@ the plugin library only ever sees the parsed subtree, and never reads a
 file itself.
 
 **A host may also rename these keys.** `makeHost({ keys: { instance:
-'sdk', define: 'api' } })` maps a host's own vocabulary onto the generic
-one before normalization. That is not a concession, it is the point:
-`sdk` and `api` are the right words in `station.json` (§17.1) and
-`instance`/`define` are the right words in a library that knows nothing
-about SDKs. A generic library that forces its vocabulary into every
+'sdk' } })` maps a host's own vocabulary onto the generic one before
+normalization. That is not a concession, it is the point: `sdk` is the
+right word in `station.json` (§17.1) and `instance` is the right word in
+a library that knows nothing about SDKs. A generic library that forces its vocabulary into every
 host's config file has mistaken uniformity for design. The renaming is
 a pure map applied to one level of keys — the *shape* underneath is
 identical, so the corpus tests it once and every host gets it.
@@ -922,12 +922,12 @@ const host = makeHost({
 host.define(RetryPlugin)                            // static catalog
 host.resolver(nodeResolver())                       // dynamic loading (§10)
 
-host.declare({ ref: 'retry$fast', define: 'retry', options: { retries: 5 } })
+host.declare('retry$fast', { retries: 5 })
                                  // free: nothing resolved, nothing run
 const fast = await host.load('retry$fast')   // resolve + define
 await host.activate('retry$fast')
 
-const live = await host.ready('stripe-test') // declare→load→activate→return
+const live = await host.ready('stripe$test') // declare→load→activate→return
 
 await host.deactivate('retry$fast')                 // resources released, state kept
 await host.activate('retry$fast')                   // same instance, same state
@@ -1419,9 +1419,9 @@ The registry is explicit and queryable, because a plugin system nobody
 can see the state of is a plugin system people stop trusting.
 
 - `host.list()` — one row per instance, **including `declared` ones,
-  and without loading them**: ref, definition name and version (version
-  absent until loaded, because it is the definition's and the
-  definition has not been resolved), status, load sequence, the points it binds and its resolved
+  and without loading them**: ref, definition version (absent until
+  loaded — it is the definition's, and the definition has not been
+  resolved), status, `seq`, the points it binds and its resolved
   position in each, its declared requirements and whether they are met,
   its option keys (values redacted by the host's redactor if it has
   one), and the size of its scope. A `pending` row names **which**
@@ -1691,11 +1691,11 @@ are requirements on this one, and two of them changed this design:
 | station needs | plugin provides |
 |---|---|
 | `sdk` / `api` blocks declaring named instances | the config document's `instance` map, keyed by ref (§9.1) |
-| `stripe-test` with `api: stripe` | a free-form ref plus `define` (§4) — **the reason §4 was re-weighted** |
+| `stripe-test`, an instance of api `stripe` | `stripe$test` — name is the api, tag is the instance (§4) |
 | twenty declared, constructed on first `sdk(name)` | `declared` state + `start: "lazy"` + `ready(ref)` (§5.1) — **the reason `declared` exists** |
 | `instances()` (declared) vs `plugins()` (live) | `host.list()` over all states vs the `active` rows of it |
 | `active: false` in a profile overlay | `active: false` in the document (§9.1) |
-| `create()` returning uncached clients as `name#n` | derived incarnation ids (§4) |
+| `create()` returning uncached clients | auto-tagged instances, `tag: '?'` → `stripe$1` (§4 rule 3) |
 | SDK features managed fleet-wide, per instance | an instance that is itself a host (§6.5) — **the reason nested hosts are in the model** |
 | the transport wrap "immediately outside the base transport" | a `chain` binding with a low band, plus `inst.position()` (§6.6) |
 | the `station` ordering special case in `makeOptions` | ordering constraints (§7) — the special case goes away |
@@ -1722,13 +1722,24 @@ says a host may map its own key names onto the generic ones, because
 generic library that forces its vocabulary into a specific host's
 config file has mistaken uniformity for design.
 
-Two smaller collisions, resolved here so neither repo discovers them in
-code: station's `name#<n>` for uncached clients **is** §4's derived
-incarnation id, same separator and same meaning; and station's
-`active: false` means *barred from running*, which is §9.1's `active`,
-distinct from the runtime `active` **state** — the document key and the
-status word share a spelling and not a meaning, and both documents
-should say so where they define it.
+**One consequence station has to absorb, and it is a real one.** §4
+canonicalizes identity on name+tag, where the name is *always* the
+definition — so station's instance keys become `stripe$test`,
+`github$ent`, `slack$ops`, and its `api` field disappears because the
+name already carries it. That is a change to station's config grammar,
+not a translation layer over it: `sdk` keys are refs, and a key with no
+`$` is simply the untagged instance of that api. In exchange station
+loses a field that could disagree with its own key, and gains the
+property that any log line, event or status row naming an instance also
+names its api. Instance names get longer where the api slug is long
+(`voxgig-solardemo$eu`, not `solar-eu`); that is the visible cost and it
+is worth paying for one identity instead of two.
+
+One smaller collision, resolved here so neither repo hits it in code:
+station's `active: false` means *barred from running*, which is §9.1's
+`active`, distinct from the runtime `active` **state**. The document key
+and the status word share a spelling and not a meaning, and both
+documents should say so where they define it.
 
 **The sequencing, stated plainly because it is a real cost.** Station
 adopting this library puts station's Stage 2 (the identity change) and
