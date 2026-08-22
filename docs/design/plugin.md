@@ -1843,11 +1843,11 @@ are requirements on this one, and two of them changed this design:
 | `instances()` (declared) vs `plugins()` (live) | `host.list()` over all states vs the `active` rows of it |
 | `active: false` in a profile overlay | `active: false` in the document (§9.1) |
 | `create()` returning uncached clients | auto-tagged instances, `tag: '?'` → `stripe$1` (§4 rule 3) |
-| SDK features managed fleet-wide, per instance | an instance that is itself a host (§6.5) — **the reason nested hosts are in the model** |
+| SDK features managed fleet-wide, per instance | an instance that is itself a host (§6.5) — **the reason nested hosts are in the model**, and contingent on §17.2 (see below) |
 | the transport wrap "immediately outside the base transport" | a `chain` binding with a low band, plus `inst.position()` (§6.6) |
 | the `station` ordering special case in `makeOptions` | ordering constraints (§7) — the special case goes away |
 | explicit feature wrap `order` at profile level | the same constraints, one level down, in the inner host |
-| struct-validated config, closed by construction | §9.4's option shapes, same `struct.validate` |
+| struct-validated config | §9.4's option shapes, same `struct.validate` — but see the credential note below |
 | `station.close()` | `host.close()` |
 | binding one name twice is an error | `plugin_ref_duplicate` |
 
@@ -1856,6 +1856,43 @@ one api** (its own §1 records `station_bound_twice` as a *prohibition*,
 not a gap), **runtime deactivation** with credentials released as part
 of the instance scope, and one instance model shared with every other
 voxgig library instead of a station-shaped one.
+
+**Two rows of that table need qualifying, both raised by station's own
+review of this document.**
+
+*Validation is not closed-by-construction, and cannot be.* Station's
+guarantee (its §5.2) is that its **grammar** cannot express a
+credential: eight known block keys, closed maps, and no key that holds
+a value. This library validates an instance's `options` against **the
+definition's** option shape — and for an SDK definition that shape is
+the SDK's own options, in which `apikey` is a declared key
+(sdkgen's `MakeOptionsUtility.ts` `optspec`). So
+
+```json
+"stripe$test": { "options": { "apikey": "sk-live-abc123" } }
+```
+
+is *grammatically valid* here, where in station's own grammar it is a
+hard error. The property does not weaken, it inverts: a closed grammar
+that omits the credential key becomes an open one that includes it by
+definition. That is not a defect in this design — a generic plugin
+library cannot know which of a definition's options is a credential —
+but it means **the guarantee is the host's to keep, not this library's
+to supply**, and station keeps it with a scan layered over these
+option shapes. Said here so neither repo believes the other is
+providing it.
+
+*Nested hosts are the right model for station's feature management and
+are not yet reachable.* §6.5 is justified by station configuring each
+SDK's features fleet-wide, and that mapping holds only once **sdkgen
+adopts this library** — which §17.2 explicitly declines to commit to.
+Until then a generated SDK is not a host: it has `options.feature` (map
+or ordered array) and a `FEATURE_CLASS` table, and station configures
+features by composing that array, which is what its §8 describes and
+what already works. Wrapping that in `inst.host(...)` would be a
+host-shaped object around a non-host. The model is still right and
+still worth having; the row is a *future* fit, and §6.5's "the first
+real consumer needs exactly that" should read "will need".
 
 **Where the two designs still disagree, and who moves.** Station's
 document is further along and names things in its own domain; this
@@ -1888,13 +1925,39 @@ station's `active: false` means *barred from running*, which is §9.1's
 and the status word share a spelling and not a meaning, and both
 documents should say so where they define it.
 
-**The sequencing, stated plainly because it is a real cost.** Station
-adopting this library puts station's Stage 2 (the identity change) and
-Stage 3 (the declarative front door) behind plugin's P1 and P2 — which
-is a design with no implementation. That is a genuine delay to a plan
-that is otherwise ready to start, and it is the price of not having two
-instance models in one organisation. Three things make it payable, and
-they are obligations on *this* repo, not on station:
+**The sequencing, stated plainly because it is a real cost.** An
+earlier version of this section discussed sequencing entirely in
+TypeScript: station's Stage 2 (the identity change) and Stage 3 (the
+declarative front door) behind plugin's P1 and P2. That is the small
+version of the problem, and station's review supplied the large one.
+
+**Station has sixteen written ports** — `c`, `cpp`, `csharp`, `dart`,
+`elixir`, `go`, `java`, `javascript`, `lua`, `perl`, `php`, `python`,
+`ruby`, `rust`, `swift`, `typescript` — thirteen of them running a full
+suite in CI. This library has **none**, and §16.1 rolls out in four
+tiers. A station port cannot depend on a plugin library that does not
+exist in its language, so adopting this library as a *dependency* means,
+for each of those sixteen: wait for that language's plugin port (tier 3
+for most, tier 4 for `c` and `cpp`), or keep a native implementation
+and carry two instance models in one repo — the exact outcome this
+section exists to avoid.
+
+The budget compounds it. §19 puts a port's core at ~1200 lines against
+station's own 1–2k for an entire tier-A port (`station.md` §10.1), and
+plugin absorbs perhaps 300–400 lines of what a station port already
+does. Net, roughly **+800 lines per language in sixteen languages**,
+carried by the only consumer that exists.
+
+**So the order is the other one.** Station builds Stages 2 and 3
+natively, to the semantics in this document — the ref grammar, the
+`declared`/`loaded`/`active` states, §9.3's precedence,
+list-replaces-on-merge, vacuous constraint satisfaction — and this
+library extracts them afterwards. Same destination; station's sixteen
+ports stay green throughout; and plugin's P3 becomes an extraction from
+working code rather than a construction against a design, which is an
+easier proof obligation to discharge, not a harder one.
+
+Four things follow, and they are obligations on *this* repo:
 
 1. **P1 and P2 ship the core only** — §11's capability system is P3b
    (§18) precisely so it is not on station's critical path.
@@ -1904,14 +1967,17 @@ they are obligations on *this* repo, not on station:
    underneath it unchanged. If it does not fit, plugin is wrong.
 3. **Station's Stage 1 does not wait.** Its grammar, shape file,
    normalizer and corpus sections are station's own data and depend on
-   nothing here; only Stages 2 and 3 do. Starting Stage 1 now is the
-   right move whatever happens to this library.
+   nothing here.
+4. **Ship the corpus sections early, even in draft.** `ref`, `config`,
+   `lifecycle` and `order` are pure data (§15), and they are what stops
+   two implementations drifting before they meet. Station has said it
+   will hold itself to them; this repo owes them sooner than P1's exit.
 
-If P1 and P2 slip far enough that station is blocked on them, the
-correct call is to let station build Stage 2 natively against these
-semantics and have plugin extract it afterwards — the same destination,
-reached in the other order. That is a decision to make on a date, not
-on principle.
+The dependency question reopens when this library reaches tier 3 — at
+which point most of station's ports have something to depend on, and
+sdkgen (§17.2) is likelier to be a second consumer, so the per-port
+trade is being made for two libraries rather than one. That is a
+decision to make on a date, not on principle.
 
 ### 17.2 sdkgen features
 
@@ -2145,16 +2211,38 @@ integration-tested in every port (§11.4).
    *Settled* — the `bail` dispatch mode (§6.1). The instinct to resist
    it was wrong: Cordis has carried the same mode for years, which is
    better evidence than an argument from parsimony.
-4. **Per-instance scoping of the host** — seneca's delegate gives each
+4. **Where do per-definition defaults live in the document?** Raised by
+   station's review. §9.3 level 2 is `makeHost({defaults})` — code — and
+   the document's only per-definition slot is the untagged instance,
+   because §9.3's shortname rule sources inheritance from
+   `instance.<name>.options`. A host with `stripe$live`, `stripe$test`
+   and `stripe$eu` and no untagged instance therefore has nowhere in
+   the file to write what all three share. It *can* declare
+   `"stripe": {"active": false, "options": {…}}` — barred from running,
+   inherited by the tagged three — but that is a defaults carrier
+   masquerading as an instance, and it shows up as one in `host.list()`
+   and in every status row built from it.
+
+   Station hits this immediately: its `api.<slug>` block exists to write
+   a policy or a package name once for every instance of that api
+   (`station-declarative-config.md` §3.2), and §17.1's "the `api` field
+   disappears" is true of the *field* and not of the *block*. The
+   obvious shape is a name-keyed `default` map beside the ref-keyed
+   `instance` map, feeding level 2 — but whether that is the right
+   spelling, whether it should instead be a `defaults: true` marker on
+   an instance entry, and how it interacts with profile overlays, are
+   this repo's to settle rather than station's to propose. Resolve
+   before P2's `apply()`.
+5. **Per-instance scoping of the host** — seneca's delegate gives each
    plugin a view of the host that attributes its calls automatically. It
    is genuinely useful and genuinely hard to port. Deferred to P2 as a
    possible `inst.host` wrapper.
-5. **Does station's proxy need to see plugin state?** If station's
+6. **Does station's proxy need to see plugin state?** If station's
    `station_integrations` MCP tool grows a "deactivate this integration"
    verb, activation state becomes remotely controlled, and the wire
    protocol needs a representation. Station-side question, raised here
    so it is not a surprise.
-6. **Versioning between host and plugin.** *Partly settled* —
+7. **Versioning between host and plugin.** *Partly settled* —
    capability versions and consumer/provider ranges are §11.2. What
    remains is the *host's own* API version: nothing yet declares "I
    need host API >= X". The mechanism is now obvious (the host provides
