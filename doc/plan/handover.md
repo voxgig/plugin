@@ -1,0 +1,128 @@
+# Handover — what the work decided, and what it cost
+
+The durable residue: decisions that stay true after an item lands, and
+things a landed change taught that a register row is too short to
+carry. Companion to [`adoption.md`](adoption.md) (the plan),
+[`progress.md`](progress.md) (the register) and
+[`contracts.md`](contracts.md) (what is owed across repos).
+
+**This is not the live snapshot.** What is in flight, what is blocked
+on a human, and what to pick up first is [`status.md`](status.md) —
+read that first. Delete a section here once its lesson has been
+absorbed somewhere better.
+
+Last updated: 2026-08-22.
+
+
+## 1. What has landed
+
+| Where | What |
+|---|---|
+| voxgig/plugin#4 | The design on `main`. |
+| voxgig/plugin#5 | P0: the skeleton — `Makefile`, `spec/` with the empty corpus and its aontu format shape, `tools/`, CI. Three review rounds, all of them the same defect class. |
+| voxgig/plugin#6 | The `active` overload settled: the lifecycle status is `live`, the config key stays `active`. |
+| voxgig/omni#36 | Two tooling bugs found while copying omni's `build-spec.js` into this repo, fixed upstream where they also lived. |
+
+
+## 2. `active` vs `live`, and why the framing was the hard part
+
+Both designs recorded a **three-way** collision. It was two. Station's
+`active: false` (*barred from running*) and plugin's document key
+`active` (*may this run*) are **one predicate stated in two
+polarities** — and deliberately so, since station's document *is*
+plugin's document under C1. Counting them separately made the problem
+look harder than it was and hid which way the fix ran.
+
+The genuine clash was that key against the runtime **status**, and it
+was substantive: `active: true` with `start: "lazy"` sits at `declared`
+indefinitely, so one word answered two questions whose answers
+routinely differ.
+
+It resolved on **cost, not taste**, once the two sides were costed
+separately — which the earlier "left as-is, renaming costs more churn
+than the ambiguity" conclusion had never done:
+
+| | shipped where |
+|---|---|
+| `active` as a key | station's 17 ports, its spec corpus, `sdkgen-station`, sdkgen's `options.feature.<name>.active` in ~23 template trees, every `station.json` in the field |
+| `active` as the status | nothing — no code in any language, no `lifecycle` corpus section |
+
+**The lesson worth keeping:** when a naming collision looks
+unresolvable, check whether the count is right before accepting the
+cost. And cost the sides *separately* — a single "renaming is churn"
+judgement hid a 20:0 asymmetry for as long as it went unexamined.
+
+### The trap it left behind
+
+`live` also means "real" in ordinary English, so a sentence can be
+unremarkable prose and a specific falsehood at once. **Five** sentences
+needed fixing; the first pass found three and review found two —
+including §5.4's "what makes the instance *a live instance* with
+persistent state", in a paragraph whose entire subject is state
+surviving while the instance is *not* live.
+
+`AGENTS.md` carries the standing warning. The check that would have
+caught them: **read any sentence containing `live` against the
+`declared` and `loaded` cases specifically.**
+
+
+## 3. Cross-repo pins rot, and the discipline did not catch it
+
+station's `station-and-plugin.md` pins every `P§n` reference to a
+plugin commit, and instructs re-pinning whenever plugin's design
+advances. The `live` rename made station assert `live` while the pin
+still pointed at a revision saying `active` — **the exact failure the
+pin exists to prevent, produced by the change that introduced the
+claim**, and caught in review rather than by the discipline.
+
+Two things came out of it:
+
+1. The pin's own step in the joint plan had been written as **done** —
+   a completed one-time action. It is a standing obligation, and now
+   reads as one.
+2. A PR head is an acceptable pin when the merge commit does not exist
+   yet. The property that matters is that the reference does not
+   *move*; the original defect was tracking a *branch*, which does. A
+   SHA does not, merged or otherwise.
+
+
+## 4. Three ways a contract can pass while broken
+
+All three were found reviewing P0's skeleton, all three exit 0 on
+failure, and all three are cheap now and expensive once ports exist.
+
+- **A misspelled top-level corpus key builds cleanly.** `primray:` for
+  `primary:` emits the misspelled tree, keeps the version marker, and
+  passes the shape check — while every runner reads `primary`, finds
+  nothing, and reports **zero tests as a pass**. Not catchable by
+  unification: the shape is imported *into* the generated check, so
+  closing that file's root conflicts with the shape's own definitions,
+  and aontu has no way to apply a closed template to a file's root
+  (`$.Root` and `*: $.Root` are parse errors, `&: $.Root` is a path
+  cycle). Checked in `build-spec.js` against the built artifact.
+
+- **A tolerantly-invoked port target swallows compiler errors.**
+  `|| echo "(no build target)"` cannot distinguish an absent optional
+  target from a build exiting 7. Fixed by **removing the optional-target
+  concept** — every port defines all four of `test`, `build`, `inspect`
+  and `clean` — rather than adding machinery to detect it. `inspect`
+  stays tolerant and says so where it is written.
+
+- **"Non-mutating by cleanup" is not non-mutating.** `--check` restored
+  the artifact on every exit path, which a SIGINT mid-write bypasses
+  entirely — and signal handlers still leave SIGKILL, OOM kills and
+  power cuts. It now builds into a throwaway mirror, so the committed
+  file is never opened for writing.
+
+The general shape: **a guard that reports success when it cannot do its
+job is worse than no guard**, because it also removes the suspicion
+that would have found the gap.
+
+
+## 5. Open, and deliberately so
+
+| | |
+|---|---|
+| **Station's Stage 5 hold** | Whether station stops after ts/js until P4 settles the canonical, or accepts divergence and budgets a migration across sixteen ports. A recommendation with a real cost either way; not plugin's call. |
+| **sdkgen adoption** (§17.2) | Uncommitted. The risk that invalidates the plan rather than delaying it: with no second consumer, station carries a generic abstraction for one. |
+| **The dependency decision** | Deferred to P5 by design, and non-blocking for station's native rollout. Keep it deferred rather than assuming it. |
