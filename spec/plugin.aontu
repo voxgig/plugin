@@ -1,0 +1,50 @@
+
+# The plugin conformance corpus — SOURCE OF TRUTH.
+#
+# plugin.json beside this file is a COMMITTED build artifact compiled from
+# here by tools/build-spec.js (@voxgig/model). Every port's test runner
+# reads that JSON directly, so no port needs a Node toolchain to run its
+# tests. Edit this file, run `npm run build-spec` in tools/, and commit
+# both. Never hand-edit the JSON (§16, prime directive 5).
+#
+# THIS CORPUS IS EMPTY, AND THAT IS P0's EXIT CRITERION.
+#
+# P0 builds the machinery and proves it turns over: `make spec` compiles
+# this file and `make spec-check` proves the committed JSON matches it.
+# Both must work before there is anything to compile, because a corpus
+# pipeline first exercised on real data is one whose failures arrive mixed
+# up with the data's.
+#
+# P1 fills it in, and the order is an obligation rather than a preference
+# (see station's station-and-plugin-plan.md §3):
+#
+#   C1, owed BEFORE station's Stage 2 — earlier than P1's own exit:
+#     ref      name/tag grammar, parse, format, canonicalization,
+#              auto-tag, `pos` vs `seq` across a redeclaration
+#     config   document normalization, array/map forms, the `default`
+#              map, the ten-level precedence ladder, profile overlay,
+#              defaults-after-merge, shape-declared merge depth,
+#              list-replace
+#
+#   C2, owed before P1's exit, together with the draft driver contract in
+#   DOCS.md (§15.2 — probes, command vocabulary, canonical observable),
+#   because these two are DRIVER sections and a port cannot run them from
+#   corpus files alone:
+#     lifecycle  the state machine, idempotence, illegal transitions,
+#                failure paths
+#     order      topological sort, bands, ties, vacuous constraints,
+#                recomputation
+#
+# The remaining sections (§15.3) land with the phase that implements them:
+# env, resolve, capability, version, graph, declare, nest, state,
+# resource, point, export, depend, apply, error, trace.
+#
+# Adding a section here is not enough on its own — §15.3's table records
+# whether it is pure data or driver-based, and a driver section without
+# its contract in DOCS.md is a suite no port but this one can implement.
+
+
+# Spec format version. Version 1 turns on strict entry validation in every
+# runner: unknown fields, multiple argument sources, `err` beside `out`,
+# and empty sets all fail rather than passing silently.
+PLUGIN: version: 1

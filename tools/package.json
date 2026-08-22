@@ -1,0 +1,21 @@
+{
+  "name": "@voxgig/plugin-tools",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Build tooling for plugin: compiles the aontu corpus sources into the spec JSON every port reads.",
+  "type": "commonjs",
+  "bin": {
+    "plugin-build-spec": "build-spec.js"
+  },
+  "scripts": {
+    "build-spec": "node build-spec.js",
+    "build-spec-check": "node build-spec.js --check",
+    "clean": "rm -rf node_modules package-lock.json",
+    "reset": "npm run clean && npm i && npm run build-spec",
+    "check-spec-shape": "node check-spec-shape.js --self-test"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@voxgig/model": "^9.3.0"
+  }
+}
