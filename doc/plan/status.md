@@ -23,9 +23,13 @@ The only work in flight is P1's first corpus sections.
 
 ## Pick this up first
 
-**P1 item 1.2 — the `config` corpus section.** 1.1 `ref` is done (93
-entries, pure); `config` is the other half of **C1**, owed to station
-**before its Stage 2**, which is earlier than P1's own exit.
+**P1 item 1.3 — the draft driver contract in `DOCS.md`** (§15.2:
+probes, command vocabulary, canonical observable), then 1.4's
+`lifecycle` and `order` sections. That is **C2**, and 1.3 must land
+*with* 1.4 rather than before it: they are driver sections, so corpus
+files alone leave every port unable to run them.
+
+C1 (`ref` + `config`, 151 entries) is written and awaiting merge.
 
 The reason for that ordering is not politeness. Station's Stage 1 lands
 the ref grammar and Stage 2 lands the identity re-key; if `ref` arrives

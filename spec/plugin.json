@@ -3,6 +3,1440 @@
     "version": 1
   },
   "primary": {
+    "config": {
+      "normarray": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normarray#order",
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "ref": "retry"
+                  },
+                  {
+                    "ref": "alpha"
+                  },
+                  {
+                    "ref": "memcache$hot"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "retry",
+                  "alpha",
+                  "memcache$hot"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "options": {
+                      "retries": 3
+                    },
+                    "ref": "retry"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "options": {
+                      "retries": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "ref": "stripe$"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stripe"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "normdefaults": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normdefaults#bar",
+            "in": {
+              "doc": {
+                "instance": {
+                  "pad$a": {
+                    "active": false
+                  }
+                },
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "pad$a": {
+                        "options": {
+                          "base": "https://prod.example"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "pad$a": {
+                    "active": false,
+                    "options": {
+                      "base": "https://prod.example"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "active": true,
+                    "start": "eager"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "retry": {
+                    "active": false,
+                    "start": "lazy"
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "active": false,
+                    "start": "lazy"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "outer": {
+                    "options": {
+                      "instance": {
+                        "inner": {
+                          "active": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "outer": {
+                        "options": {
+                          "instance": {
+                            "inner": {
+                              "options": {
+                                "x": 1
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "outer": {
+                    "options": {
+                      "instance": {
+                        "inner": {
+                          "active": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "normkeys": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normkeys#root",
+            "in": {
+              "doc": {
+                "api": {
+                  "retry": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "plugin": 1,
+                "sdk": {
+                  "retry": {}
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "sdk": {
+                      "retry": {
+                        "options": {
+                          "t": 2
+                        }
+                      }
+                    }
+                  }
+                },
+                "sdk": {
+                  "retry": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "options": {
+                      "t": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "plugin": 1,
+                "sdk": {
+                  "retry": {
+                    "options": {
+                      "sdk": "untouched"
+                    }
+                  }
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "options": {
+                      "sdk": "untouched"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "normmap": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normmap#order",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "memcache$hot": {},
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "alpha",
+                  "memcache$hot",
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "stripe": {},
+                  "stripe$eu": {},
+                  "stripe$test": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stripe",
+                  "stripe$eu",
+                  "stripe$test"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {},
+                "order": []
+              }
+            }
+          }
+        ]
+      },
+      "normpartial": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normpartial#keep",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1,
+                "profile": {
+                  "dev": {
+                    "instance": [
+                      {
+                        "ref": "zeta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "profile": "dev"
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "zeta",
+                  "alpha",
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1,
+                "profile": {
+                  "dev": {
+                    "instance": [
+                      {
+                        "ref": "zeta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "profile": "dev"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": "__EXISTS__",
+                  "retry": "__EXISTS__",
+                  "zeta": "__EXISTS__"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "normreserved": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_ref_reserved",
+            "id": "config/normreserved#doc",
+            "in": {
+              "doc": {
+                "instance": {
+                  "station": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "doc": {
+                "instance": {
+                  "station$eu": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "doc": {
+                "default": {
+                  "station": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "doc": {
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "station": {}
+                    }
+                  }
+                }
+              },
+              "profile": "prod",
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "stationary": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stationary"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "optdefault": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optdefault#byname",
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "stripe$eu"
+            },
+            "out": {
+              "t": 5000
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "stripe$test"
+            },
+            "out": {
+              "t": 5000
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "stripe"
+            },
+            "out": {
+              "t": 5000
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "other"
+            },
+            "out": {}
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-default",
+                      "b": 1
+                    }
+                  }
+                },
+                "instance": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-instance"
+                    }
+                  }
+                }
+              },
+              "ref": "stripe"
+            },
+            "out": {
+              "a": "from-instance",
+              "b": 1
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-default"
+                    }
+                  }
+                },
+                "instance": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-untagged"
+                    }
+                  }
+                }
+              },
+              "ref": "stripe$test"
+            },
+            "out": {
+              "a": "from-default"
+            }
+          }
+        ]
+      },
+      "optladder": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optladder#1",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 1
+            }
+          },
+          {
+            "in": {
+              "hostdefaults": {
+                "t": 2
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 2
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                }
+              },
+              "hostdefaults": {
+                "t": 2
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 3
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 4
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 5
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    },
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 6
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "t": 7
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 8
+            }
+          },
+          {
+            "in": {
+              "hostoptions": {
+                "t": 8
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 9
+            }
+          },
+          {
+            "in": {
+              "loadoptions": {
+                "t": 9
+              },
+              "patch": {
+                "t": 10
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 10
+            }
+          }
+        ]
+      },
+      "optlist": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optlist#replace",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x",
+                        "y",
+                        "z"
+                      ]
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "a"
+                      ]
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "p": [
+                "a"
+              ]
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x",
+                        "y"
+                      ]
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "p": []
+              },
+              "ref": "r"
+            },
+            "out": {
+              "p": []
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": 1
+                      },
+                      "p": [
+                        "x"
+                      ]
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "b": 2
+                      },
+                      "p": [
+                        "a"
+                      ]
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "m": {
+                "a": 1,
+                "b": 2
+              },
+              "p": [
+                "a"
+              ]
+            }
+          }
+        ]
+      },
+      "optmerge": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optmerge#replace",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "b.example"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x"
+                      ]
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "y"
+                      ]
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "p": {
+                  "$MERGE": "append"
+                }
+              }
+            },
+            "out": {
+              "p": [
+                "x",
+                "y"
+              ]
+            }
+          },
+          {
+            "id": "config/optmerge#deep2",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "feature": {
+                        "retry": {
+                          "headers": {
+                            "a": 1,
+                            "b": 2
+                          },
+                          "n": 3
+                        }
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "feature": {
+                        "retry": {
+                          "headers": {
+                            "c": 3
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "feature": {
+                  "$MERGE": {
+                    "deep": 2
+                  }
+                }
+              }
+            },
+            "out": {
+              "feature": {
+                "retry": {
+                  "headers": {
+                    "c": 3
+                  },
+                  "n": 3
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "x": 1
+                        },
+                        "b": 2
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "y": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 1
+                  }
+                }
+              }
+            },
+            "out": {
+              "m": {
+                "a": {
+                  "y": 2
+                },
+                "b": 2
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "x": 1
+                        },
+                        "b": 2
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "y": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "m": {
+                "a": {
+                  "x": 1,
+                  "y": 2
+                },
+                "b": 2
+              }
+            }
+          }
+        ]
+      },
+      "optmergebad": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_shape_invalid",
+            "id": "config/optmergebad#zero",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": -1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 1.5
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": "two"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": null
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": "merge"
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": "REPLACE"
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": true
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {}
+                }
+              }
+            }
+          },
+          {
+            "err": true,
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 0
+                  }
+                }
+              }
+            },
+            "match": {
+              "err": {
+                "message": "/m/"
+              }
+            }
+          }
+        ]
+      },
+      "optprofile": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optprofile#specificity",
+            "in": {
+              "doc": {
+                "instance": {
+                  "stripe$test": {
+                    "options": {
+                      "t": "base-instance"
+                    }
+                  }
+                },
+                "profile": {
+                  "prod": {
+                    "default": {
+                      "stripe": {
+                        "options": {
+                          "t": "prod-default"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod",
+              "ref": "stripe$test"
+            },
+            "out": {
+              "t": "prod-default"
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "profile": {
+                  "prod": {
+                    "default": {
+                      "stripe": {
+                        "options": {
+                          "t": "prod-default"
+                        }
+                      }
+                    },
+                    "instance": {
+                      "stripe$test": {
+                        "options": {
+                          "t": "prod-instance"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod",
+              "ref": "stripe$test"
+            },
+            "out": {
+              "t": "prod-instance"
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "a": 1,
+                      "b": 1
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "b": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "a": 1,
+              "b": 2
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 99
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 1
+            }
+          }
+        ]
+      }
+    },
     "ref": {
       "bound": {
         "set": [
