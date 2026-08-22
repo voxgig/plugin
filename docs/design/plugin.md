@@ -1188,12 +1188,23 @@ instance had to declare `{"stripe": {"active": false, "options": {…}}}`
 `host.list()` and in every status row built from it. Station hit this
 immediately (§17.1). So: **the untagged instance is an ordinary
 instance and its options apply only to itself.** Shared configuration
-has exactly one home, and the two keys have disjoint key spaces — a
-name is never a ref, a ref is never a name — so there is no case where
-a reader must ask which of two places a value came from. The forfeit is
-familiarity for seneca users; the gain is that this repo does not ship
-the same rule written twice, which is the defect class it exists to
-avoid.
+has exactly one home.
+
+**The two maps are separate namespaces, not separate spellings.** An
+untagged ref *is* a bare name — §4 rule 5 canonicalizes `"stripe$"` and
+`"stripe"` to the same thing — so `default.stripe` and
+`instance.stripe` are the same key string in two maps, and a normalizer
+that tried to tell them apart lexically would reject the ordinary
+single-instance case. The map decides the meaning: `default.stripe`
+configures every instance of `stripe` and declares none;
+`instance.stripe` declares the untagged one and configures only it.
+Disambiguation is structural, so a reader never has to ask which of two
+places a value came from, and the corpus pins the case where both
+entries exist for one name.
+
+The forfeit is familiarity for seneca users; the gain is that this repo
+does not ship the same rule written twice, which is the defect class it
+exists to avoid.
 
 **Document defaults are applied after the merge, never before it.**
 `active` (default `true`) and `start` (default `"eager"`) are filled in
@@ -1253,9 +1264,23 @@ allowlist guarantee to adopt a plugin library. So neither is global:
 > **The option shape declares the merge behaviour of each key.** The
 > library default is deep for maps and replace for lists. A key whose
 > shape carries `{"$MERGE": "replace"}` replaces wholesale at every
-> precedence level; `"append"` concatenates a list. The shape is the
-> one place the question is answered, and it travels with the
-> definition rather than living as a table in the host.
+> precedence level; `"append"` concatenates a list; `{"$MERGE":
+> {"deep": N}}` merges N levels below that key and replaces below
+> that. The shape is the one place the question is answered, and it
+> travels with the definition rather than living as a table in the
+> host.
+
+The depth form is not a generalization for its own sake — station's
+feature map needs exactly it. §8.3 of its design merges `feature` **by
+feature name, then by option key**, and replaces below that, so a
+map-valued feature option like `headers` must replace wholesale rather
+than merge key-by-key with the fleet default underneath it. Marking the
+top-level `feature` key `replace` would destroy the composition that is
+the point of a fleet default; leaving it deep would silently retain
+base keys inside an option an overlay meant to replace. `{"deep": 2}`
+on `feature` says the rule once, where per-option `replace` markers
+would say it once per feature per option and be wrong the first time
+someone adds a feature.
 
 Station declares `policy` and `options` as `replace` in its SDK
 definition shape and keeps its §3.3 guarantee unchanged; a definition
