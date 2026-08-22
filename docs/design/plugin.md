@@ -361,7 +361,10 @@ that adds an eighth is diverging.
   So a `declared` instance holds the ordered layers as data; **the
   merge, the resolution and the validation all happen at `load`**, in
   that order, which is also the first moment a bad option value can be
-  reported. A port that merged or resolved here would have to import
+  reported in ordinary operation. (`host.check()` deliberately reads
+  the same shape earlier, from the catalog and without loading, to
+  report what `load` would say — §9.6. It is a pre-flight, not a second
+  path: nothing it does changes where the ordinary path validates.) A port that merged or resolved here would have to import
   plugin code to do it correctly, which is the one thing this state
   exists to avoid.
 
@@ -798,9 +801,21 @@ Constraints referring to an absent binding are **satisfied vacuously**
 with no test plugin. That is the sdkgen `__after__` behaviour, kept.
 
 **A host may pin a binding's position, and a pin is not a constraint.**
-`host.point('request', {kind: 'chain', pin: {station: 'first'}})`
+`host.point('request', {kind: 'chain', pin: {station: 'innermost'}})`
 fixes where a named instance's binding sits, and an ordering that would
-move it is `plugin_order_pinned` — rejected, not honoured. Constraints
+move it is `plugin_order_pinned` — rejected, not honoured.
+
+**A pin names an end of the chain, not a sort position, and the two
+read in opposite directions.** §6.2 composes `b1(b2(b3(base)))` with the
+*first* binding outermost, so "first" and "innermost" are opposites; a
+pin spelled in sort terms would be read backwards by exactly the people
+it exists to protect. The vocabulary is therefore positional:
+`outermost` and `innermost` for a `chain`, `first` and `last` for a
+`hook`. Station's adapter must sit *immediately outside the base
+transport*, so it pins `innermost` — a `first` pin would place every
+other wrapper between the adapter and the base and make its wire-truth
+events observe the wrong boundary, which is the failure the pin exists
+to prevent. Constraints
 and bands are negotiable by definition: they are what plugins and
 documents say they want, and the sort's job is to satisfy them all. A
 pin is the host stating a structural invariant of its own architecture,
@@ -1075,16 +1090,37 @@ generic one before normalization. That is not a concession, it is the
 point: `sdk` and `api` are the right words in `station.json` (§17.1),
 and `instance` and `default` are the right words in a library that
 knows nothing about SDKs. A generic library that forces its vocabulary into every
-host's config file has mistaken uniformity for design. The renaming is
-a pure map applied to one level of keys — the *shape* underneath is
-identical, so the corpus tests it once and every host gets it.
+host's config file has mistaken uniformity for design.
+
+The renaming is a pure map applied at **two places and no others: the
+document root, and every `profile.<name>` overlay root.** Both are
+needed and neither recurses. A profile overlay carries the same
+`default` and `instance` keys the root does — that is what §9.3's
+precedence levels 5 and 6 overlay — so a rename applied only at the
+root would leave station's `profile.prod.api` and `profile.prod.sdk`
+untranslated and silently drop every environment override the host
+depends on. Recursing further would be worse: option data is the
+definition's, and a host's key map has no business rewriting keys
+inside it. The *shape* underneath is identical either way, so the
+corpus tests the mapping once and every host gets it.
 
 **A host may also reserve refs, and a host that embeds this library in
 its own config file needs to.** `makeHost({ reserved: ['station'] })`
 makes every key under a reserved name — `station`, `station$anything` —
-`plugin_ref_reserved` when it appears in a document, at any precedence
-level. The host declares those instances itself, after the user merge,
-and always wins.
+`plugin_ref_reserved`. The host declares those instances itself, after
+the user merge, and always wins.
+
+**The reservation covers every input layer, not just the document.** A
+reserved ref is rejected in the base document, in a profile overlay, in
+`VOXGIG_PLUGIN_<REF>_<PATH>`, in `VOXGIG_PLUGIN_ACTIVE` and
+`VOXGIG_PLUGIN_INACTIVE` (§9.5), in host construction options, and in
+`load`/`options` calls made by anything other than the host itself.
+Stating it for documents alone would have left the guarantee trivially
+bypassable: `VOXGIG_PLUGIN_INACTIVE=station` is *easier* to set than
+editing a config file, and §9.5 gives `INACTIVE` the final word, so the
+one lever this mechanism exists to deny would have been the one lever
+left open. "The host declaration always wins" is only true if it wins
+against every layer.
 
 This exists because of a trap station identified and closed in its own
 design (`station-declarative-config.md` §8.4). Station's adapter is a
@@ -1270,6 +1306,23 @@ allowlist guarantee to adopt a plugin library. So neither is global:
 > travels with the definition rather than living as a table in the
 > host.
 
+**`N` is an integer of at least 1, and everything else is an error.**
+`{"deep": 0}` is rejected despite having an obvious reading — "replace
+at this key" already has a spelling, and two spellings for one
+behaviour is the defect class this repo exists to avoid. A zero, a
+negative, a fraction, a non-number, or an unrecognised `$MERGE` value
+is `plugin_shape_invalid`, naming the key and the directive, and it is
+raised **when the shape enters the catalog** (§10.1) rather than when a
+document happens to exercise that key — so a malformed shape fails once
+and in the same place everywhere.
+
+Stating the domain is not pedantry: without it each port picks its own
+reading of `{"deep": 0}` or `{"deep": -1}` — reject, replace, unlimited
+merge, or clamp to 1 — and the same document resolves to different
+effective configuration in different languages. That is precisely the
+class of divergence the corpus exists to make impossible, and it cannot
+pin what the contract does not state.
+
 The depth form is not a generalization for its own sake — station's
 feature map needs exactly it. §8.3 of its design merges `feature` **by
 feature name, then by option key**, and replaces below that, so a
@@ -1369,8 +1422,32 @@ capability — rather than coming up nineteen-twentieths of the way and
 leaving an operator to infer the cause from a screen of `pending`. Lazy
 instances cannot be resolved in advance (their definitions are not
 loaded, so their requirements are not yet known), and `host.check()` —
-the CI counterpart — is the call that forces every declared instance up
-and reports what breaks.
+the CI counterpart — is the call that reports what breaks.
+
+**`check()` has two halves, and only one of them moves an instance.**
+The distinction matters because the two questions have different
+answers about what must run first:
+
+- **Options are checked from the catalog, without loading.** The
+  definition's option shape is catalog metadata (§10.1), so `check()`
+  validates every *declared* instance's merged layers against it and
+  changes no state. This is the half that lets twenty lazy instances be
+  checked without constructing one, which is the property station needs
+  and the reason `declared` costs nothing.
+- **Requirements are learned by loading.** A definition declares its
+  requirements inside `define`, which only runs at `load`, so there is
+  no metadata to read and `check()` **does** force declared instances up
+  for this half — and says so in its report, because a CI verb that
+  quietly allocates state would be a surprise.
+
+Neither half changes §5.1's rule for the ordinary path: a `declared`
+instance still merges, resolves and validates at `load`, and that is
+still where a bad option is first reported in normal operation.
+`check()` is a pre-flight that reads the same shape early and reports
+what `load` *would* say. Where a dynamically-resolved definition's
+resolver cannot supply a shape, its options cannot be checked without
+loading either, and `check()` reports that per instance rather than
+silently downgrading.
 
 
 ## 10. Loading: dynamic and static
@@ -1399,12 +1476,11 @@ and reports what breaks.
   document of twenty lazy instances could not be validated without
   defeating the laziness that is the reason `declared` exists (§5.1).
 
-  So `define` takes the shape alongside the definition, a dynamic
-  resolver may return it without instantiating, and `host.check()`
-  validates options for every *declared* instance from the catalog —
-  falling back to forcing an instance up only where its definition is
-  dynamically resolved and its resolver cannot supply a shape, which it
-  reports per instance rather than silently.
+  So `define` takes the shape alongside the definition, and a dynamic
+  resolver may return it without instantiating. What `host.check()`
+  then does with it — options from the catalog without loading,
+  requirements only by loading — is stated once in §9.6 rather than
+  twice here.
 
 - **A catalog may be shared between hosts.** `makeCatalog()` produces
   one that `makeHost({catalog})` takes, so a process running several
@@ -1860,7 +1936,8 @@ in a handful of places is both cheap and sufficient.
 | `plugin_define_failed` / `plugin_activate_failed` / `plugin_deactivate_failed` / `plugin_close_failed` | a callback raised; wraps the cause |
 | `plugin_release_failed` | one or more ledger entries raised |
 | `plugin_point_exclusive` | second binding on an exclusive provider point |
-| `plugin_ref_reserved` | a document names a host-reserved ref (§9.1) |
+| `plugin_ref_reserved` | any input layer names a host-reserved ref (§9.1) |
+| `plugin_shape_invalid` | a malformed `$MERGE` directive in an option shape (§9.4) |
 | `plugin_order_pinned` | an ordering would move a host-pinned binding (§7) |
 
 Every error carries the host name, the ref (where one exists), the code,
