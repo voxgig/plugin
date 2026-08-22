@@ -46,6 +46,7 @@ it is specific to station, to HTTP, or to SDKs.
 - [20. Open questions](#20-open-questions)
 - [21. Non-goals](#21-non-goals)
 - [22. Prior art: Cordis](#22-prior-art-cordis)
+- [23. Prior art: OSGi](#23-prior-art-osgi)
 
 
 ## 1. Why this exists
@@ -430,6 +431,13 @@ never mutates the host.** This is the inversion that makes deactivation
 possible: sdkgen's `utility.fetcher = wrapped` is not undoable, but
 "this instance holds slot 3 of the `request` chain" is undoable in O(1).
 
+The idea is not new and should not pretend to be: OSGi named it the
+**whiteboard pattern** in 2004, in a paper called *Listeners Considered
+Harmful* (§23), and gave exactly this reason — an extension that calls
+`addListener` on the host has created a cleanup obligation that
+something now has to remember, while an extension that merely registers
+and waits to be discovered has not.
+
 Three kinds, chosen because they are what the two existing systems
 actually needed, and no more:
 
@@ -568,6 +576,18 @@ topological sort**:
    sequence, so the array form of the declarative config (§9.1) means
    what it visibly says.
 
+**Bands are OSGi start levels, and they carry the same hazard** (§23).
+A global integer ordering is the thing people reach for when they have
+a dependency they have not declared: bump the number until it works,
+ship it, and leave a system whose startup order is a pile of magic
+constants nobody can safely change. The rule, stated so the review has
+something to point at: **a band expresses a genuine cross-cutting layer
+("the base transport wrapper"), a constraint expresses a relationship
+between two specific things, and a band that was chosen by trial and
+error to fix an ordering bug is a bug wearing a number.** Constraints
+beat bands in the sort precisely so that the correct tool wins when
+both are present.
+
 Constraints referring to an absent binding are **satisfied vacuously**
 (not an error): a plugin ordered `after: 'test'` must load in a host
 with no test plugin. That is the sdkgen `__after__` behaviour, kept.
@@ -631,6 +651,33 @@ was here before.
   so far, in reverse, and the instance goes `failed`.
 - `inst.release` outside `activate` is `plugin_release_scope`.
 
+### 8.0 What the host can actually promise
+
+Before the mechanism, its limit — because OSGi (§23) has had total
+lifecycle control since 1999 and *still* cannot deliver clean teardown,
+and a design that implied otherwise would be selling something no
+runtime has ever shipped. A stale reference in a static field, a
+`ThreadLocal`, a thread nobody stopped, a callback handed to a library
+that outlives you: any one of them keeps a "deactivated" plugin working
+long after the host stopped talking to it.
+
+So the guarantee is stated narrowly and honestly:
+
+> **The host guarantees it stops routing to a deactivated instance and
+> unwinds every resource that instance registered. It cannot guarantee
+> the instance stopped running.**
+
+Everything the host can see, it undoes. What a plugin handed to a third
+party, stored in a global, or closed over and passed outward is beyond
+any mechanism available in any of these languages. The corpus can only
+test the first half — and §15.4 says so, rather than letting a green
+suite imply the second.
+
+This is not a reason to weaken the mechanism; it is the reason the
+mechanism has to be the *default path* rather than an opt-in discipline.
+The less a plugin author has to do by hand, the smaller the surface on
+which they can defeat it.
+
 **Reverse order is a guarantee about registration, not about
 completion.** Where releases are asynchronous, the host starts them in
 reverse order but does not serialize them — awaiting each in turn turns
@@ -649,6 +696,14 @@ exactly what activate captured" is a data assertion, in every language,
 rather than a property nobody checks.
 
 ### 8.1 Why the scope, and not the ledger
+
+The mechanism has two independent precedents, twenty years apart, which
+is about as good as design evidence gets.
+
+OSGi's `BundleContext` (§23) has, since 1999, automatically unregistered
+everything a bundle registered through it when that bundle stops. The
+context *is* the bundle's scope, and a bundle that only ever touched the
+framework through it needs no teardown code at all.
 
 Cordis (§22) makes every registration made through a plugin's context
 inherently disposable and owned by that plugin's fiber — `ctx.on()`,
@@ -868,6 +923,12 @@ lines later in the same plan. The document's array position therefore
 cannot make a valid configuration fail — which was the point of
 sorting, obtained without the sort.
 
+`apply` runs `host.resolve()` (§11.4) over the intended set **before**
+it activates anything, and returns its answer alongside the plan. A
+document that cannot fully come up says so once, naming the one missing
+capability — rather than coming up nineteen-twentieths of the way and
+leaving an operator to infer the cause from a screen of `pending`.
+
 
 ## 10. Loading: dynamic and static
 
@@ -935,6 +996,24 @@ a `Register(def)` called from an `init()`-equivalent, or an explicit
 list handed to `makeHost` — so that a Go developer's experience is "add
 the import, add one line to the config" rather than "write a factory".
 
+**Read that table as a cost decision, not a language limitation.** OSGi
+(§23) is the most thoroughly dynamic plugin system ever built, and it is
+built in Java — a static, compiled, statically-typed language. Bundles
+install, update and uninstall at runtime, with multiple versions of the
+same package live simultaneously. Dynamism was never a property of the
+language; it was a property of the container, and OSGi bought it with a
+classloader-per-bundle architecture that is also the direct cause of
+every "classloader hell" story the platform is known for — reflection
+across bundle boundaries, thread-context classloaders and `ServiceLoader`
+all break on it.
+
+So tier S is not "these languages cannot"; it is **"the price of
+dynamism in these languages is an isolation architecture we have
+declared a non-goal" (§21)**. A Go host that genuinely needs runtime
+code loading can have it, at that price, in its own resolver. What the
+tier table promises is that no *corpus behaviour* depends on anyone
+paying it.
+
 ### 10.4 Security posture
 
 Loading a plugin is executing code. The library states the obvious
@@ -969,53 +1048,166 @@ loaded state useless for introspection. An export whose value is only
 meaningful while active is the plugin's problem to signal, and the
 convention is a getter closing over `inst.state`.
 
-**Dependencies.** A definition may declare `requires: ['clock',
-'store']` — definition *names*, not refs, because a dependency is on a
-capability, not on someone's configuration.
+### 11.1 Capabilities
 
-**Requirements are live, not checked once.** The whole point of a
-declared dependency is that the consumer will *call* the thing, and it
-will call it at some arbitrary time after activation — so a check
-performed only at the activation instant guarantees nothing about the
-moment that matters.
+**A dependency is on a capability, not on a ref**, because it is a
+dependency on *something that can do the job*, and which instance is
+doing it is exactly the configuration detail a plugin must not care
+about.
 
-- At `load`, a missing requirement is neither error nor warning. Load
-  order is not the developer's problem, and saying so twice is noise.
-- At `activate` with a requirement unmet, the instance goes `pending`
-  (§5.1) and **waits**. It is not an error. Nothing about a document
-  that lists a consumer before its provider is wrong, and nothing about
-  a provider that arrives thirty seconds later is wrong either.
-- When the last instance providing a requirement leaves `active`, every
-  consumer of it is **deactivated back to `pending`** — scope unwound,
-  bindings removed, state kept — and reactivated automatically when a
-  provider returns. Recursively: a consumer going `pending` takes its
-  own consumers with it.
-- A requirement is satisfied by *any* active instance whose definition
-  provides that name, so deactivating one of two instances providing
-  `clock` moves nobody — the graph is over capabilities, not refs.
-- A dependency cycle is `plugin_dependency_cycle`, detected at load.
+A definition declares what it provides and what it needs:
+
+```ts
+provides: ['clock']                                  // shorthand
+provides: [{ name: 'store', version: '2.3',
+             attrs: { transactional: true, durable: true } }]
+
+requires: ['clock']                                  // shorthand
+requires: [{ name: 'store', range: '2.1',
+             match: { transactional: true } }]
+```
+
+- **`name`** — the capability. Any active instance providing it
+  satisfies a requirement for it, so deactivating one of two `clock`
+  providers moves nobody.
+- **`attrs`** — what this provider is like. Free-form JSON.
+- **`match`** — what the consumer needs it to be like: a **partial
+  match against `attrs`**, with exactly the semantics `voxgig/struct`
+  and the omni corpus already define for `match` — every leaf in the
+  requirement must be present and equal in the capability, keys not
+  mentioned are not checked. This is deliberately not a filter
+  language. OSGi (§23) reaches for LDAP filters here; we already have a
+  partial-match operator, ported to every language, corpus-tested, that
+  our engineers read every day. Inventing a second one to express
+  `transactional: true` would be indefensible.
+- **`version` / `range`** — §11.2.
+
+Unsatisfiable is not an error at declaration time. It is a *fact about
+the current registry*, and §11.4 is how you ask for it.
+
+### 11.2 Versions, and the asymmetry nobody expects
+
+A capability carries a version; a requirement carries a range. The
+grammar is two forms, and no more:
+
+| form | means | for |
+|---|---|---|
+| `'2.1'` | `>= 2.1.0` and `< 3.0.0` | **consumers** |
+| `'~2.1'` | `>= 2.1.0` and `< 2.2.0` | **providers** |
+
+The asymmetry is the part worth importing wholesale from OSGi's
+semantic-versioning work, because it is genuinely counter-intuitive and
+it is right: **a consumer of a capability and a provider of the same
+capability do not tolerate the same range.** Add one method to an
+interface and that is a *minor* bump — every existing consumer still
+works, and every existing provider is now broken, because it does not
+implement the new method. So a plugin that merely calls `store` can
+accept `'2.1'`; a plugin that *implements* `store` for someone else to
+call must declare `'~2.1'` and be updated deliberately.
+
+Getting this wrong is not a subtle degradation — it is a provider that
+silently satisfies a requirement it cannot actually meet, failing at
+the first call to the method it never implemented. A malformed range is
+`plugin_bad_range`, at load. Range parsing and matching are pure
+functions, and the corpus's `version` section pins them, including the
+asymmetry.
+
+### 11.3 Cardinality and policy
+
+Two axes, both declared by the definition that has the requirement,
+because only it knows what it can cope with:
+
+| | **`static`** (default) | **`dynamic`** |
+|---|---|---|
+| **mandatory** (default) | unmet → `pending`; lost → back to `pending`, recursively | unmet → `pending`; lost → **stays `active`**, notified, must cope |
+| **`optional: true`** | never gates activation; a change deactivates and reactivates | never gates activation; a change is a notification, nothing else |
+
+- **Optional requirements** are the case this design could not express
+  at all before, and they are common: a plugin that works without
+  metrics and uses metrics when it is there. `inst.capability('metrics')`
+  returns the provider or absent; the host emits a `capability` trace
+  record when that changes.
+- **`dynamic`** means the plugin has said, in writing, that it can
+  survive its provider being swapped underneath it. It is not the
+  default because most plugins cannot, and the cost of wrongly assuming
+  they can is a live instance holding a dead reference.
+- The **rebinding-preference axis is deliberately omitted.** OSGi has
+  `reluctant` vs `greedy` — whether an already-bound reference should be
+  swapped when something better appears — and it is a knob every author
+  must understand to read anyone else's component. We take always-
+  reluctant: a satisfied requirement is not re-bound while it stays
+  satisfied. Three axes were more than the model can carry across
+  twenty ports; two are the ones that change what a plugin must be
+  written to survive.
+
+**Requirements are live, not checked once.** A check at the activation
+instant guarantees nothing about the moment that matters, which is the
+arbitrary later moment the consumer actually calls the thing.
+
+- At `load`, an unmet requirement is neither error nor warning. Load
+  order is not the developer's problem.
+- At `activate` with a mandatory requirement unmet, the instance goes
+  `pending` (§5.1) and **waits**. Not an error: a document listing a
+  consumer before its provider is fine, and a provider arriving thirty
+  seconds later is fine.
+- When the last provider of a capability leaves `active`, its `static`
+  mandatory consumers are **deactivated back to `pending`** — scope
+  unwound, bindings removed, state kept — and reactivated when a
+  provider returns, recursively.
+- A requirement cycle is `plugin_dependency_cycle`, detected at load.
 
 This is provider replacement as an ordinary runtime operation rather
 than a restart: deactivate the old secret store, activate the new one,
 and everything that depended on it rides through, having released the
-old one's resources in between. It is Cordis's behaviour (§22), and it
-replaces this design's first answer — refuse the deactivation
-(`plugin_dependency_held`) unless the caller passes `{cascade: true}` —
-which protected the dependency graph by making the useful operation the
-awkward one.
+old one's resources in between. It is Cordis's behaviour (§22) and
+OSGi Declarative Services' `static` reference policy (§23) — the same
+answer, reached twice, fifteen years apart.
 
-For a host that genuinely wants the strict reading, the point-free
-policy `makeHost({dependency: 'hold'})` restores it: deactivating a
-required instance is then `plugin_dependency_held`, naming the holders.
-It is not the default, because a station that cannot swap a provider
-without a restart has lost the argument for having a plugin system.
+For a host that wants the strict reading, `makeHost({dependency:
+'hold'})` restores it: deactivating a required instance is then
+`plugin_dependency_held`, naming the holders. Not the default, because
+a station that cannot swap a provider without a restart has lost the
+argument for having a plugin system.
 
-`host.apply` (§9.6) and `host.close()` need no special cases under
-this rule: `apply` states the intended activation set and the graph
-settles, and `close` deactivates everything anyway.
+### 11.4 Resolution is a phase, not a discovery
 
-`provides: [...]` lets a definition satisfy a requirement under another
-name — one definition supplying `clock` regardless of what it is called.
+The rule above — activate, and wait in `pending` if you must — is
+correct and, on its own, produces a terrible experience. Apply a
+document with twenty instances against a registry missing one thing and
+you get *nineteen* pending rows and no statement of what is actually
+wrong. OSGi resolves the entire constraint graph before starting
+anything, and gets to answer the question once; we should too.
+
+```ts
+host.resolve()          // -> { resolved: [...refs], blocked: [{ ref, unmet, why }] }
+```
+
+`resolve()` is a **pure function of the registry and the intended
+activation set**: no callbacks run, no state changes, nothing is
+touched. It answers, for the whole graph at once, which instances can
+be active and which cannot — and for each blocked one, the specific
+requirement that is unmet, and why: no provider at all, a provider at
+an incompatible version (with both the range and the version found), a
+provider whose attributes fail the `match` (with the failing leaf), or
+a provider that is itself blocked (with the chain).
+
+Two things follow. `host.apply()` (§9.6) runs `resolve()` first and
+reports one coherent result instead of a scatter of pending rows. And
+because it is pure over JSON-shaped input, `resolve` is a **corpus
+section like `ref` and `config` are** — the hardest logic in the
+library, tested as data, in every port, with no driver.
+
+That matters more than it sounds, because the failure mode being
+designed against is a famous one. OSGi's resolver is correct and its
+diagnostics are legendarily unusable — `Unresolved constraint in bundle
+X: missing requirement osgi.wiring.package=…` is a sentence that has
+cost the industry entire days. The lesson is not "resolve better"; it
+is that **the explanation is a deliverable, not a by-product**, and one
+that a JSON corpus can hold to a fixed standard in twenty languages.
+
+`provides: [...]` also lets one definition satisfy a requirement under
+another name — one definition supplying `clock` regardless of what it
+is called.
 
 
 ## 12. Errors
@@ -1069,6 +1261,7 @@ in a handful of places is both cheap and sufficient.
 | `plugin_release_scope` | `release` registered outside `activate` |
 | `plugin_order_cycle` | before/after constraints cycle |
 | `plugin_dependency_cycle` | requirements cycle, detected at load (§11) |
+| `plugin_bad_range` | malformed version range or capability version (§11.2) |
 | `plugin_dependency_held` | deactivate of a required instance, under `dependency: 'hold'` only (§11) |
 | `plugin_hook_failed` | collected binding errors on a `{raise: true}` hook point (§6.1) |
 | `plugin_env_ambiguous` | two refs encode to one environment key (§9.5) |
@@ -1098,7 +1291,9 @@ can see the state of is a plugin system people stop trusting.
 - `host.order(point)` — the resolved order, active bindings only.
 - `host.status()` — the whole picture: host name, declared points and
   their kinds, catalog contents, resolver presence, instances, shadowed
-  providers, and the last error per failed instance.
+  providers, the last error per failed instance, and the current
+  `resolve()` answer (§11.4) — the capability graph as it stands, with
+  each blocked instance's specific unmet requirement.
 - `host.trace(fn)` — a tap over lifecycle events: `load`, `activate`,
   `deactivate`, `unload`, `bind`, `unbind`, `release`, `fail`. `fail`
   covers both a failed transition and a binding that raised during
@@ -1216,13 +1411,16 @@ port-specific:
 | `config` | document normalization, array/map forms, profile overlay, precedence, list-replace | yes |
 | `env` | `VOXGIG_PLUGIN_*` parsing, ACTIVE/INACTIVE | yes |
 | `resolve` | name → candidate module ids | yes |
+| `capability` | provides/requires matching: name, `match` against `attrs`, satisfaction by any active provider | yes |
+| `version` | range grammar, consumer vs provider ranges, boundary cases, `plugin_bad_range` | yes |
+| `graph` | whole-graph resolution (§11.4): resolved/blocked sets, and the *explanation* for each blocked instance | yes |
 | `lifecycle` | the state machine, idempotence, illegal transitions, failure paths | driver |
 | `state` | persistence across activation cycles, destruction on unload | driver |
 | `resource` | the instance scope: automatic recording of host calls, `release` for foreign ones, reverse unwind, partial-activate rollback, failing release | driver |
 | `order` | topological sort, bands, ties, vacuous constraints, recomputation | driver |
 | `point` | the three kinds, the four hook dispatch modes incl. `bail`, composition, provider shadowing, exclusivity | driver |
 | `export` | keying, aliasing, ambiguity | driver |
-| `depend` | `pending` on an unmet requirement, automatic activation on arrival, reactive deactivation and recovery, recursion through consumers, capability-not-ref satisfaction, cycles | driver |
+| `depend` | `pending` on an unmet requirement, automatic activation on arrival, reactive deactivation and recovery, recursion through consumers, optional vs mandatory, static vs dynamic policy, capability-not-ref satisfaction, cycles | driver |
 | `apply` | idempotent document application, add/remove/patch/toggle | driver |
 | `error` | every code in §12, and the message format | both |
 | `trace` | the lifecycle event records | driver |
@@ -1233,6 +1431,15 @@ Real dynamic module loading (§10.2), thread-safety under contention,
 and anything involving a clock. Those are per-port integration tests,
 named as such, so nobody mistakes a green corpus for full coverage —
 station's split, for station's reason.
+
+And one thing that is not testable anywhere, stated so a green suite
+cannot be read as claiming it: **the corpus proves the host stopped
+routing to a deactivated instance and unwound what it registered. It
+cannot prove the instance stopped running** (§8.0). A probe that
+squirrels a reference away in a global and keeps using it after
+deactivation would pass every entry in this file. That is a limit of
+the architecture, not a gap in the corpus, and no amount of test design
+closes it.
 
 
 ## 16. Repository layout and porting discipline
@@ -1440,12 +1647,25 @@ written; deactivating a plugin demonstrably closes its handles.
 ### P2 — Completing the canonical
 
 Dynamic resolution and the resolver interface; `resolvecandidates`;
-env application; `apply()`; exports and dependencies; `reconfigure`;
-position verification; the remaining corpus sections (`env`, `resolve`,
-`export`, `depend`, `apply`, `trace`); the ts integration suite that
-does real `require`-based loading.
+env application; `apply()`; exports; `reconfigure`; position
+verification; the remaining corpus sections (`env`, `resolve`,
+`export`, `apply`, `trace`); the ts integration suite that does real
+`require`-based loading.
+
+**The capability system is the weight of this phase**, and it is worth
+naming as its own tranche rather than hiding it inside "dependencies":
+capabilities and `match` (§11.1), version ranges and the
+consumer/provider asymmetry (§11.2), cardinality and policy (§11.3),
+and the whole-graph resolver with its explanations (§11.4) — plus the
+four corpus sections that pin them (`capability`, `version`, `graph`,
+`depend`). Three of those four are pure functions, so the hardest
+logic in the library arrives as data-tested code rather than as
+something only the driver exercises. Build them in that order: a
+resolver written before the matching rules are pinned will encode them
+twice.
 
 *Exit:* every section of the corpus exists and is green in TypeScript;
+a blocked instance's explanation is asserted, not just its blocked-ness;
 `DOCS.md` complete, including the probe catalog specification.
 
 ### P3 — Proof against real hosts
@@ -1513,9 +1733,20 @@ and they stay small only if the design forbids growth. The rule:
 > watcher, no service discovery. Anything a plugin needs beyond the
 > host's own extension points, it brings itself.
 
-Budget, per port: **~800–1200 lines** for a garbage-collected language,
-plus the driver. A port that busts it is a signal the model grew, and
-the response is to shrink the model, not to accept the port.
+Budget, per port: **~1200–1700 lines** for a garbage-collected
+language, plus the driver. That is up from the ~800–1200 this document
+first claimed, and the increase is honest bookkeeping rather than
+scope creep discovered late: §11's capability matching, version ranges
+and whole-graph resolver are real code in every port, and quoting the
+old number while shipping the new model would make the budget
+decorative. The rule it enforces is unchanged — a port that busts its
+budget is a signal the model grew, and the response is to shrink the
+model, not to accept the port.
+
+Two things keep that number from being paid twice. Capability matching
+is `struct`'s `match`, not a filter language of our own (§11.1), and
+the resolver is pure over JSON, so it is corpus-tested rather than
+integration-tested in every port (§11.4).
 
 
 ## 20. Open questions
@@ -1540,15 +1771,27 @@ the response is to shrink the model, not to accept the port.
    verb, activation state becomes remotely controlled, and the wire
    protocol needs a representation. Station-side question, raised here
    so it is not a surprise.
-6. **Versioning between host and plugin.** A definition declares a
-   version; nothing yet declares "I need host API >= X". Probably a
-   `requires.host` semver range, deferred until the API has moved once.
+6. **Versioning between host and plugin.** *Partly settled* —
+   capability versions and consumer/provider ranges are §11.2. What
+   remains is the *host's own* API version: nothing yet declares "I
+   need host API >= X". The mechanism is now obvious (the host provides
+   a capability like any other, and a plugin requires it with a range),
+   so this is a decision about what the host's capability is called and
+   when it bumps, deferred until the API has moved once.
 
 
 ## 21. Non-goals
 
 - **Isolation or sandboxing.** Plugins run in-process with full host
   privileges (§10.4). Out-of-process plugins are a different design.
+  OSGi (§23) is the cautionary evidence rather than a missed
+  opportunity: its classloader-per-bundle isolation is what allows two
+  versions of one package to coexist, *and* what breaks reflection,
+  thread-context classloaders and `ServiceLoader` across bundle
+  boundaries — the single largest source of the platform's reputation
+  for difficulty. Isolation is not a feature that was too much work
+  here; it is a feature whose cost lands on every plugin author whether
+  or not they wanted it.
 - **Hot code reloading.** `unload` + `load` is the mechanism; watching
   the filesystem is the host's business.
 - **Durable state.** State lives for the instance's lifetime in the
@@ -1627,6 +1870,19 @@ port to discover it.
   instance addressable from outside the process, which is precisely the
   requirement station has, and multi-instance is a property of the
   system rather than a permission each definition grants.
+
+  This one is not a judgement call, and the evidence is OSGi's (§23).
+  Configuration Admin's factory configurations originally got
+  **auto-generated PIDs** — anonymous instance identity, the same
+  choice Cordis makes. In R7 the specification added the form
+  `factoryPid~name` — `my.factory.component~foo`,
+  `my.factory.component~bar` — for the stated reason that a generated
+  PID "has no meaning" and makes identifying a particular instance
+  later much harder. That is our `name$tag`, separator and all, arrived
+  at independently by the one ecosystem that shipped the anonymous
+  version first, lived with it for a decade, and migrated away. When
+  the two prior systems disagree and one of them has already been both
+  things, its second answer is the one to take.
 - **Host-declared points.** In Cordis a plugin can introduce a new
   service key on the context; that open-endedness is what lets
   "everything is a plugin" be true. We require the host to declare its
@@ -1642,3 +1898,91 @@ The honest summary: on lifetime and disposal Cordis is ahead of where
 this document started, and we should follow it. On addressing and on
 the size of the extension surface we are solving a different problem,
 and should not.
+
+
+## 23. Prior art: OSGi
+
+[OSGi](https://docs.osgi.org/specification/) has been solving this exact
+problem in Java since 1999: bundles with a real lifecycle, a service
+registry whose contents come and go at runtime, versioned dependency
+resolution, and configuration-driven instantiation. It is the deepest
+prior art available and the only one with twenty-five years of evidence
+about which parts were mistakes. Both halves are useful.
+
+Its core shape will look familiar, because much of this design
+converges on it independently: bundle states `INSTALLED` (not resolved)
+/ `RESOLVED` (wired, not running) / `ACTIVE` are our `pending` /
+`loaded` / `active`; `BundleContext` is the instance scope (§8.1); the
+**whiteboard pattern** is §6's inversion, named in 2004 in a paper
+called *Listeners Considered Harmful*; and Declarative Services'
+`static` reference policy — deactivate the component when a mandatory
+reference goes, reactivate when it returns — is §11.3, reached again by
+Cordis fifteen years later.
+
+### 23.1 What we took
+
+- **Named factory instances** (§22.3). The `factoryPid~name` form, and
+  more importantly the documented reason it replaced generated PIDs.
+- **Cardinality and policy** (§11.3). Optional requirements — a plugin
+  that runs without metrics and uses them when present — had no
+  expression here at all before. Static vs dynamic policy came with it;
+  `reluctant`/`greedy` deliberately did not (§11.3).
+- **Versioned capabilities and the consumer/provider asymmetry**
+  (§11.2). The single most counter-intuitive correct idea in the whole
+  survey.
+- **Attributed capabilities with a match filter** (§11.1) — as
+  `struct`'s partial match rather than OSGi's LDAP filters, because we
+  already have one and porting a second to twenty languages would be
+  indefensible.
+- **Resolution as a phase with a whole-graph answer** (§11.4), and its
+  corollary that the *explanation* is a deliverable.
+
+### 23.2 What it warns us about
+
+The failures are worth more than the features.
+
+- **Teardown is approachable, never achievable** (§8.0). OSGi has total
+  lifecycle control and bundles still leak — a static field, a
+  `ThreadLocal`, an unstopped thread. The lesson is not to try harder;
+  it is to state the guarantee narrowly and make the safe path the
+  default one.
+- **Diagnostics are the product.** `Unresolved constraint in bundle X:
+  missing requirement osgi.wiring.package=…` is a correct answer that
+  has cost the industry days. §11.4 treats the explanation as
+  corpus-tested output for this reason.
+- **Start levels are how ordering goes wrong** (§7). A global integer
+  ordering becomes the thing people bump until it works, in place of
+  declaring the dependency they actually have. Our bands are the same
+  mechanism and need the same warning label.
+- **Isolation is where the complexity came from** (§21, §10.3).
+  Classloader-per-bundle buys simultaneous versions and costs
+  reflection, thread-context classloaders and `ServiceLoader` across
+  boundaries. It is the reason tier S is a cost decision rather than a
+  language limitation — and the reason we are not buying it.
+- **The dynamic story is mostly unused, and everyone pays anyway.**
+  Most OSGi deployments restart rather than update a bundle in place.
+  The complexity is universal, the benefit rare. Runtime activation is
+  a stated requirement here, so it is load-bearing — but the cost must
+  land on the hosts that use it, not on every plugin author in every
+  language. That is the argument for the automatic scope being the
+  default path (§8.0), and against importing every knob OSGi offers
+  just because it exists.
+
+### 23.3 The shape of the disagreement
+
+OSGi's model is that **configuration creates instances**: a Managed
+Service Factory plus a configuration record with a factory PID is what
+brings a component into being, and removing the record removes it. Ours
+is that a document is *applied* to a host that also has a programmatic
+API, and `apply` (§9.6) reconciles. The two end up in nearly the same
+place, and OSGi's is arguably purer — but it presumes a container that
+owns the process, and this is a library that a host library embeds. A
+station cannot cede "which plugins exist" to a config file it does not
+control.
+
+The larger disagreement is scope, and it is worth saying plainly: OSGi
+is a *module system* — it resolves and isolates code, not just
+extensions. That is why it can do multi-version and hot update, and why
+it costs what it costs. This design is a plugin system with a
+dependency model borrowed from a module system, which is a smaller
+thing on purpose.
