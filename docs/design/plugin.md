@@ -242,20 +242,41 @@ belongs to exactly one.
 Multiple instances of one definition is a first-class requirement, so
 identity is specified before anything else.
 
-- **name** — the definition name. Grammar (seneca's, unchanged, because
-  it already works and half the org already knows it):
-  `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$`, max 1024 chars. `@voxgig/plugin-retry`
-  is a legal name; so is `retry`.
-- **tag** — the instance discriminator: `^[a-zA-Z0-9.~_-]+$`, max 1024
-  chars, or empty.
-- **ref** — the canonical instance address: `name` when the tag is
-  empty, `name$tag` otherwise. Parsing is the inverse: everything before
-  the first `$` is the name, everything after is the tag.
-- **id** — `ref#seq`, where `seq` is the host's monotonic load counter.
-  Unique across the host's whole lifetime, so events from
-  `retry$fast#3` are never confused with events from a later
-  `retry$fast#7` after an unload/reload. Debug and trace identity only;
-  never an address.
+**An instance has a name of its own, and points at the definition it
+instantiates.** That ordering is deliberate and it is a correction: the
+first draft made the ref a *derivation* of the definition name
+(`retry$fast` = definition `retry`, tag `fast`) with aliasing as a
+footnote. The first real consumer wants the opposite — station (§17.1)
+names instances `stripe-test`, `github-ent`, `slack-alerts` and says
+which api each one is, because at twenty integrations the instance name
+is what a human reads in a config file, a log line and a status page,
+and "an instance of stripe, tagged test" is a worse name for it than
+`stripe-test`.
+
+- **ref** — the instance's address, and the primary identity.
+  `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*(\$[a-zA-Z0-9.~_-]+)?$`, max 1024 chars.
+  `stripe-test`, `solar-eu`, `retry$fast` and `@voxgig/plugin-retry` are
+  all legal refs.
+- **define** — the definition this instance instantiates. Given
+  explicitly (`{ ref: 'stripe-test', define: 'stripe' }`), and when it
+  is not, **derived from the ref**: the part before the `$`. So
+  `retry$fast` still means definition `retry` with nobody writing it
+  down, and `stripe-test` means definition `stripe-test` unless told
+  otherwise.
+- **name** / **tag** — the two halves of a ref that carries a `$`. Still
+  parsed, still addressable, now understood as *sugar for the common
+  case* rather than as the identity model: when the instance really is
+  "an instance of X, distinguished by Y", `X$Y` says so in one token and
+  needs no `define`. When it is not — and at twenty SDKs it usually is
+  not — a plain name plus `define` is the plainer thing.
+- **id** — `ref#n`, a **derived incarnation** of a declared ref. Two
+  things use it, and they do not collide because both mean "the nth
+  live thing behind this declared name": the host's monotonic counter,
+  so events from `retry$fast#3` are never confused with a later
+  `retry$fast#7` after an unload/reload; and a host that hands out
+  uncached instances from one declared ref (station's `create()`, a
+  per-request credential scope) registering each under `name#n`. An id
+  is an identity, never an address: `host.instance()` takes refs.
 
 Rules, all pinned by the corpus:
 
@@ -269,21 +290,20 @@ Rules, all pinned by the corpus:
    lowest unused positive integer tag (`retry$1`, `retry$2`, …). Without
    `'?'`, a collision is an error. Auto-assignment never produces a ref
    that collides with an explicit tag, and the assigned ref is returned.
-4. **The definition name is the ref's name** unless the load spec gives
-   an explicit `define` (the alias case: instance `cache$hot` from
-   definition `memcache`). Aliasing is allowed because the same
-   definition genuinely can serve as several conceptually distinct
-   extensions; it is *recorded* on the instance (`instance.define`) so
-   nothing has to guess.
+4. **`define` is recorded on the instance either way** — given or
+   derived — so nothing downstream has to re-derive it, and
+   `host.list()` can group twenty-six instances by the six definitions
+   behind them without parsing anything.
 5. **Refs are canonicalized on the way in.** `"retry$"`, `"retry"` and
    `{name:'retry', tag:''}` all normalize to the ref `retry`. Ports must
    canonicalize before comparison; the corpus's `ref` section is the
    arbiter.
 
-Canonical functions: `parseref(str) -> {name, tag}`, `formatref(name,
-tag) -> str`, `checkname`/`checktag`. These are pure, which is why they
-are the first thing a new port implements and the first section of the
-corpus it passes.
+Canonical functions: `parseref(str) -> {ref, name, tag, define}`,
+`formatref(name, tag) -> str`, `checkref`/`checkname`/`checktag`,
+`deriveid(ref, n)`. These are pure, which is why they are the first
+thing a new port implements and the first section of the corpus it
+passes.
 
 
 ## 5. States, transitions and lifecycle
@@ -291,27 +311,49 @@ corpus it passes.
 ### 5.1 The state machine
 
 ```
-                load()             activate()          requirements met
-   (absent) ──────────────►  loaded  ──────────►  pending  ──────────────►  active
-       ▲                        ▲                    │  ▲                     │
-       │                        │                    │  └─────────────────────┤
-       │       unload()         │    deactivate()    │     requirements lost  │
-       └────────────────────────┴────────────────────┴────────────────────────┘
-                                       deactivate()      (plugin state survives)
+   forward, and each step implies the ones before it:
 
-   a failure in any transition  ──────►  failed  ──────►  (unload only)
+              declare()         load()         activate()     requirements met
+   (absent) ───────────► declared ─────► loaded ─────────► pending ──────────► active
+                                                              ▲                  │
+                                                              └──────────────────┘
+                                                                requirements lost
+
+   back:   deactivate()   any of pending/active  ─────────►  loaded
+           unload()       any state              ─────────►  (absent)
+           ready(ref)     runs the whole forward path in one call
+
+   a failure in any transition  ─────►  failed  ─────►  (unload only)
+
+   plugin state survives every backward step except unload
 ```
 
-Six statuses, and no more: `loaded`, `pending`, `active`, `failed`, plus
-the two transient ones `loading` and `closing` that are observable only
-from inside a callback or from another thread. A port that adds a
-seventh is diverging.
+Seven statuses, and no more: `declared`, `loaded`, `pending`, `active`,
+`failed`, plus the two transient ones `loading` and `closing` that are
+observable only from inside a callback or from another thread. A port
+that adds an eighth is diverging.
 
-- **`loaded`** — options resolved, state allocated, bindings declared,
-  **no resources held, no host participation**. A loaded instance
-  receives no hook calls, is not in any chain, and provides no
-  providers. It costs memory and nothing else. This is the *deliberate*
-  off state: nobody has asked for it to run.
+- **`declared`** — the ref exists, its options are resolved, and
+  **nothing else has happened**: the definition has not been resolved,
+  no module has been imported, no plugin code has run. It is a row in
+  the registry and an entry in the config, and it costs a map entry.
+
+  This state is here because the first real consumer cannot work
+  without it. Station (§17.1) declares twenty-plus SDK instances in one
+  config file and constructs each on first use — and the *reason* it is
+  built that way is that resolving twenty SDK packages at startup,
+  whether or not the process touches them, is the specific defect its
+  declarative design set out to remove. A model whose cheapest state
+  still runs `define` would have reproduced that defect exactly, and
+  handed station a reason not to adopt it. Declaration must be free, or
+  scale is a lie.
+
+- **`loaded`** — definition resolved (this is where a dynamic import
+  happens), `define` run, options resolved, state allocated, bindings
+  declared, **no resources held, no host participation**. A loaded
+  instance receives no hook calls, is not in any chain, and provides no
+  providers. This is the *deliberate* off state: it is ready and nobody
+  has asked it to run.
 - **`pending`** — activation *has* been asked for, and cannot happen yet:
   a declared requirement (§11) is not active. Observably identical to
   `loaded` — nothing held, nothing bound — but it means something
@@ -340,13 +382,25 @@ attached to the raised error and does not replace it.
 
 | call | from | to | on failure |
 |---|---|---|---|
-| `load(spec)` | absent | `loaded` | `close` runs, nothing registered; error raised |
+| `declare(spec)` | absent | `declared` | nothing registered; error raised |
+| `load(ref)` | `declared` | `loaded` | `close` runs, entry stays `declared`; error raised |
+| `load(spec)` | absent | `loaded` | declare, then load; `close` runs, nothing registered |
 | `activate(ref)` | `loaded` | `active`, or `pending` if a requirement is unmet | bindings removed, scope unwound in reverse; → `failed` |
 | *(automatic)* | `pending` | `active` | as `activate` |
 | *(automatic)* | `active` | `pending` | a requirement was lost (§11) |
 | `deactivate(ref)` | `active`, `pending` | `loaded` | bindings removed, scope still fully unwound; → `failed` |
-| `unload(ref)` | `loaded`, `pending`, `failed` | absent | error raised; registry entry dropped anyway |
+| `unload(ref)` | `declared`, `loaded`, `pending`, `failed` | absent | error raised; registry entry dropped anyway |
 | `unload(ref)` | `active` | absent | deactivate first, then close |
+
+**Every transition implies the ones before it.** `activate` on a
+`declared` instance loads it first; `load` on an absent ref declares it
+first. So a host that wants the whole staircase in one call writes
+`host.ready(ref)` — declare if needed, load if needed, activate, return
+the instance — and a host that wants to inspect without executing
+anything calls `host.instance(ref)`, which **never** advances the state.
+That distinction is the whole point of the state: introspection has to
+stay free, or a status page becomes a way to accidentally import twenty
+packages.
 
 The two automatic rows are the reactive half of §11, and they are the
 reason `pending` exists: activation is a *standing request*, not a
@@ -544,7 +598,49 @@ is dropped with a warning instead. That exists for one honest reason:
 the same plugin should be loadable into a host that is one version
 behind.
 
-### 6.5 Position verification
+### 6.5 An instance may itself be a host
+
+The model as far as §6.4 has hosts and plugins and no way for one to be
+the other. The first real consumer needs exactly that, so it is in the
+model rather than discovered later.
+
+Station (§17.1) declares SDK instances as plugins — and every generated
+SDK carries **its own** plugin system, sdkgen's features (`retry`,
+`cache`, `debug`, `proxy`, `test`…), which station also configures
+fleet-wide from the same document. So a station plugin instance is
+itself a host of feature plugins. Two levels, and the outer one owns
+the inner one's lifetime.
+
+```ts
+def.activate = (inst) => {
+  const sdk = inst.host({ point: { request: { kind: 'chain', base: rawFetch } } })
+  // ... declare/activate the SDK's own features into `sdk`
+}
+```
+
+`inst.host(spec)` creates a host **owned by the instance**, and it is
+an ordinary scope entry (§8): deactivating the outer instance closes
+the inner host, which deactivates and closes everything in it, in
+order. There is no separate teardown path and no way to forget one.
+
+Three rules keep this from becoming a graph:
+
+- **Ownership is a tree, never a mesh.** An inner host belongs to one
+  instance. It does not inherit the outer host's points, catalog or
+  registry — if it did, a ref would stop addressing one instance
+  (§4 rule 1), and `host.list()` would have to mean two things.
+- **Capabilities do not cross the boundary** by default. An inner
+  plugin requiring `clock` is asking its own host, not its
+  grandparent's. A host that genuinely wants to share passes the
+  capability down explicitly, `inst.host({ inherit: ['clock'] })`,
+  which is a decision written in one place rather than an ambient rule.
+- **Trace records carry the path** — `stripe-test/retry`, not `retry` —
+  so a fleet view of twenty SDKs each with six features is readable.
+
+The nesting is not recursive by ambition; nothing stops a third level,
+and nothing in the design encourages one.
+
+### 6.6 Position verification
 
 Station's §3.3 found that a plugin can need to *know* it is in the right
 place — its middleware must sit immediately outside the base transport
@@ -746,7 +842,9 @@ exactly the sequence of API calls the programmatic path makes.
     "retry$slow":  { "active": false, "options": { "retries": 10, "minDelay": 500 } },
     "cache$hot":   { "define": "memcache", "active": true,
                      "order": { "after": "retry" },
-                     "options": { "max": 1000 } }
+                     "options": { "max": 1000 } },
+    "stripe-test": { "define": "stripe", "active": true, "start": "lazy",
+                     "options": { "base": "https://api.stripe.test" } }
   },
 
   // Profiles overlay the base. Selected by name at host construction
@@ -770,6 +868,21 @@ form works:
   ] }
 ```
 
+Two keys decide how far `apply` takes each instance, and they are not
+the same question:
+
+- **`active`** (default `true`) — *may* this instance run at all?
+  `false` declares it and bars it: it appears in `host.list()`, and
+  `activate` and `ready` on it fail rather than quietly doing nothing.
+  That is how a profile switches an integration off without deleting
+  its configuration (§17.1's `stripe-test` in prod).
+- **`start`** (default `"eager"`) — *when* does it run? `eager` means
+  `apply` activates it. `"lazy"` means `apply` leaves it `declared` and
+  the first `ready(ref)` walks it up. A host whose instances are
+  expensive to construct sets `lazy` and pays only for what is asked
+  for; a host with five cheap plugins leaves the default alone and
+  never learns the key exists.
+
 Normalization turns the array into the map plus a load order, and the
 map into the same shape with load order = sorted refs. **The
 normalization is a pure function of the document**, which is why it is
@@ -783,10 +896,19 @@ from a profile's array are still loaded, in sorted position after the
 listed ones. The corpus pins it.
 
 The document may stand alone as `plugin.json`, or be a subtree of a host
-library's own config (station's `station.json` would carry the same
-shape under a `plugin` key). Hosts choose the file name and the lookup
-path; the plugin library only ever sees the parsed subtree, and never
-reads a file itself.
+library's own config. Hosts choose the file name and the lookup path;
+the plugin library only ever sees the parsed subtree, and never reads a
+file itself.
+
+**A host may also rename these keys.** `makeHost({ keys: { instance:
+'sdk', define: 'api' } })` maps a host's own vocabulary onto the generic
+one before normalization. That is not a concession, it is the point:
+`sdk` and `api` are the right words in `station.json` (§17.1) and
+`instance`/`define` are the right words in a library that knows nothing
+about SDKs. A generic library that forces its vocabulary into every
+host's config file has mistaken uniformity for design. The renaming is
+a pure map applied to one level of keys — the *shape* underneath is
+identical, so the corpus tests it once and every host gets it.
 
 ### 9.2 The programmatic API
 
@@ -800,16 +922,21 @@ const host = makeHost({
 host.define(RetryPlugin)                            // static catalog
 host.resolver(nodeResolver())                       // dynamic loading (§10)
 
-const fast = await host.load('retry$fast', { retries: 5 })
+host.declare({ ref: 'retry$fast', define: 'retry', options: { retries: 5 } })
+                                 // free: nothing resolved, nothing run
+const fast = await host.load('retry$fast')   // resolve + define
 await host.activate('retry$fast')
+
+const live = await host.ready('stripe-test') // declare→load→activate→return
 
 await host.deactivate('retry$fast')                 // resources released, state kept
 await host.activate('retry$fast')                   // same instance, same state
                                                     // (and a standing request: §5.2)
 await host.unload('retry$fast')
 
-host.instance('retry$fast')      // -> instance | undefined
+host.instance('retry$fast')      // -> instance | undefined; NEVER advances state
 host.list()                      // -> [{ref, define, status, options, points, …}]
+                                 //    includes `declared` rows
 host.order('request')            // -> ['retry$fast', 'cache$hot']
 host.options('retry$fast', {retries: 9})   // patch; see 9.4
 host.status()                    // -> the whole picture (§13)
@@ -923,11 +1050,22 @@ lines later in the same plan. The document's array position therefore
 cannot make a valid configuration fail — which was the point of
 sorting, obtained without the sort.
 
-`apply` runs `host.resolve()` (§11.4) over the intended set **before**
-it activates anything, and returns its answer alongside the plan. A
+`apply` **declares everything and activates only what asked for it**:
+every instance in the document reaches `declared`, and those with
+`start: "eager"` and `active: true` go on to `active`. A document of
+twenty lazy instances is therefore twenty map entries and no executed
+code, which is the property station needs and the reason §5.1's
+`declared` state exists.
+
+`apply` runs `host.resolve()` (§11.4) over the **eager** set before it
+activates anything, and returns its answer alongside the plan. A
 document that cannot fully come up says so once, naming the one missing
 capability — rather than coming up nineteen-twentieths of the way and
-leaving an operator to infer the cause from a screen of `pending`.
+leaving an operator to infer the cause from a screen of `pending`. Lazy
+instances cannot be resolved in advance (their definitions are not
+loaded, so their requirements are not yet known), and `host.check()` —
+the CI counterpart — is the call that forces every declared instance up
+and reports what breaks.
 
 
 ## 10. Loading: dynamic and static
@@ -1280,8 +1418,10 @@ wrapped, and the cause is reachable.
 The registry is explicit and queryable, because a plugin system nobody
 can see the state of is a plugin system people stop trusting.
 
-- `host.list()` — one row per instance: ref, definition name and
-  version, status, load sequence, the points it binds and its resolved
+- `host.list()` — one row per instance, **including `declared` ones,
+  and without loading them**: ref, definition name and version (version
+  absent until loaded, because it is the definition's and the
+  definition has not been resolved), status, load sequence, the points it binds and its resolved
   position in each, its declared requirements and whether they are met,
   its option keys (values redacted by the host's redactor if it has
   one), and the size of its scope. A `pending` row names **which**
@@ -1415,6 +1555,8 @@ port-specific:
 | `version` | range grammar, consumer vs provider ranges, boundary cases, `plugin_bad_range` | yes |
 | `graph` | whole-graph resolution (§11.4): resolved/blocked sets, and the *explanation* for each blocked instance | yes |
 | `lifecycle` | the state machine, idempotence, illegal transitions, failure paths | driver |
+| `declare` | `declared` costs nothing: introspection without loading, `start` eager vs lazy, `ready` walking the staircase, `active: false` barring (§5.1, §9.1) | driver |
+| `nest` | an instance that is a host (§6.5): inner lifetime owned by the outer, teardown order, trace paths, capability isolation | driver |
 | `state` | persistence across activation cycles, destruction on unload | driver |
 | `resource` | the instance scope: automatic recording of host calls, `release` for foreign ones, reverse unwind, partial-activate rollback, failing release | driver |
 | `order` | topological sort, bands, ties, vacuous constraints, recomputation | driver |
@@ -1537,31 +1679,81 @@ libraries. Two candidates, both concrete.
 
 ### 17.1 station
 
-Station's design §3 (the plugin contract), §3.2 (registry), §3.3 (wrap
-ordering), §3.4 (lifecycle) and §3.5 (config resolution) are all
-instances of what is described above:
+Station is the initial use case, and it is a much more demanding one
+than "station.md §3, generalized" — which is what this section claimed
+before reading what station is actually building. Station's
+[declarative-config design](https://github.com/voxgig/station/blob/claude/voxgig-station-sdk-design-8ayy9d/docs/design/station-declarative-config.md)
+sets the bar: **a fully declarative `station.json` declaring at least
+twenty SDKs and twenty-six instances, with SDK instances fetched by
+name, lazily, at the point of use.** Four properties of that document
+are requirements on this one, and two of them changed this design:
 
-| station concept | plugin equivalent |
+| station needs | plugin provides |
 |---|---|
-| a bound SDK | an instance |
-| `station.plugins()` | `host.list()` |
-| the transport middleware wrap, "immediately outside the base transport" | a `chain` binding on the `request` point with a low band, plus `inst.position()` verification (§6.5) |
-| the `station` feature ordering special case in `makeOptions` | ordering constraints (§7) — the special case goes away |
-| `station.json` `profiles.<p>.plugin.<slug>` | the config document's profile overlay, verbatim |
-| §3.5's seven-level precedence | §9.3's eight-level precedence, of which station's is a subset |
+| `sdk` / `api` blocks declaring named instances | the config document's `instance` map, keyed by ref (§9.1) |
+| `stripe-test` with `api: stripe` | a free-form ref plus `define` (§4) — **the reason §4 was re-weighted** |
+| twenty declared, constructed on first `sdk(name)` | `declared` state + `start: "lazy"` + `ready(ref)` (§5.1) — **the reason `declared` exists** |
+| `instances()` (declared) vs `plugins()` (live) | `host.list()` over all states vs the `active` rows of it |
+| `active: false` in a profile overlay | `active: false` in the document (§9.1) |
+| `create()` returning uncached clients as `name#n` | derived incarnation ids (§4) |
+| SDK features managed fleet-wide, per instance | an instance that is itself a host (§6.5) — **the reason nested hosts are in the model** |
+| the transport wrap "immediately outside the base transport" | a `chain` binding with a low band, plus `inst.position()` (§6.6) |
+| the `station` ordering special case in `makeOptions` | ordering constraints (§7) — the special case goes away |
+| explicit feature wrap `order` at profile level | the same constraints, one level down, in the inner host |
+| struct-validated config, closed by construction | §9.4's option shapes, same `struct.validate` |
 | `station.close()` | `host.close()` |
-| binding one client twice is an error | `plugin_ref_duplicate` |
+| binding one name twice is an error | `plugin_ref_duplicate` |
 
-Two things station gains that it does not have today: **more than one
-binding of the same SDK** (two `solardemo` clients against different
-profiles — `solardemo$eu` and `solardemo$us` — which the current
-slug-keyed registry cannot express), and **runtime deactivation** (turn
-off an integration without tearing down the process, with its
-credentials released as part of the ledger).
+What station gains that it cannot do today: **more than one binding of
+one api** (its own §1 records `station_bound_twice` as a *prohibition*,
+not a gap), **runtime deactivation** with credentials released as part
+of the instance scope, and one instance model shared with every other
+voxgig library instead of a station-shaped one.
 
-The migration is not a rewrite: station keeps `connect`/`adopt`/
-`options` as its public API and implements them over a host. That is
-the proof obligation of phase P3 below.
+**Where the two designs still disagree, and who moves.** Station's
+document is further along and names things in its own domain; this
+library is generic. The reconciliation is that station's grammar stays
+station's — `sdk`, `api`, `feature`, `order`, `secret`, `policy` are
+its keys and should be — and plugin's document keys (§9.1) are the
+*generic* form a host may rename when it embeds the subtree. §9.1
+already says a host chooses the file and the lookup path; it now also
+says a host may map its own key names onto the generic ones, because
+`sdk` reads better in `station.json` than `instance` ever would, and a
+generic library that forces its vocabulary into a specific host's
+config file has mistaken uniformity for design.
+
+Two smaller collisions, resolved here so neither repo discovers them in
+code: station's `name#<n>` for uncached clients **is** §4's derived
+incarnation id, same separator and same meaning; and station's
+`active: false` means *barred from running*, which is §9.1's `active`,
+distinct from the runtime `active` **state** — the document key and the
+status word share a spelling and not a meaning, and both documents
+should say so where they define it.
+
+**The sequencing, stated plainly because it is a real cost.** Station
+adopting this library puts station's Stage 2 (the identity change) and
+Stage 3 (the declarative front door) behind plugin's P1 and P2 — which
+is a design with no implementation. That is a genuine delay to a plan
+that is otherwise ready to start, and it is the price of not having two
+instance models in one organisation. Three things make it payable, and
+they are obligations on *this* repo, not on station:
+
+1. **P1 and P2 ship the core only** — §11's capability system is P3b
+   (§18) precisely so it is not on station's critical path.
+2. **P3 is station**, and it is a proof obligation on plugin, not a
+   migration burden on station: station keeps `connect`/`adopt`/
+   `options`/`sdk`/`create` as its public API, and plugin has to fit
+   underneath it unchanged. If it does not fit, plugin is wrong.
+3. **Station's Stage 1 does not wait.** Its grammar, shape file,
+   normalizer and corpus sections are station's own data and depend on
+   nothing here; only Stages 2 and 3 do. Starting Stage 1 now is the
+   right move whatever happens to this library.
+
+If P1 and P2 slip far enough that station is blocked on them, the
+correct call is to let station build Stage 2 natively against these
+semantics and have plugin extract it afterwards — the same destination,
+reached in the other order. That is a decision to make on a date, not
+on principle.
 
 ### 17.2 sdkgen features
 
@@ -1652,38 +1844,68 @@ verification; the remaining corpus sections (`env`, `resolve`,
 `export`, `apply`, `trace`); the ts integration suite that does real
 `require`-based loading.
 
-**The capability system is the weight of this phase**, and it is worth
-naming as its own tranche rather than hiding it inside "dependencies":
-capabilities and `match` (§11.1), version ranges and the
-consumer/provider asymmetry (§11.2), cardinality and policy (§11.3),
-and the whole-graph resolver with its explanations (§11.4) — plus the
-four corpus sections that pin them (`capability`, `version`, `graph`,
-`depend`). Three of those four are pure functions, so the hardest
-logic in the library arrives as data-tested code rather than as
-something only the driver exercises. Build them in that order: a
-resolver written before the matching rules are pinned will encode them
-twice.
+**The capability system is deliberately NOT in this phase** — see P3b.
 
-*Exit:* every section of the corpus exists and is green in TypeScript;
-a blocked instance's explanation is asserted, not just its blocked-ness;
-`DOCS.md` complete, including the probe catalog specification.
+*Exit:* every section of the corpus except the four capability ones
+exists and is green in TypeScript; `DOCS.md` complete, including the
+probe catalog specification.
 
 ### P3 — Proof against real hosts
 
 Both, in TypeScript, because a plugin system unvalidated by a real host
 is a guess:
 
-1. **station** — reimplement station's TS registry over a host, behind
-   its unchanged public API. Station's own conformance corpus and
-   integration suites must stay green. Then add what the host makes
-   newly possible: two instances of one SDK, and a runtime deactivation
-   test that asserts the credential is released.
+1. **station** — implement station's declarative front door over a host
+   (its Stages 2 and 3), behind its unchanged public API:
+   `connect`/`adopt`/`options` as today, plus `sdk(name)`,
+   `create(name)`, `instances()` and `check()`. Station's own
+   conformance corpus and integration suites must stay green. The bar
+   is station's own integration test, not a plugin-flavoured version of
+   it: **twenty-plus declared instances, none constructed at `open()`,
+   two instances of one api live at once with distinct placeholders,
+   and a fleet-wide feature default reaching an instance that never
+   mentions it** — that last one through a nested host (§6.5).
 2. **sdkgen bridge** — a `FeatureHost` that runs an unmodified sdkgen
    feature class as a plugin, exercised against the generated test SDK.
 
-*Exit:* station's suites green on the new implementation; the bridge
+*Exit:* station's suites green on the new implementation; `open()` with
+twenty declared instances imports no SDK package, asserted; the bridge
 runs `RetryFeature` unmodified, and deactivates it — which sdkgen alone
 cannot do.
+
+### P3b — The capability system
+
+Capabilities and `match` (§11.1), version ranges and the
+consumer/provider asymmetry (§11.2), cardinality and policy (§11.3),
+and the whole-graph resolver with its explanations (§11.4) — plus the
+four corpus sections that pin them (`capability`, `version`, `graph`,
+`depend`). Build them in that order: a resolver written before the
+matching rules are pinned will encode them twice.
+
+**It sits after the station proof on purpose, and the reason is
+evidence.** §11 is the largest single tranche in the library — most of
+the jump in §19's per-port budget — and the first real consumer does not
+use one line of it. Station declares no `requires` and no `provides`;
+its twenty-six SDK instances are independent of each other, and its
+ordering needs are §7's, not §11's. Shipping a capability graph, a
+version-range grammar and a constraint resolver to twenty ports before
+anything in the building needs them would be the most expensive
+possible way to find out we designed it wrong.
+
+So it lands where the evidence is: after P3 has put the core through a
+real host, and ideally alongside the second consumer — a third-party
+extension ecosystem, where "this plugin needs a store, version 2 or
+better" is the case that actually exists. If P3 turns up a station
+requirement that wants it sooner, it moves; that is a decision made on
+a finding rather than on a plan.
+
+The three pure sections (`capability`, `version`, `graph`) are worth
+writing as corpus entries *before* the code either way — they are cheap
+as data and they are what stops the resolver encoding the matching
+rules a second time.
+
+*Exit:* the four capability sections green in TypeScript; a blocked
+instance's explanation asserted, not just its blocked-ness.
 
 ### P4 — The proving pair (go, python)
 
@@ -1733,13 +1955,16 @@ and they stay small only if the design forbids growth. The rule:
 > watcher, no service discovery. Anything a plugin needs beyond the
 > host's own extension points, it brings itself.
 
-Budget, per port: **~1200–1700 lines** for a garbage-collected
-language, plus the driver. That is up from the ~800–1200 this document
-first claimed, and the increase is honest bookkeeping rather than
-scope creep discovered late: §11's capability matching, version ranges
-and whole-graph resolver are real code in every port, and quoting the
-old number while shipping the new model would make the budget
-decorative. The rule it enforces is unchanged — a port that busts its
+Budget, per port: **~1200 lines for the core, plus ~500 for the
+capability system (§11)** — so ~1700 for a complete port — plus the
+driver. The split is deliberate and load-bearing: P3b (§18) ships the
+second half only once something needs it, and a port that has the core
+is a *useful* port, not a partial one. Station's initial use needs the
+core alone. The total is up from the ~800–1200 this document first claimed, and the
+increase is honest bookkeeping rather than scope creep discovered late:
+§11's capability matching, version ranges and whole-graph resolver are
+real code in every port, and quoting the old number while shipping the
+new model would make the budget decorative. The rule it enforces is unchanged — a port that busts its
 budget is a signal the model grew, and the response is to shrink the
 model, not to accept the port.
 
