@@ -677,15 +677,26 @@ fleet-wide from the same document. So a station plugin instance would
 itself be a host of feature plugins. Two levels, and the outer one owns
 the inner one's lifetime.
 
-**This is a future fit, not a current one.** The mapping holds only
-once **sdkgen adopts this library**, which §17.2 explicitly declines to
-commit to. Until then a generated SDK is not a host: it has
-`options.feature` (map or ordered array) and a `FEATURE_CLASS` table,
-and station configures features by composing that array (§17.1), so
-`inst.host(...)` around one would be a host-shaped object wrapping a
-non-host. What follows is specified now because it is far cheaper to
-carry from the start than to retrofit onto a shipped lifecycle — not
-because a consumer exercises it today.
+**A generated SDK is not natively a host, and the bridge is how this
+is reached before it becomes one.** Today an SDK has `options.feature`
+(map or ordered array) and a `FEATURE_CLASS` table, and station
+configures features by composing that array (§17.1). Wrapping one in
+`inst.host(...)` *directly* would be a host-shaped object around a
+non-host, and §17.2 declines to commit sdkgen to changing that.
+
+What closes the gap is **P3's `FeatureHost` bridge** (§17.2, §18),
+which runs an unmodified sdkgen feature class as a plugin. The inner
+host is the bridge, not the SDK: it populates its catalog from the
+SDK's `FEATURE_CLASS` table, maps the SDK's 13 hook points and its
+`request` chain onto plugin points, and composes the SDK's own feature
+array from its active set. A fleet-wide default therefore reaches an
+instance through a nested host **with the generated SDK unmodified**,
+which is the form P3's bar is written against.
+
+So the sequence is: the bridge makes the mapping reachable at P3;
+sdkgen adopting later would *delete* the bridge rather than enable the
+model. The model is specified now because carrying it from the start is
+far cheaper than retrofitting it onto a shipped lifecycle.
 
 ```ts
 def.activate = (inst) => {
@@ -2161,16 +2172,21 @@ option shapes. Said here so neither repo believes the other is
 providing it.
 
 *Nested hosts are the right model for station's feature management and
-are not yet reachable.* §6.5 is justified by station configuring each
-SDK's features fleet-wide, and that mapping holds only once **sdkgen
-adopts this library** — which §17.2 explicitly declines to commit to.
-Until then a generated SDK is not a host: it has `options.feature` (map
-or ordered array) and a `FEATURE_CLASS` table, and station configures
-features by composing that array, which is what its §8 describes and
-what already works. Wrapping that in `inst.host(...)` would be a
-host-shaped object around a non-host. The model is still right and
-still worth having; the row is a *future* fit, and §6.5 now says
-"will need" and carries this caveat inline rather than only here.
+are reached over the bridge, not natively.* §6.5 is justified by
+station configuring each SDK's features fleet-wide, and a generated SDK
+is not itself a host: it has `options.feature` (map or ordered array)
+and a `FEATURE_CLASS` table, and station configures features by
+composing that array, which is what its §8 describes and what already
+works. Wrapping *that* in `inst.host(...)` would be a host-shaped
+object around a non-host, and §17.2 declines to commit sdkgen to
+changing it.
+
+P3's `FeatureHost` bridge is what makes the row real in the meantime:
+the inner host is the bridge rather than the SDK, and the generated
+code stays unmodified. So the row is a **present fit over the bridge
+and a future fit natively** — sdkgen adopting would delete the bridge,
+not enable the model. §6.5 says "will need" and carries the same
+caveat inline rather than only here.
 
 **Where the two designs still disagree, and who moves.** Station's
 document is further along and names things in its own domain; this
@@ -2338,6 +2354,16 @@ The work itself:
   order resolver; `list`/`order`/`status`/`trace`.
 - The driver, the probe catalog, and corpus sections `ref`, `config`,
   `lifecycle`, `state`, `resource`, `point`, `order`, `error`.
+- **The driver contract in `DOCS.md`, in draft** — the probe
+  behaviours, the command vocabulary and the canonical observable
+  (§15.2), written language-neutrally rather than as a description of
+  the TypeScript implementation. §17.1 owes station the `lifecycle` and
+  `order` corpus sections before this phase exits, and those are
+  *driver* sections (§15.3): a port cannot run them from corpus files
+  alone. Shipping the data without the contract would hand station's
+  other fifteen ports two suites they cannot implement consistently —
+  the drift the early corpus exists to prevent. P2 completes the
+  document; P1 owes the part station consumes.
 - A worked example in `typescript/example/`: a host with a `request`
   chain, two instances of one definition, deactivated and reactivated at
   runtime.
@@ -2357,7 +2383,8 @@ verification; the remaining corpus sections (`env`, `resolve`,
 
 *Exit:* every section of the corpus except the four capability ones
 exists and is green in TypeScript; `DOCS.md` complete, including the
-probe catalog specification.
+probe catalog specification — completing the draft P1 shipped, not
+starting it.
 
 ### P3 — Proof against real hosts
 
@@ -2373,7 +2400,10 @@ is a guess:
    it: **twenty-plus declared instances, none constructed at `open()`,
    two instances of one api live at once with distinct placeholders,
    and a fleet-wide feature default reaching an instance that never
-   mentions it** — that last one through a nested host (§6.5).
+   mentions it** — that last one through a nested host (§6.5), built
+   over item 2's bridge rather than over a natively host-shaped SDK,
+   which is what makes the bar reachable without sdkgen having adopted
+   anything.
 2. **sdkgen bridge** — a `FeatureHost` that runs an unmodified sdkgen
    feature class as a plugin, exercised against the generated test SDK.
 
