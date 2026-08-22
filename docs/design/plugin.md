@@ -45,6 +45,7 @@ it is specific to station, to HTTP, or to SDKs.
 - [19. Budgets](#19-budgets)
 - [20. Open questions](#20-open-questions)
 - [21. Non-goals](#21-non-goals)
+- [22. Prior art: Cordis](#22-prior-art-cordis)
 
 
 ## 1. Why this exists
@@ -198,7 +199,7 @@ many hosts.
 **Instance** — a live incarnation of a definition inside one host. Has an
 identity (§4), resolved options, plugin-owned persistent state, a status
 (§5.1), a set of bindings into the host's extension points, and a
-resource ledger (§8). An instance is the unit of naming, configuration,
+resource scope (§8). An instance is the unit of naming, configuration,
 activation and teardown.
 
 **Host** — the library being extended: a station, an SDK client, an
@@ -289,25 +290,33 @@ corpus it passes.
 ### 5.1 The state machine
 
 ```
-                    load()                 activate()
-   (absent) ──────────────────► loaded ◄──────────────────► active
-       ▲                        │  ▲       deactivate()       │
-       │        unload()        │  │                          │
-       └────────────────────────┘  └──────────────────────────┘
-                                        (state survives)
+                load()             activate()          requirements met
+   (absent) ──────────────►  loaded  ──────────►  pending  ──────────────►  active
+       ▲                        ▲                    │  ▲                     │
+       │                        │                    │  └─────────────────────┤
+       │       unload()         │    deactivate()    │     requirements lost  │
+       └────────────────────────┴────────────────────┴────────────────────────┘
+                                       deactivate()      (plugin state survives)
 
-   any transition may fail:  ─────► failed ─────► (unload only)
+   a failure in any transition  ──────►  failed  ──────►  (unload only)
 ```
 
-Five statuses, and no more: `loaded`, `active`, `failed`, plus the two
-transient ones `loading` and `closing` that are observable only from
-inside a callback or from another thread. A port that adds a sixth is
-diverging.
+Six statuses, and no more: `loaded`, `pending`, `active`, `failed`, plus
+the two transient ones `loading` and `closing` that are observable only
+from inside a callback or from another thread. A port that adds a
+seventh is diverging.
 
 - **`loaded`** — options resolved, state allocated, bindings declared,
   **no resources held, no host participation**. A loaded instance
   receives no hook calls, is not in any chain, and provides no
-  providers. It costs memory and nothing else.
+  providers. It costs memory and nothing else. This is the *deliberate*
+  off state: nobody has asked for it to run.
+- **`pending`** — activation *has* been asked for, and cannot happen yet:
+  a declared requirement (§11) is not active. Observably identical to
+  `loaded` — nothing held, nothing bound — but it means something
+  entirely different to whoever is reading `host.list()`, which is why
+  it is a state and not a flag. The host activates it the moment the
+  requirement arrives, without being asked again.
 - **`active`** — bindings are live, resources are held.
 - **`failed`** — a lifecycle callback or a release raised, on any
   transition after `load`. The instance remains registered and
@@ -331,10 +340,18 @@ attached to the raised error and does not replace it.
 | call | from | to | on failure |
 |---|---|---|---|
 | `load(spec)` | absent | `loaded` | `close` runs, nothing registered; error raised |
-| `activate(ref)` | `loaded` | `active` | bindings removed, releases run in reverse; → `failed` |
-| `deactivate(ref)` | `active` | `loaded` | bindings removed, all releases still run; → `failed` |
-| `unload(ref)` | `loaded`, `failed` | absent | error raised; registry entry dropped anyway |
+| `activate(ref)` | `loaded` | `active`, or `pending` if a requirement is unmet | bindings removed, scope unwound in reverse; → `failed` |
+| *(automatic)* | `pending` | `active` | as `activate` |
+| *(automatic)* | `active` | `pending` | a requirement was lost (§11) |
+| `deactivate(ref)` | `active`, `pending` | `loaded` | bindings removed, scope still fully unwound; → `failed` |
+| `unload(ref)` | `loaded`, `pending`, `failed` | absent | error raised; registry entry dropped anyway |
 | `unload(ref)` | `active` | absent | deactivate first, then close |
+
+The two automatic rows are the reactive half of §11, and they are the
+reason `pending` exists: activation is a *standing request*, not a
+one-shot event. Asking for an instance to be active means it is active
+whenever it can be, and `deactivate` — an operator withdrawing the
+request — is the only thing that returns it to `loaded`.
 
 **Any** failure during a transition — a lifecycle callback raising, or a
 ledger entry raising (§8) — lands the instance in `failed`. There is no
@@ -361,8 +378,8 @@ in Go, in Ruby and in single-threaded JavaScript.
 ```
 define(instance, options)     // configure. Allocate memory. Declare bindings.
                               //   MUST NOT capture resources.
-activate(instance)            // capture resources. Register releases.
-deactivate(instance)          // (host runs the release ledger; hook for extras)
+activate(instance)            // capture resources, through the instance scope (§8)
+deactivate(instance)          // (host unwinds the scope; hook for extras)
 close(instance)               // final teardown before removal. State dies here.
 ```
 
@@ -370,7 +387,9 @@ Only `define` is required. The split is the central discipline of this
 design, and the rule is one sentence:
 
 > **`define` may allocate memory. `activate` may allocate anything.
-> Everything `activate` allocates must be registered for release.**
+> Everything `activate` allocates is unwound on deactivate — recorded
+> automatically when it went through the instance, explicitly via
+> `release` when it did not (§8).**
 
 "Resource" means: sockets, files, timers, threads, subscriptions,
 watchers, child processes, native handles, host mutations, entries in
@@ -420,6 +439,32 @@ Many bindings, all called, no composition. The sdkgen hook vocabulary
 (`PrePoint`, `PreRequest`, …) is exactly this. The host calls
 `host.emit(point, arg)`; every active binding runs, in resolved order
 (§7); return values are ignored.
+
+**A hook point declares its dispatch mode, and "fan-out" is not one
+answer but four.** In a language with asynchrony, "call every binding"
+hides a decision — start them all and wait for all, await each in turn,
+or do not wait at all — and a design that leaves it unsaid gets four
+different answers from four ports, in the concurrency behaviour of
+production code that no corpus entry happens to cover. So the mode is
+part of the point declaration:
+
+| mode | dispatch | returns |
+|---|---|---|
+| `emit` | every binding, no waiting (the default) | the collected errors (§6.1 below) |
+| `parallel` | every binding, started together, all awaited | as `emit`, once all settle |
+| `serial` | every binding, awaited one at a time in resolved order | as `emit` |
+| `bail` | in resolved order, **stops at the first binding that returns a value** | that value, or absent |
+
+`bail` is the "handled — stop" case, and it earns its place: it is how a
+plugin overrides a default without replacing the whole implementation
+the way a `provider` point does. Cordis ships the same four (plus
+`waterfall`, which is this design's `chain`), which is a fair sign the
+set is neither too small nor invented.
+
+In a port with no asynchrony, `emit`, `parallel` and `serial` collapse
+into the same loop, and the mode is then purely documentation — but it
+is documentation the *other* ports are bound by, so it is declared
+everywhere.
 
 A raising binding does not stop the others by default. Because "reported"
 is not a specification — one port collecting errors and another
@@ -538,20 +583,38 @@ constraint wins).
 ## 8. Resource capture
 
 The requirement is that resource usage is dictated by activation state.
-The mechanism is a **release ledger**.
+The mechanism is a **scope**: everything an instance does through its
+handle is recorded against that instance and undone on deactivate,
+automatically.
 
 ```ts
 def.activate = (inst) => {
-  const sock = net.connect(inst.options.addr)
-  inst.release(() => sock.destroy())          // ledger entry 1
+  inst.chain('request', wrap)                 // recorded: the host owns the undo
+  inst.provide('store', myStore)              // recorded
+  inst.timer(1000, poll)                      // recorded, where the host offers timers
 
-  const timer = setInterval(poll, 1000)
-  inst.release(() => clearInterval(timer))    // ledger entry 2
+  const sock = net.connect(inst.options.addr) // FOREIGN: the host cannot see this
+  inst.release(() => sock.destroy())          // so it is registered explicitly
 }
 ```
 
-- The ledger belongs to the instance and is emptied by the host on
-  deactivate, running entries **in reverse registration order**.
+The rule that matters, and the one this design got wrong in its first
+draft:
+
+> **Anything reached through `inst` records its own undo. `release` is
+> only for what the host cannot see.**
+
+A per-resource ledger the plugin author maintains by hand is a list
+every author can forget an entry in, silently, forever — and a plugin
+that forgot one looks identical to a plugin that had nothing to
+release. Making the handle itself the ledger removes the whole class:
+the author cannot forget to register what they never registered. This
+is Cordis's model (§8.1), and it is a straight improvement over what
+was here before.
+
+- The scope belongs to the instance and is unwound by the host on
+  deactivate, **in reverse registration order**, whether an entry came
+  from a host call or from `release`.
 - `deactivate` on the definition is optional and runs *before* the
   ledger, for anything that must happen while resources still exist
   (draining, flushing, a graceful goodbye).
@@ -564,19 +627,43 @@ def.activate = (inst) => {
   be reactivated. Its bindings are removed either way, so it
   participates in nothing meanwhile. `unload` is the only way out, and
   it still runs `close`.
-- If `activate` raises partway, the host runs the entries registered so
-  far, in reverse, and the instance goes `failed`.
+- If `activate` raises partway, the host unwinds the entries registered
+  so far, in reverse, and the instance goes `failed`.
 - `inst.release` outside `activate` is `plugin_release_scope`.
 
-Binding into extension points is **not** a ledger entry; the host
-inserts and removes bindings itself as part of the transition. The
-ledger is only for things the host cannot see.
+**Reverse order is a guarantee about registration, not about
+completion.** Where releases are asynchronous, the host starts them in
+reverse order but does not serialize them — awaiting each in turn turns
+a deactivation into a sum of timeouts, and no port should pay that for
+a guarantee almost nothing needs. A plugin whose teardown genuinely is
+order-dependent consolidates it into **one** release that does the
+whole sequence itself. Cordis, which has run this in production for
+years, documents exactly the same caveat, and a design that promised
+strict ordering here would be promising something its ports would each
+quietly break.
 
 The corpus tests this with a synthetic resource: the driver's probe
 definitions acquire numbered handles from a counter the driver owns, and
 the expected output includes the ledger — so "deactivate released
 exactly what activate captured" is a data assertion, in every language,
 rather than a property nobody checks.
+
+### 8.1 Why the scope, and not the ledger
+
+Cordis (§22) makes every registration made through a plugin's context
+inherently disposable and owned by that plugin's fiber — `ctx.on()`,
+a service registration, or `ctx.effect()` for anything foreign — and
+unwinds the lot when the plugin unloads. It is the same insight as this
+design's "a plugin never mutates the host" (§6), pushed one step
+further: not only does the plugin not mutate the host, it cannot even
+*reach* the host except through a handle that is keeping score.
+
+The practical consequence for a twenty-port library is larger than it
+looks. A manual ledger has to be got right by every plugin author in
+every language. A scope has to be got right once per port, and the
+corpus can prove it: any host call made during `activate` must leave
+the resource counter at zero after `deactivate`, and a port that
+forgets to record one of its own seams fails that assertion.
 
 
 ## 9. Configuration
@@ -663,6 +750,7 @@ await host.activate('retry$fast')
 
 await host.deactivate('retry$fast')                 // resources released, state kept
 await host.activate('retry$fast')                   // same instance, same state
+                                                    // (and a standing request: §5.2)
 await host.unload('retry$fast')
 
 host.instance('retry$fast')      // -> instance | undefined
@@ -676,6 +764,16 @@ await host.close()               // deactivate + close everything, reverse load 
 Nothing in the declarative path is unavailable programmatically, and the
 declarative loader is implemented *as* calls to this API — a rule, not
 an aspiration, so that the two can never drift.
+
+Cordis makes that rule structural rather than clerical: **its loader is
+itself a plugin**, mounted on the root context, which then reads the
+config file and mounts everything else. A loader that is a plugin
+cannot reach past the public API, because it does not have anything
+else to reach with. This design adopts the same shape — `apply` is
+built on `load`/`activate`/`options` and ships as an ordinary
+definition — which also means a host that wants a different
+configuration format writes a different loader rather than patching
+this one.
 
 ### 9.3 Precedence
 
@@ -760,12 +858,15 @@ without touching a real environment.
 missing, unload what is gone, patch what changed, and move activation
 state to match. It is how a host does config reload, and it is why every
 transition is trivially idempotent (§5.2). Ordering: deactivations and
-unloads first (reverse dependency order, then reverse load order), then
-loads, then activations **in dependency order** (§11), ties broken by
-load order. Dependency order governs, not the document's array position:
-a document that lists a consumer before the instance satisfying its
-requirement is a perfectly ordinary document, and must not fail with
-`plugin_dependency_missing` because of how it was written down.
+unloads first (reverse load order), then loads, then activations in load
+order.
+
+Activation order does not have to be dependency-sorted, because under
+§11 activation is a standing request: a consumer activated before its
+provider simply sits in `pending` until the provider arrives, a few
+lines later in the same plan. The document's array position therefore
+cannot make a valid configuration fail — which was the point of
+sorting, obtained without the sort.
 
 
 ## 10. Loading: dynamic and static
@@ -872,28 +973,46 @@ convention is a getter closing over `inst.state`.
 'store']` — definition *names*, not refs, because a dependency is on a
 capability, not on someone's configuration.
 
-- At `load`, a missing requirement is a warning, not an error: order of
-  loading should not be the developer's problem.
-- At `activate`, a missing requirement is `plugin_dependency_missing`,
-  and requirements must be `active` — this is the state where
-  dependencies genuinely matter, because it is the state where the
-  plugin will actually call them.
-- `host.apply` and `host.activate(...refs)` order activation by
-  dependency, then by the §7 rules. A dependency cycle is
-  `plugin_dependency_cycle`.
-- **Deactivation runs the dependency graph backwards, and is refused by
-  default.** Checking requirements only at activation would leave a
-  consumer `active` and calling a provider that has since been
-  deactivated or unloaded — active in name, broken in fact. So
-  deactivating or unloading an instance that active instances still
-  require is `plugin_dependency_held`, naming the holders.
-  `deactivate(ref, {cascade: true})` deactivates the dependents first,
-  in reverse dependency order, and reports what it touched.
-  `host.apply` cascades within its own plan (§9.6), and `host.close()`
-  always cascades, since it is tearing everything down anyway.
+**Requirements are live, not checked once.** The whole point of a
+declared dependency is that the consumer will *call* the thing, and it
+will call it at some arbitrary time after activation — so a check
+performed only at the activation instant guarantees nothing about the
+moment that matters.
+
+- At `load`, a missing requirement is neither error nor warning. Load
+  order is not the developer's problem, and saying so twice is noise.
+- At `activate` with a requirement unmet, the instance goes `pending`
+  (§5.1) and **waits**. It is not an error. Nothing about a document
+  that lists a consumer before its provider is wrong, and nothing about
+  a provider that arrives thirty seconds later is wrong either.
+- When the last instance providing a requirement leaves `active`, every
+  consumer of it is **deactivated back to `pending`** — scope unwound,
+  bindings removed, state kept — and reactivated automatically when a
+  provider returns. Recursively: a consumer going `pending` takes its
+  own consumers with it.
 - A requirement is satisfied by *any* active instance whose definition
   provides that name, so deactivating one of two instances providing
-  `clock` is not held — the graph is over capabilities, not refs.
+  `clock` moves nobody — the graph is over capabilities, not refs.
+- A dependency cycle is `plugin_dependency_cycle`, detected at load.
+
+This is provider replacement as an ordinary runtime operation rather
+than a restart: deactivate the old secret store, activate the new one,
+and everything that depended on it rides through, having released the
+old one's resources in between. It is Cordis's behaviour (§22), and it
+replaces this design's first answer — refuse the deactivation
+(`plugin_dependency_held`) unless the caller passes `{cascade: true}` —
+which protected the dependency graph by making the useful operation the
+awkward one.
+
+For a host that genuinely wants the strict reading, the point-free
+policy `makeHost({dependency: 'hold'})` restores it: deactivating a
+required instance is then `plugin_dependency_held`, naming the holders.
+It is not the default, because a station that cannot swap a provider
+without a restart has lost the argument for having a plugin system.
+
+`host.apply` (§9.6) and `host.close()` need no special cases under
+this rule: `apply` states the intended activation set and the graph
+settles, and `close` deactivates everything anyway.
 
 `provides: [...]` lets a definition satisfy a requirement under another
 name — one definition supplying `clock` regardless of what it is called.
@@ -949,8 +1068,8 @@ in a handful of places is both cheap and sufficient.
 | `plugin_bind_scope` | binding declared outside `define` |
 | `plugin_release_scope` | `release` registered outside `activate` |
 | `plugin_order_cycle` | before/after constraints cycle |
-| `plugin_dependency_missing` / `plugin_dependency_cycle` | §11 |
-| `plugin_dependency_held` | deactivate/unload of an instance active instances require (§11) |
+| `plugin_dependency_cycle` | requirements cycle, detected at load (§11) |
+| `plugin_dependency_held` | deactivate of a required instance, under `dependency: 'hold'` only (§11) |
 | `plugin_hook_failed` | collected binding errors on a `{raise: true}` hook point (§6.1) |
 | `plugin_env_ambiguous` | two refs encode to one environment key (§9.5) |
 | `plugin_export_ambiguous` | §11 |
@@ -972,7 +1091,10 @@ can see the state of is a plugin system people stop trusting.
   version, status, load sequence, the points it binds and its resolved
   position in each, its declared requirements and whether they are met,
   its option keys (values redacted by the host's redactor if it has
-  one), and the size of its release ledger.
+  one), and the size of its scope. A `pending` row names **which**
+  requirement it is waiting on, because "pending" without that is a
+  shrug, and this is the row an operator stares at when an integration
+  did not come up.
 - `host.order(point)` — the resolved order, active bindings only.
 - `host.status()` — the whole picture: host name, declared points and
   their kinds, catalog contents, resolver presence, instances, shadowed
@@ -1002,7 +1124,7 @@ decides where they go.
   invocation that started before a `deactivate` may complete after it,
   running through the deactivated plugin's wrapper. The host guarantees
   *no new invocation* enters a deactivated binding; draining in-flight
-  ones is the definition's job, in `deactivate`, before the ledger runs.
+  ones is the definition's job, in `deactivate`, before the scope unwinds.
 - Where a language has async, `load`/`activate`/`deactivate`/
   `unload`/`close` and the lifecycle callbacks may be asynchronous, and
   the host's methods return the idiomatic completion value (a Promise, a
@@ -1096,11 +1218,11 @@ port-specific:
 | `resolve` | name → candidate module ids | yes |
 | `lifecycle` | the state machine, idempotence, illegal transitions, failure paths | driver |
 | `state` | persistence across activation cycles, destruction on unload | driver |
-| `resource` | the release ledger, reverse order, partial-activate rollback, failing release | driver |
+| `resource` | the instance scope: automatic recording of host calls, `release` for foreign ones, reverse unwind, partial-activate rollback, failing release | driver |
 | `order` | topological sort, bands, ties, vacuous constraints, recomputation | driver |
-| `point` | the three kinds, fan-out, composition, provider shadowing, exclusivity | driver |
+| `point` | the three kinds, the four hook dispatch modes incl. `bail`, composition, provider shadowing, exclusivity | driver |
 | `export` | keying, aliasing, ambiguity | driver |
-| `depend` | requirement checks at load vs activate, activation ordering, cycles | driver |
+| `depend` | `pending` on an unmet requirement, automatic activation on arrival, reactive deactivation and recovery, recursion through consumers, capability-not-ref satisfaction, cycles | driver |
 | `apply` | idempotent document application, add/remove/patch/toggle | driver |
 | `error` | every code in §12, and the message format | both |
 | `trace` | the lifecycle event records | driver |
@@ -1167,6 +1289,11 @@ Where struct cannot be linked (a vendored SDK build), a port carries the
 same vendored subset the SDKs already carry. The plugin library takes
 nothing else, in any port, ever — and, like omni's runner, the plugin
 library must never be used to implement its own tests.
+
+**The canonical is written to the portability budget in §18's P1** — no
+reflection-backed API, no decorators, eager lifecycle reconciliation, no
+meta-level interception. A canonical that reaches for a JavaScript
+convenience is not clever, it is a bill the other twenty ports pay.
 
 Naming and casing follow the house rules: `makehost` / `makeHost` /
 `MakeHost` / `make_host` / `plugin_make_host` per language, parity
@@ -1269,12 +1396,37 @@ the canonical name list.
 ### P1 — The tracer bullet (typescript)
 
 The thinnest thing that is genuinely end-to-end, not a subset that
-avoids the hard parts:
+avoids the hard parts.
+
+**The canonical must be written to a portability budget from line one**,
+and §22.2 supplies it for free: `cordis-rs` is a Rust port of this same
+model, and its documented divergences are a list of the JavaScript
+shapes that do not survive contact with a static language. So P1 is
+constrained, not merely reviewed later:
+
+- **no reflection-backed API** — no `Proxy`, no dynamic property
+  interception, no "the context magically has a field named after the
+  service". Typed accessors and explicit registration only.
+- **no decorators**, and nothing else that needs a language feature
+  half the target set lacks.
+- **eager lifecycle reconciliation** — a transition settles by running
+  the state machine to a fixed point, not by suspending on a promise.
+  Ports that have no executor must be able to ask "what is the state
+  now?" and get an answer. This is also the honest form of §14's
+  async rule.
+- **no meta-level interception** of the host's own operations. A plugin
+  extends the host through declared points; it does not hook the act of
+  getting a service or setting an option.
+
+Every one of these is cheaper to obey in P1 than to remove in P4.
+
+The work itself:
 
 - ref parsing/formatting; the config document normalizer; static
   catalog; `load` / `activate` / `deactivate` / `unload` / `close`;
   the state machine with its errors; **one point of each kind**
-  (`hook`, `chain`, `provider`); the release ledger; the topological
+  (`hook`, `chain`, `provider`) with all four hook dispatch modes; the
+  instance scope and its automatic recording; the topological
   order resolver; `list`/`order`/`status`/`trace`.
 - The driver, the probe catalog, and corpus sections `ref`, `config`,
   `lifecycle`, `state`, `resource`, `point`, `order`, `error`.
@@ -1375,9 +1527,10 @@ the response is to shrink the model, not to accept the port.
 2. **Does `unload` destroy state, or may a host keep it for a later
    reload?** Currently destroyed at `close`. A "detached state" concept
    would serve config reload, at real complexity cost.
-3. **Should hook bindings be able to abort the fan-out?** `strict: true`
-   at point declaration covers errors; nothing covers "handled, stop".
-   Resist until a host needs it.
+3. ~~**Should hook bindings be able to abort the fan-out?**~~
+   *Settled* — the `bail` dispatch mode (§6.1). The instinct to resist
+   it was wrong: Cordis has carried the same mode for years, which is
+   better evidence than an argument from parsimony.
 4. **Per-instance scoping of the host** — seneca's delegate gives each
    plugin a view of the host that attributes its calls automatically. It
    is genuinely useful and genuinely hard to port. Deferred to P2 as a
@@ -1409,3 +1562,83 @@ the response is to shrink the model, not to accept the port.
 - **Replacing sdkgen's feature system.** §17.2 proves the mapping and
   ships a bridge. Whether generated SDKs adopt it is sdkgen's call,
   costed across 23 template trees.
+
+
+## 22. Prior art: Cordis
+
+[Cordis](https://github.com/cordiverse/cordis) is a context-based plugin
+kernel: four years in production under the Koishi chatbot framework, and
+now the kernel of [DeepSeek Harness](https://deepseek.com/harness/en/),
+where models, tools, skills, sessions, sandboxes, storage, the agent
+loop and the UI are all plugins. It is the closest thing to this design
+that already exists, it is further along, and several of its answers are
+better than the ones this document started with. Four of them have been
+taken into the sections above; they are collected here so the debt is
+legible and so the two places we deliberately diverge are on the record.
+
+### 22.1 What we took
+
+- **The scope, not the ledger** (§8.1). Every registration made through
+  a plugin's context is inherently disposable and owned by that
+  plugin's fiber; `ctx.effect()` covers anything foreign. This design's
+  first draft made the plugin author keep the list by hand.
+- **`PENDING` as a state** (§5.1). Cordis's fiber runs
+  `PENDING → LOADING → ACTIVE | FAILED` and
+  `ACTIVE → UNLOADING → DISPOSED`. "Declared but its dependencies are
+  not available" is a different fact from "switched off", and this
+  design had one state for both.
+- **Live requirements** (§11). A plugin with `inject` waits for its
+  services, and if a service disappears — during provider replacement,
+  say — it unloads and comes back when the service returns. That is a
+  better answer than refusing the deactivation.
+- **Dispatch modes** (§6.1). `emit`, `parallel`, `serial`, `bail` and
+  `waterfall` (this design's `chain`). Our `hook` was one word standing
+  in for four different concurrency behaviours.
+
+And one caveat, taken as stated: disposers run in reverse registration
+order, but **async disposers are not serialized**, so order-dependent
+teardown belongs in a single effect (§8).
+
+### 22.2 The port that already ran our P4
+
+[`cordis-rs`](https://github.com/dshbox/cordis-rs) is a runtime-agnostic
+Rust port with zero dependencies — the same model, in the language this
+design's plan schedules as its hardest early port. Its `Fiber` /
+`FiberState`, its "single-shot and fiber-owned" effects with an
+`EffectHandle` for early disposal, and its object-safe `Plugin` trait
+are worth reading before writing our own.
+
+Its **documented divergences** are worth more still, because they are
+the list of things that did not survive the crossing: no Proxy-backed
+reflection, no decorator syntax, eager lifecycle reconciliation instead
+of promise-based suspension ("deterministic without requiring a specific
+executor"), and no meta-event interception. That list is the
+portability budget in §18's P1, obtained without our having to spend a
+port to discover it.
+
+### 22.3 Where we diverge, and why
+
+- **Named instances.** Cordis makes multi-instance opt-in per plugin
+  (`reusable: true`) and instances are anonymous **forks**, disposed by
+  holding the fork handle: `fork.dispose()`. That is fine in-process
+  and no use at all from a configuration file, a CLI, or an agent tool
+  — you cannot write "the slow retry instance" in a document and later
+  deactivate *that one* by name. Our `name$tag` (§4) makes every
+  instance addressable from outside the process, which is precisely the
+  requirement station has, and multi-instance is a property of the
+  system rather than a permission each definition grants.
+- **Host-declared points.** In Cordis a plugin can introduce a new
+  service key on the context; that open-endedness is what lets
+  "everything is a plugin" be true. We require the host to declare its
+  points (§6.4), so an unknown binding fails at `define` time and the
+  extension surface of a library is a knowable, auditable list. The
+  cost is real and worth stating: a voxgig/plugin host cannot be
+  extended in a direction it did not anticipate. For station — where
+  the question "what can a plugin do to my outbound traffic?" has to
+  have an answer — that is the right trade. For a harness whose entire
+  architecture is plugins, it would be the wrong one.
+
+The honest summary: on lifetime and disposal Cordis is ahead of where
+this document started, and we should follow it. On addressing and on
+the size of the extension surface we are solving a different problem,
+and should not.
