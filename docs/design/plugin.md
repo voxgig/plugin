@@ -2333,6 +2333,19 @@ own propagation cost across 23 template trees.
 Sequenced as a tracer bullet: one thin, end-to-end, *working* slice
 first, then depth, then breadth. TypeScript is the tracer.
 
+> **Cross-repo sequencing lives in station's
+> [`station-and-plugin-plan.md`](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md)**,
+> beside the reconciliation it accompanies. The phases below stay
+> authoritative for their own contents; what they cannot state from
+> inside this repo is what this repo owes station and when. Two of the
+> four cross-repo obligations fall on P1 and are easy to read as
+> internal when they are not: the `ref` and `config` corpus sections
+> are owed **before station's Stage 2**, earlier than P1's own exit,
+> and `lifecycle`, `order` and the draft driver contract before P1
+> exits. P0 has an entry condition that plan also names — **this
+> design is not yet on `main`**, and P0 builds a repository skeleton
+> around it.
+
 ### P0 — Repository skeleton
 
 Layout of §16; `README`, `DOCS`, `AGENTS`, `CLAUDE`, `Makefile`; this
