@@ -607,6 +607,20 @@ calls `host.call(point, args…)`; the host composes
 `b1(b2(b3(base)))` from the active bindings in resolved order, where the
 first binding is outermost.
 
+**A plugin cannot replace the base, and does not need to.** The base
+belongs to the host, so a plugin whose job is to *substitute* the
+transport rather than wrap it — sdkgen's `test` feature, which assigns
+`ctx.utility.fetcher` outright — binds as the innermost link and simply
+does not call `next`. The effect is identical and the ownership is
+not: the host's base stays reachable, the substitution is visible in
+`host.order(point)` like every other link, and nothing needs a
+declared "this one is a base" role. Station had proposed exactly such a
+role — `transport: 'base' | 'wrap' | 'none'` across seventeen feature
+models — and it disappears here, along with the seventeen-model change,
+because position already carries it. A host that wants the invariant
+enforced pins the innermost slot (§7) rather than trusting a
+self-declared role.
+
 The composition is **recomputed by the host** whenever the active set
 changes, and cached between changes. Plugins receive `next` as an
 argument; they never see or store the previous value of anything. A
@@ -771,6 +785,25 @@ both are present.
 Constraints referring to an absent binding are **satisfied vacuously**
 (not an error): a plugin ordered `after: 'test'` must load in a host
 with no test plugin. That is the sdkgen `__after__` behaviour, kept.
+
+**A host may pin a binding's position, and a pin is not a constraint.**
+`host.point('request', {kind: 'chain', pin: {station: 'first'}})`
+fixes where a named instance's binding sits, and an ordering that would
+move it is `plugin_order_pinned` — rejected, not honoured. Constraints
+and bands are negotiable by definition: they are what plugins and
+documents say they want, and the sort's job is to satisfy them all. A
+pin is the host stating a structural invariant of its own architecture,
+which is a different kind of claim and must not lose a tie to a
+document.
+
+Station is again the case that shows the need: its transport adapter
+must sit immediately outside the base transport, `station.md` §3.3
+pins that mechanism, and an `order` list that moves it has to be an
+error rather than a preference honoured into a broken wrap. §6.6's
+`inst.position()` is the *plugin*-side counterpart — a binding
+verifying after the fact where it landed — and the two are not
+substitutes: verification tells a plugin it was misplaced, a pin stops
+the misplacement from being expressible.
 
 The resolved order is recomputed on any change to the active set, is
 exposed by `host.order(point)`, and is pinned by the corpus's `order`
@@ -953,6 +986,12 @@ exactly the sequence of API calls the programmatic path makes.
     { "kind": "path",   "dir": "./plugin" }
   ],
 
+  // Per-definition defaults, keyed by NAME — never a ref. A base for
+  // every instance of that definition; declares nothing itself (§9.3).
+  "default": {
+    "stripe": { "options": { "timeout": 5000 } }
+  },
+
   // Instances, keyed by REF. The key carries the tag, so multi-instance
   // works in the map form too.
   "instance": {
@@ -969,7 +1008,8 @@ exactly the sequence of API calls the programmatic path makes.
   // or by VOXGIG_PLUGIN_PROFILE.
   "profile": {
     "dev":  { "instance": { "retry": { "options": { "retries": 0 } } } },
-    "prod": { "instance": { "memcache$hot": { "options": { "max": 100000 } } } }
+    "prod": { "default":  { "stripe": { "options": { "timeout": 20000 } } },
+              "instance": { "memcache$hot": { "options": { "max": 100000 } } } }
   }
 }
 ```
@@ -1027,6 +1067,28 @@ host's config file has mistaken uniformity for design. The renaming is
 a pure map applied to one level of keys — the *shape* underneath is
 identical, so the corpus tests it once and every host gets it.
 
+**A host may also reserve refs, and a host that embeds this library in
+its own config file needs to.** `makeHost({ reserved: ['station'] })`
+makes every key under a reserved name — `station`, `station$anything` —
+`plugin_ref_reserved` when it appears in a document, at any precedence
+level. The host declares those instances itself, after the user merge,
+and always wins.
+
+This exists because of a trap station identified and closed in its own
+design (`station-declarative-config.md` §8.4). Station's adapter is a
+plugin like any other, so a generic document surface would let a config
+file write `active: false` against it — switching off the component
+that is reading the file — or re-point it at a different identity, and
+§9.3's precedence puts a document value *above* what the host passes at
+construction. A configuration surface that can disable the thing
+reading it is not a surface, it is a trap. Any host embedding this
+library has the same exposure the moment its own machinery is a plugin,
+so the guard belongs here rather than being re-derived per host.
+
+Reserved is deliberately all-or-nothing per name in v1: opening a
+specific key later is safe, and discovering that a half-open one was
+settable is not.
+
 ### 9.2 The programmatic API
 
 ```ts
@@ -1081,18 +1143,66 @@ the corpus's `config` section:
 
 1. definition option defaults (the definition's option shape),
 2. host defaults for that definition (`makeHost({defaults: …})`),
-3. config document base (`instance.<ref>.options`),
-4. config document profile overlay,
-5. environment (`VOXGIG_PLUGIN_<REF>_<PATH>`, §9.5),
-6. host construction options,
-7. per-load options (`host.load(ref, options)`),
-8. runtime patch (`host.options(ref, patch)`).
+3. document base — `default.<name>`,
+4. document base — `instance.<ref>`,
+5. profile overlay — `default.<name>`,
+6. profile overlay — `instance.<ref>`,
+7. environment (`VOXGIG_PLUGIN_<REF>_<PATH>`, §9.5),
+8. host construction options,
+9. per-load options (`host.load(ref, options)`),
+10. runtime patch (`host.options(ref, patch)`).
 
-Untagged-to-tagged inheritance, seneca's shortname rule, applies at
-levels 2–4: options written for `retry` are a base for `retry$fast`,
-overlaid by options written for `retry$fast`. It is the behaviour people
-expect and it makes "configure the definition, then vary one instance"
-one line instead of two copies.
+Levels 3–6 are one ordered merge, and the order is the point:
+**profile specificity outranks definition specificity.** A `prod`
+per-definition default beats a base-profile instance value, because
+that is what an environment overlay is for; within one profile the
+instance beats the definition default, because that is what an instance
+is for. With no `default` entries it degenerates to base ⊕ overlay.
+
+**`default` is keyed by name and declares nothing.** `default.stripe`
+is a base for `stripe`, `stripe$test` and `stripe$eu` alike; it does
+not create an instance, does not appear in `host.list()`, and a
+`default` entry for a name with no instances is inert rather than an
+error. That last point is what makes a shared library of defaults
+shippable.
+
+**This replaces seneca's shortname rule, and the replacement is
+deliberate.** Earlier drafts sourced per-definition inheritance from
+the *untagged instance's* options, so `instance.stripe.options` was a
+base for `stripe$test`. That overloads one key with two jobs, and a
+host wanting `stripe$live`/`stripe$test`/`stripe$eu` and no untagged
+instance had to declare `{"stripe": {"active": false, "options": {…}}}`
+— a defaults carrier masquerading as an instance, visible as one in
+`host.list()` and in every status row built from it. Station hit this
+immediately (§17.1). So: **the untagged instance is an ordinary
+instance and its options apply only to itself.** Shared configuration
+has exactly one home, and the two keys have disjoint key spaces — a
+name is never a ref, a ref is never a name — so there is no case where
+a reader must ask which of two places a value came from. The forfeit is
+familiarity for seneca users; the gain is that this repo does not ship
+the same rule written twice, which is the defect class it exists to
+avoid.
+
+**Document defaults are applied after the merge, never before it.**
+`active` (default `true`) and `start` (default `"eager"`) are filled in
+on the *fully merged* entry, not on each layer as it is read. This is a
+safety rule, not a tidiness one, and station supplied the case that
+shows why (`station-declarative-config.md` §3.3). Take a base that bars
+an instance and an overlay that only moves a URL:
+
+```json
+"instance": { "pad$a": { "active": false } },
+"profile": { "prod": { "instance": { "pad$a": { "options": { "base": "https://prod.example" } } } } }
+```
+
+If the overlay entry had its defaults filled in before merging, it
+would carry a synthesized `active: true` and overwrite the base's
+`false` — and a one-key environment override would silently re-enable a
+deliberately disabled integration in production. So: **merge the
+entries as authored, then apply defaults to the result.** The same rule
+holds one level down for any host that nests an instance map inside an
+option (§6.5), where the identical defect reappears with a different
+key. The `config` corpus section carries both cases.
 
 ### 9.4 Merge semantics, and the list sharp edge
 
@@ -1114,6 +1224,32 @@ states the rule up front rather than per-case:
 > options says so in its option shape (`{"`$MERGE`": "append"}`), and
 > that is a property of the definition, not a special case in the
 > library.
+
+**Map depth is declarable the same way, and it has to be.** Deep-merge
+is the right default for an option map, but it is the wrong default for
+any option whose value is a *set of permissions* rather than a bag of
+settings. Station's `policy: {hosts: [...]}` is the worked case: an
+egress allowlist that silently widens because two precedence levels
+merged is precisely the failure worth designing against, and station's
+own rule (`station-declarative-config.md` §3.3) is therefore that a
+block merges shallow, per key, with `policy` replacing wholesale.
+
+Those two rules — this library's deep-merge and station's shallow —
+cannot both be global, and a host cannot be asked to give up an
+allowlist guarantee to adopt a plugin library. So neither is global:
+
+> **The option shape declares the merge behaviour of each key.** The
+> library default is deep for maps and replace for lists. A key whose
+> shape carries `{"$MERGE": "replace"}` replaces wholesale at every
+> precedence level; `"append"` concatenates a list. The shape is the
+> one place the question is answered, and it travels with the
+> definition rather than living as a table in the host.
+
+Station declares `policy` and `options` as `replace` in its SDK
+definition shape and keeps its §3.3 guarantee unchanged; a definition
+that says nothing gets deep-for-maps and never learns the key exists.
+The `config` corpus section pins all three behaviours against the same
+document.
 
 `host.options(ref, patch)` is a merge at the top of the precedence
 stack, and is re-validated. It applies immediately to a loaded instance
@@ -1208,6 +1344,42 @@ and reports what breaks.
   in the catalog under its name. This works in every language, is the
   only path in some, and is the floor: **every port must implement it,
   and no behaviour in the corpus may depend on anything else.**
+
+  **A catalog entry carries the definition's option shape, and it is
+  readable before the definition is loaded.** This is the one piece of
+  metadata that must be available at registration time rather than at
+  `load`, because the questions a host asks *before* running anything
+  depend on it: validating a declared instance's options, composing an
+  ordered array for a constructor that has not been called yet, and
+  reporting on twenty declared instances without constructing one.
+
+  Station identified this as a hole in its own first draft and fixed
+  it — its factory table registers `{construct, config}` rather than a
+  bare constructor, precisely so that `station.check()` can validate
+  every instance's configuration with no construction at all
+  (`station-declarative-config.md` §6.2). A catalog that yields the
+  shape only after `load` reintroduces that hole one layer down: a
+  document of twenty lazy instances could not be validated without
+  defeating the laziness that is the reason `declared` exists (§5.1).
+
+  So `define` takes the shape alongside the definition, a dynamic
+  resolver may return it without instantiating, and `host.check()`
+  validates options for every *declared* instance from the catalog —
+  falling back to forcing an instance up only where its definition is
+  dynamically resolved and its resolver cannot supply a shape, which it
+  reports per instance rather than silently.
+
+- **A catalog may be shared between hosts.** `makeCatalog()` produces
+  one that `makeHost({catalog})` takes, so a process running several
+  hosts registers a definition once. Station's factory table is
+  explicitly process-global, station-independent and populated before
+  any `Station.open()`, and two stations in one process must not need
+  two registrations; without a shared catalog, adoption would either
+  regress that or push hosts into a module-level singleton this
+  library does not define. The default remains a private per-host
+  catalog — sharing is a host's decision, and a shared catalog is
+  still only a map from name to definition, holding no configuration
+  and no instances.
 - **Dynamic resolution** — a host-installed `resolver` maps a name to a
   definition at load time, typically by importing a module. Optional,
   advertised per port as a capability, and always *replaceable*: the
@@ -1651,6 +1823,8 @@ in a handful of places is both cheap and sufficient.
 | `plugin_define_failed` / `plugin_activate_failed` / `plugin_deactivate_failed` / `plugin_close_failed` | a callback raised; wraps the cause |
 | `plugin_release_failed` | one or more ledger entries raised |
 | `plugin_point_exclusive` | second binding on an exclusive provider point |
+| `plugin_ref_reserved` | a document names a host-reserved ref (§9.1) |
+| `plugin_order_pinned` | an ordering would move a host-pinned binding (§7) |
 
 Every error carries the host name, the ref (where one exists), the code,
 and the cause. A plugin's own errors are never rewritten — they are
@@ -1934,14 +2108,20 @@ are requirements on this one, and two of them changed this design:
 
 | station needs | plugin provides |
 |---|---|
-| `sdk` / `api` blocks declaring named instances | the config document's `instance` map, keyed by ref (§9.1) |
+| `sdk` blocks declaring named instances | the config document's `instance` map, keyed by ref (§9.1) |
+| `api.<slug>` blocks, inherited by every instance of an api | the `default` map, keyed by name (§9.1, §9.3) — settled by station's review |
 | `stripe-test`, an instance of api `stripe` | `stripe$test` — name is the api, tag is the instance (§4) |
 | twenty declared, constructed on first `sdk(name)` | `declared` state + `start: "lazy"` + `ready(ref)` (§5.1) — **the reason `declared` exists** |
 | `instances()` (declared) vs `plugins()` (live) | `host.list()` over all states vs the `active` rows of it |
 | `active: false` in a profile overlay | `active: false` in the document (§9.1) |
 | `create()` returning uncached clients | auto-tagged instances, `tag: '?'` → `stripe$1` (§4 rule 3) |
 | SDK features managed fleet-wide, per instance | an instance that is itself a host (§6.5) — **the reason nested hosts are in the model**, and contingent on §17.2 (see below) |
-| the transport wrap "immediately outside the base transport" | a `chain` binding with a low band, plus `inst.position()` (§6.6) |
+| the transport wrap "immediately outside the base transport" | a `chain` binding with a low band, pinned by the host (§7), verified by `inst.position()` (§6.6) |
+| `feature.station` reserved, so a config cannot disable the adapter | `makeHost({reserved})` and `plugin_ref_reserved` (§9.1) |
+| `test` replacing the transport rather than wrapping it | the innermost `chain` link, declining to call `next` (§6.2) — the proposed `transport` role is unnecessary |
+| feature config validated with no construction | the catalog carries the option shape at registration (§10.1) |
+| `policy` replacing wholesale, never widening by merge | `{"$MERGE": "replace"}` in the option shape (§9.4) |
+| a process-global factory table, shared by every station | a shared catalog, `makeHost({catalog})` (§10.1) |
 | the `station` ordering special case in `makeOptions` | ordering constraints (§7) — the special case goes away |
 | explicit feature wrap `order` at profile level | the same constraints, one level down, in the inner host |
 | struct-validated config | §9.4's option shapes, same `struct.validate` — but see the credential note below |
@@ -2315,34 +2495,23 @@ integration-tested in every port (§11.4).
    *Settled* — the `bail` dispatch mode (§6.1). The instinct to resist
    it was wrong: Cordis has carried the same mode for years, which is
    better evidence than an argument from parsimony.
-4. **Where do per-definition defaults live in the document?** Raised by
-   station's review. §9.3 level 2 is `makeHost({defaults})` — code — and
-   the document's only per-definition slot is the untagged instance,
-   because §9.3's shortname rule sources inheritance from
-   `instance.<name>.options`. A host with `stripe$live`, `stripe$test`
-   and `stripe$eu` and no untagged instance therefore has nowhere in
-   the file to write what all three share. It *can* declare
-   `"stripe": {"active": false, "options": {…}}` — barred from running,
-   inherited by the tagged three — but that is a defaults carrier
-   masquerading as an instance, and it shows up as one in `host.list()`
-   and in every status row built from it.
+4. ~~**Where do per-definition defaults live in the document?**~~
+   *Settled* — the name-keyed `default` map (§9.1, §9.3), at precedence
+   levels 3 and 5. Raised by station's review: its `api.<slug>` block
+   writes a policy or a package name once for every instance of an api,
+   and §17.1's "the `api` field disappears" is true of the *field* and
+   not of the *block*. The alternative shapes — a `defaults: true`
+   marker on an instance entry, or keeping the untagged instance as the
+   carrier — both leave one key doing two jobs, and the untagged-carrier
+   form shows up as a live instance in `host.list()` and in every status
+   row built from it.
 
-   Station hits this immediately: its `api.<slug>` block exists to write
-   a policy or a package name once for every instance of that api
-   (`station-declarative-config.md` §3.2), and §17.1's "the `api` field
-   disappears" is true of the *field* and not of the *block*. The
-   obvious shape is a name-keyed `default` map beside the ref-keyed
-   `instance` map, feeding level 2 — but whether that is the right
-   spelling, whether it should instead be a `defaults: true` marker on
-   an instance entry, and how it interacts with profile overlays, are
-   this repo's to settle rather than station's to propose. **Resolve
-   before P1's configuration work**, not merely before P2's `apply()`:
-   P1 already ships the document normalizer and option resolution at
-   load, and requires the `config` corpus — which pins profile overlay,
-   precedence and list-replace (§15.3) — green at its exit. A
-   name-keyed `default` map or a `defaults: true` marker introduced
-   after that would not extend the canonical API and its fixtures, it
-   would invalidate them.
+   Settled here rather than deferred because P1 ships the document
+   normalizer and requires the `config` corpus green at its exit: a
+   `default` map introduced after that would not extend the canonical
+   API and its fixtures, it would invalidate them. The cost is that
+   seneca's shortname inheritance goes with it — §9.3 says why that
+   forfeit is the right way round.
 5. **Per-instance scoping of the host** — seneca's delegate gives each
    plugin a view of the host that attributes its calls automatically. It
    is genuinely useful and genuinely hard to port. Deferred to P2 as a
