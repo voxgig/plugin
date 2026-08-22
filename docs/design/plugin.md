@@ -333,10 +333,22 @@ Seven statuses, and no more: `declared`, `loaded`, `pending`, `active`,
 observable only from inside a callback or from another thread. A port
 that adds an eighth is diverging.
 
-- **`declared`** — the ref exists, its options are resolved, and
-  **nothing else has happened**: the definition has not been resolved,
-  no module has been imported, no plugin code has run. It is a row in
-  the registry and an entry in the config, and it costs a map entry.
+- **`declared`** — the ref exists, its **raw configuration is merged
+  and normalized**, and nothing else has happened: the definition has
+  not been resolved, no module has been imported, no plugin code has
+  run. It is a row in the registry and an entry in the config, and it
+  costs a map entry.
+
+  Raw, not resolved, and the distinction is load-bearing rather than
+  pedantic. §9.3's precedence starts at the *definition's* option
+  defaults and §9.4 validates against the *definition's* option shape —
+  neither of which exists until the definition is resolved, which this
+  state forbids. A `declared` instance therefore carries the merged
+  document layers and nothing from the definition; **options are
+  resolved and validated at `load`**, which is also the first moment a
+  bad option value can be reported. A port that resolved options here
+  would have to import plugin code to do it, which is the one thing
+  this state exists to avoid.
 
   This state is here because the first real consumer cannot work
   without it. Station (§17.1) declares twenty-plus SDK instances in one
@@ -389,7 +401,8 @@ attached to the raised error and does not replace it.
 | `activate(ref)` | `loaded` | `active`, or `pending` if a requirement is unmet | bindings removed, scope unwound in reverse; → `failed` |
 | *(automatic)* | `pending` | `active` | as `activate` |
 | *(automatic)* | `active` | `pending` | a requirement was lost (§11) |
-| `deactivate(ref)` | `active`, `pending` | `loaded` | bindings removed, scope still fully unwound; → `failed` |
+| `deactivate(ref)` | `active` | `loaded` | bindings removed, scope still fully unwound; → `failed` |
+| `deactivate(ref)` | `pending` | `loaded` | — (nothing to undo; see below) |
 | `unload(ref)` | `declared`, `loaded`, `pending`, `failed` | absent | error raised; registry entry dropped anyway |
 | `unload(ref)` | `active` | absent | deactivate first, then close |
 
@@ -408,6 +421,14 @@ reason `pending` exists: activation is a *standing request*, not a
 one-shot event. Asking for an instance to be active means it is active
 whenever it can be, and `deactivate` — an operator withdrawing the
 request — is the only thing that returns it to `loaded`.
+
+**Deactivating a `pending` instance runs no callback.** It never
+reached `activate`, so it holds no scope and no live bindings, and
+there is nothing for `deactivate` to undo — running the definition's
+`deactivate` there would be teardown without matching setup, which
+plugins are not written to survive and which could fail an instance
+that had done nothing wrong. It is a callback-free withdrawal of the
+standing request, and it cannot fail.
 
 **Any** failure during a transition — a lifecycle callback raising, or a
 ledger entry raising (§8) — lands the instance in `failed`. There is no
@@ -513,9 +534,9 @@ part of the point declaration:
 
 | mode | dispatch | returns |
 |---|---|---|
-| `emit` | every binding, no waiting (the default) | the collected errors (§6.1 below) |
-| `parallel` | every binding, started together, all awaited | as `emit`, once all settle |
-| `serial` | every binding, awaited one at a time in resolved order | as `emit` |
+| `emit` | every binding, no waiting (the default) | errors raised *synchronously*; a later async failure is trace-only |
+| `parallel` | every binding, started together, all awaited | the collected errors, once all settle |
+| `serial` | every binding, awaited one at a time in resolved order | the collected errors |
 | `bail` | in resolved order, **stops at the first binding that returns a value** | that value, or absent |
 
 `bail` is the "handled — stop" case, and it earns its place: it is how a
@@ -535,9 +556,17 @@ discarding them would be a genuine cross-port divergence in exactly the
 production path nobody tests — the reporting is pinned:
 
 - each error emits a `fail` trace record (§13) carrying the ref, the
-  point and the cause, *and* is collected;
-- `emit` returns the collected list, empty when every binding was clean.
-  A host that ignores the return value has ignored the errors, visibly;
+  point and the cause. **That is the only report `emit` can make for a
+  binding that fails after it returns** — a fire-and-forget dispatch
+  has, by construction, no result left to put a late rejection in, and
+  a mode that promised to collect them would be promising something no
+  async port can deliver. `emit` returns the errors its bindings raised
+  *before it returned*; anything later is trace-only, and a host that
+  needs every failure in hand declares the point `parallel` instead —
+  which is the same fan-out, awaited;
+- `parallel` and `serial` return the collected list, empty when every
+  binding was clean. A host that ignores the return value has ignored
+  the errors, visibly;
 - the collected list is also raised as a single `plugin_hook_failed` when
   the point is declared `{ raise: true }`, for hosts that would rather
   not check a return value;
@@ -635,8 +664,24 @@ Three rules keep this from becoming a graph:
   grandparent's. A host that genuinely wants to share passes the
   capability down explicitly, `inst.host({ inherit: ['clock'] })`,
   which is a decision written in one place rather than an ambient rule.
-- **Trace records carry the path** — `stripe$test/retry`, not `retry` —
-  so a fleet view of twenty SDKs each with six features is readable.
+
+  **An inherited capability stays live across the boundary.** It is a
+  *view* of the outer host's capability, not a copy taken at creation:
+  when the outer provider leaves `active`, §11's reactive deactivation
+  fires inside the child exactly as it would for a native one, and the
+  child's consumers return to `pending` until it comes back. Anything
+  else would leave an inner plugin `active` against a dead provider —
+  the precise failure §11 exists to prevent — reintroduced by the
+  nesting. The inner host's `resolve()` (§11.4) therefore includes
+  inherited capabilities and reports their outer provider by its full
+  path.
+- **Trace records carry the ancestry as a list of refs**, `["stripe$test",
+  "retry"]`, not a joined string. A `/` is legal inside a definition
+  name (§4), so `stripe/retry` is ambiguous between a top-level
+  instance called `stripe/retry` and the `retry` child of `stripe` —
+  and a status tool that merged those two would be doing the opposite
+  of what the path is for. Rendering for humans joins with `/`;
+  the *record* stays structured.
 
 The nesting is not recursive by ambition; nothing stops a third level,
 and nothing in the design encourages one.
@@ -669,9 +714,15 @@ topological sort**:
    hook. Bands break constraint-free ordering globally, which is what
    lets a host say "the base transport wrapper is band 100" once,
    instead of every plugin naming it.
-3. **Declaration order last.** Ties break by the instance's load
-   sequence, so the array form of the declarative config (§9.1) means
-   what it visibly says.
+3. **Declaration order last.** Ties break by the instance's
+   **declaration** sequence — the `seq` assigned at `declare` (§4 rule
+   4), not the order in which instances happened to load. With lazy
+   instances (§5.1) those differ: twenty instances declared in document
+   order may load in whatever order their first `ready()` calls
+   arrive, so a load-order tie-break would let two unconstrained
+   bindings swap places depending on which ref a request touched
+   first. Declaration order is the order the document visibly states,
+   and it is the one that must decide.
 
 **Bands are OSGi start levels, and they carry the same hazard** (§23).
 A global integer ordering is the thing people reach for when they have
@@ -705,21 +756,37 @@ handle is recorded against that instance and undone on deactivate,
 automatically.
 
 ```ts
+def.define = (inst, options) => {
+  inst.state = { hits: 0 }
+  inst.chain('request', wrap)                 // DECLARED here, never in activate
+  inst.provide('store', myStore)              // (§5.3, §6.4)
+}
+
 def.activate = (inst) => {
-  inst.chain('request', wrap)                 // recorded: the host owns the undo
-  inst.provide('store', myStore)              // recorded
-  inst.timer(1000, poll)                      // recorded, where the host offers timers
+  // the host has just inserted the bindings declared above, and will
+  // remove them again on deactivate. Nothing here re-declares them.
+
+  inst.timer(1000, poll)                      // recorded: the host owns the undo
+  const conn = inst.connect(inst.options.addr)// recorded, where the host offers it
 
   const sock = net.connect(inst.options.addr) // FOREIGN: the host cannot see this
   inst.release(() => sock.destroy())          // so it is registered explicitly
 }
 ```
 
-The rule that matters, and the one this design got wrong in its first
-draft:
+Two things are unwound on deactivate, from two different places, and
+conflating them is a mistake this document made in an earlier draft:
 
-> **Anything reached through `inst` records its own undo. `release` is
-> only for what the host cannot see.**
+- **bindings**, declared in `define` and inserted by the host at
+  activation — the host removes them itself, and they are not scope
+  entries. Calling `inst.chain` inside `activate` is
+  `plugin_bind_scope` (§12), not a shortcut;
+- **resources**, acquired during `activate` — the scope's actual job.
+
+The rule that matters:
+
+> **Anything reached through `inst` during `activate` records its own
+> undo. `release` is only for what the host cannot see.**
 
 A per-resource ledger the plugin author maintains by hand is a list
 every author can forget an entry in, silently, forever — and a plugin
@@ -832,7 +899,7 @@ exactly the sequence of API calls the programmatic path makes.
 
   // Where dynamically-resolved definitions may come from (§10).
   "source": [
-    { "kind": "module", "prefix": ["@voxgig/plugin-", "voxgig-plugin-", ""] },
+    { "kind": "module", "prefix": ["@voxgig/plugin-", "voxgig-plugin-", "plugin-", ""] },
     { "kind": "path",   "dir": "./plugin" }
   ],
 
@@ -852,7 +919,7 @@ exactly the sequence of API calls the programmatic path makes.
   // or by VOXGIG_PLUGIN_PROFILE.
   "profile": {
     "dev":  { "instance": { "retry": { "options": { "retries": 0 } } } },
-    "prod": { "instance": { "cache$hot": { "options": { "max": 100000 } } } }
+    "prod": { "instance": { "memcache$hot": { "options": { "max": 100000 } } } }
   }
 }
 ```
@@ -935,9 +1002,9 @@ await host.activate('retry$fast')                   // same instance, same state
 await host.unload('retry$fast')
 
 host.instance('retry$fast')      // -> instance | undefined; NEVER advances state
-host.list()                      // -> [{ref, define, status, options, points, …}]
+host.list()                      // -> [{ref, name, tag, status, seq, points, …}]
                                  //    includes `declared` rows
-host.order('request')            // -> ['retry$fast', 'cache$hot']
+host.order('request')            // -> ['retry$fast', 'memcache$hot']
 host.options('retry$fast', {retries: 9})   // patch; see 9.4
 host.status()                    // -> the whole picture (§13)
 await host.close()               // deactivate + close everything, reverse load order
@@ -1057,6 +1124,20 @@ twenty lazy instances is therefore twenty map entries and no executed
 code, which is the property station needs and the reason §5.1's
 `declared` state exists.
 
+**Toggling an instance back to lazy or inactive returns it to
+`declared`, by unloading it.** There is no `loaded → declared`
+transition and there should not be one: going back to `declared` means
+"as if never loaded", and an instance that has run `define` has
+allocated state and declared bindings that only `close` can properly
+undo. So when a re-applied document flips `start` to `"lazy"` or
+`active` to `false` on an instance that is currently `loaded` or
+beyond, `apply` **unloads it and declares it again** — its plugin state
+is destroyed, which is the honest meaning of the change. Without this
+the same document would yield `declared` on a first apply and `loaded`
+after a toggle, and "re-runnable" would be false. `apply` reports these
+in its plan, because silently destroying an instance's state on a
+config reload is not something to do quietly.
+
 `apply` runs `host.resolve()` (§11.4) over the **eager** set before it
 activates anything, and returns its answer alongside the plan. A
 document that cannot fully come up says so once, naming the one missing
@@ -1085,6 +1166,15 @@ and reports what breaks.
 `load(ref)` looks in the catalog first, then asks the resolver, then
 fails with `plugin_unknown_definition`. A resolver that raises produces
 `plugin_resolve_failed`, carrying the candidates it tried.
+
+**The definition that comes back must be named what was asked for.**
+Whether it arrived from the catalog, from a resolver, or through an
+explicit `from` (§10.2), its `name` must equal the ref's name, and a
+mismatch is `plugin_definition_name`. Without that check a resolver
+could hand back a `memcache` definition for `cache$hot` and quietly
+reinstate the aliasing §4 removed — registry identity saying one thing
+and definition metadata another, which is the exact ambiguity
+canonicalizing on name+tag was meant to end.
 
 ### 10.2 The resolution grammar is a pure function
 
@@ -1208,6 +1298,17 @@ requires: [{ name: 'store', range: '2.1',
 - **`name`** — the capability. Any active instance providing it
   satisfies a requirement for it, so deactivating one of two `clock`
   providers moves nobody.
+
+  **When several match, one is selected, deterministically.** Rank the
+  matching active providers by: highest `version` first, then lowest
+  §7 `order` band, then declaration `seq` (§4 rule 4) ascending. The
+  first is bound, and `inst.capability(name)` returns it. Without this
+  rule "any provider satisfies" is true of the *graph* and useless to
+  the *plugin* — two ports could bind different `store` instances, both
+  resolve green, and behave differently, which is precisely the
+  divergence a shared corpus exists to catch. Rebinding stays reluctant
+  (§11.3): a bound provider is not swapped for a better one while it
+  remains active.
 - **`attrs`** — what this provider is like. Free-form JSON.
 - **`match`** — what the consumer needs it to be like: a **partial
   match against `attrs`**, with exactly the semantics `voxgig/struct`
@@ -1228,10 +1329,24 @@ the current registry*, and §11.4 is how you ask for it.
 A capability carries a version; a requirement carries a range. The
 grammar is two forms, and no more:
 
-| form | means | for |
+A capability declares **`version`**, a concrete version, and a
+requirement declares **`range`**. Where a provider needs to say which
+versions of a capability *it* can stand behind — the asymmetry below —
+it declares **`compat`**, a range, alongside its concrete `version`.
+Three fields, each with one job, because `version: "2.3"` meaning
+sometimes a point and sometimes a range would be unreadable:
+
+```ts
+provides: [{ name: 'store', version: '2.3', compat: '~2.1' }]
+requires: [{ name: 'store', range: '2.1' }]
+```
+
+Ranges, in both `range` and `compat`, have two forms and no more:
+
+| form | means | typical of |
 |---|---|---|
-| `'2.1'` | `>= 2.1.0` and `< 3.0.0` | **consumers** |
-| `'~2.1'` | `>= 2.1.0` and `< 2.2.0` | **providers** |
+| `'2.1'` | `>= 2.1.0` and `< 3.0.0` | a **consumer**'s `range` |
+| `'~2.1'` | `>= 2.1.0` and `< 2.2.0` | a **provider**'s `compat` |
 
 The asymmetry is the part worth importing wholesale from OSGi's
 semantic-versioning work, because it is genuinely counter-intuitive and
@@ -1240,8 +1355,9 @@ capability do not tolerate the same range.** Add one method to an
 interface and that is a *minor* bump — every existing consumer still
 works, and every existing provider is now broken, because it does not
 implement the new method. So a plugin that merely calls `store` can
-accept `'2.1'`; a plugin that *implements* `store` for someone else to
-call must declare `'~2.1'` and be updated deliberately.
+accept `range: '2.1'`; a plugin that *implements* `store` for someone
+else to call declares `compat: '~2.1'` and is updated deliberately.
+A provider with no `compat` stands behind its `version` alone.
 
 Getting this wrong is not a subtle degradation — it is a provider that
 silently satisfies a requirement it cannot actually meet, failing at
@@ -1292,7 +1408,24 @@ arbitrary later moment the consumer actually calls the thing.
   mandatory consumers are **deactivated back to `pending`** — scope
   unwound, bindings removed, state kept — and reactivated when a
   provider returns, recursively.
-- A requirement cycle is `plugin_dependency_cycle`, detected at load.
+
+  **Consumers go down first, not afterwards.** The cascade is part of
+  the provider's own deactivation, run *before* the provider's
+  `deactivate` callback and scope unwind, so a consumer's teardown can
+  still call the thing it depends on — flushing a buffer to the store
+  it is about to lose is exactly what a `deactivate` callback is for,
+  and a cascade that fired after the provider was already gone would
+  make that impossible. Order: consumers deepest-first, then the
+  provider. `unload` and `close` inherit it, which is what makes
+  `apply`'s reverse-load-order teardown (§9.6) safe even when a
+  document happens to list a consumer before its provider.
+- A cycle **through mandatory requirements** is
+  `plugin_dependency_cycle`, detected at load. Optional edges are
+  excluded from that detection, and must be: two plugins that
+  optionally consume each other's capabilities both activate happily —
+  neither gates on the other — and then bind reactively once the other
+  is up. Rejecting that pair at load would forbid a working
+  arrangement because of a cycle in a graph that never gates anything.
 
 This is provider replacement as an ordinary runtime operation rather
 than a restart: deactivate the old secret store, activate the new one,
@@ -1363,11 +1496,24 @@ plugin/<code>: <text> [<key>=<value> …]
 - `<text>` is one fixed English sentence per code, listed in `DOCS.md`
   and identical in every port. It interpolates only values that also
   appear in the detail fields.
-- The bracketed detail carries the fields that apply to the code, in a
-  fixed order — `host`, `ref`, `define`, `point`, `key`, `cause` —
-  omitting those that do not, and is absent entirely when none do.
-  Values are rendered as compact JSON, so a value containing a space or
-  a bracket cannot break the parse.
+- The bracketed detail carries the fields that apply to the code, in
+  this fixed order, omitting those that do not, and is absent entirely
+  when none do:
+
+  `host`, `ref`, `name`, `tag`, `point`, `key`, `capability`,
+  `range`, `version`, `match`, `candidates`, `cycle`, `holders`,
+  `refs`, `path`, `cause`
+
+  The list is exactly what the error table below needs — the resolver's
+  tried `candidates`, the ordering or dependency `cycle`, the
+  `holders` of a held instance, the `refs` of an ambiguous export, the
+  `range`/`version`/`match` of a capability that did not satisfy, and
+  the `path` of an error inside a nested host (§6.5). An earlier draft
+  named six fields while other sections promised diagnostics that had
+  nowhere to go, which would have left each port inventing its own
+  order and breaking message parity. Values are rendered as compact
+  JSON, so a value containing a space or a bracket cannot break the
+  parse, and a list field renders as a JSON array.
 - The cause of a wrapped plugin error is reachable as a field on the
   error object in every port; `cause=` in the text is its message, never
   a replacement for the object.
@@ -1388,6 +1534,7 @@ in a handful of places is both cheap and sufficient.
 | `plugin_ref_duplicate` | load onto an occupied ref |
 | `plugin_unknown_definition` | not in catalog, no resolver, or resolver found nothing |
 | `plugin_resolve_failed` | resolver raised; carries candidates |
+| `plugin_definition_name` | resolved definition's name is not the ref's name (§10.1) |
 | `plugin_dynamic_unsupported` | dynamic load attempted in a static-only port |
 | `plugin_not_loaded` | transition or query on an absent ref |
 | `plugin_bad_state` | transition illegal from the current status |
@@ -1551,12 +1698,12 @@ port-specific:
 | `config` | document normalization, array/map forms, profile overlay, precedence, list-replace | yes |
 | `env` | `VOXGIG_PLUGIN_*` parsing, ACTIVE/INACTIVE | yes |
 | `resolve` | name → candidate module ids | yes |
-| `capability` | provides/requires matching: name, `match` against `attrs`, satisfaction by any active provider | yes |
-| `version` | range grammar, consumer vs provider ranges, boundary cases, `plugin_bad_range` | yes |
+| `capability` | provides/requires matching: name, `match` against `attrs`, satisfaction by any active provider, and the deterministic selection rank when several match (§11.1) | yes |
+| `version` | range grammar, `version` vs `range` vs `compat`, boundary cases, `plugin_bad_range` | yes |
 | `graph` | whole-graph resolution (§11.4): resolved/blocked sets, and the *explanation* for each blocked instance | yes |
 | `lifecycle` | the state machine, idempotence, illegal transitions, failure paths | driver |
-| `declare` | `declared` costs nothing: introspection without loading, `start` eager vs lazy, `ready` walking the staircase, `active: false` barring (§5.1, §9.1) | driver |
-| `nest` | an instance that is a host (§6.5): inner lifetime owned by the outer, teardown order, trace paths, capability isolation | driver |
+| `declare` | `declared` costs nothing: introspection without loading, raw-vs-resolved options, `start` eager vs lazy, `ready` walking the staircase, `active: false` barring, callback-free `deactivate(pending)`, and `apply` unloading a toggled instance back to `declared` (§5.1, §9.1, §9.6) | driver |
+| `nest` | an instance that is a host (§6.5): inner lifetime owned by the outer, teardown order, structured trace ancestry, capability isolation, and an inherited capability's loss reaching inner consumers | driver |
 | `state` | persistence across activation cycles, destruction on unload | driver |
 | `resource` | the instance scope: automatic recording of host calls, `release` for foreign ones, reverse unwind, partial-activate rollback, failing release | driver |
 | `order` | topological sort, bands, ties, vacuous constraints, recomputation | driver |
