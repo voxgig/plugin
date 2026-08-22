@@ -1059,10 +1059,11 @@ the plugin library only ever sees the parsed subtree, and never reads a
 file itself.
 
 **A host may also rename these keys.** `makeHost({ keys: { instance:
-'sdk' } })` maps a host's own vocabulary onto the generic one before
-normalization. That is not a concession, it is the point: `sdk` is the
-right word in `station.json` (§17.1) and `instance` is the right word in
-a library that knows nothing about SDKs. A generic library that forces its vocabulary into every
+'sdk', default: 'api' } })` maps a host's own vocabulary onto the
+generic one before normalization. That is not a concession, it is the
+point: `sdk` and `api` are the right words in `station.json` (§17.1),
+and `instance` and `default` are the right words in a library that
+knows nothing about SDKs. A generic library that forces its vocabulary into every
 host's config file has mistaken uniformity for design. The renaming is
 a pure map applied to one level of keys — the *shape* underneath is
 identical, so the corpus tests it once and every host gets it.
