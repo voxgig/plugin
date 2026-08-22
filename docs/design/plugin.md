@@ -13,11 +13,11 @@ naming, configuration, lifecycle, ordering and teardown. Nothing about
 it is specific to station, to HTTP, or to SDKs.
 
 > **The one-paragraph version.** A **definition** is a plugin kind. An
-> **instance** is a live, stateful incarnation of a definition,
+> **instance** is a concrete, stateful incarnation of a definition,
 > addressed by **name+tag** — `retry$fast` and `retry$slow` are two
 > instances of one definition, in one host, at the same time; the name
 > is always the definition, the tag says which one. An instance is **loaded** (configured,
-> stateful, inert) or **active** (bound into the host's extension
+> stateful, inert) or **live** (bound into the host's extension
 > points, holding resources). Activation is a separate, reversible,
 > runtime-controllable transition, and **it is the only thing that
 > captures resources**. Instances come from a static in-code catalog
@@ -171,7 +171,7 @@ The two systems are the same system with different vocabularies:
 | concept | sdkgen | seneca | voxgig/plugin |
 |---|---|---|---|
 | the kind | feature class | plugin `define` fn | **definition** |
-| the live thing | feature instance in `_features` | plugin in `private$.plugins` | **instance** |
+| the runtime thing | feature instance in `_features` | plugin in `private$.plugins` | **instance** |
 | identity | `name` | `name$tag` | **`name$tag`** |
 | the extensible thing | the SDK client | the seneca instance | **host** |
 | binding | hook method names | `seneca.add()` patterns | **extension points** |
@@ -179,10 +179,10 @@ The two systems are the same system with different vocabularies:
 | observe | `PreRequest` etc. | `seneca.sub()` | **hook point** |
 | replace | `__replace__` | overriding pattern | **provider point** |
 | config | `options.feature.<n>` | `options.plugin.<full>` | **`plugin.instance.<ref>`** |
-| on/off | `active: true` at construction | load or don't | **loaded / active states** |
+| on/off | `active: true` at construction | load or don't | **loaded / live states** |
 
 The one genuinely new idea is the last row: separating *loaded* from
-*active*, and making activation the sole resource-capturing transition.
+*live*, and making activation the sole resource-capturing transition.
 Everything else is the intersection of what both systems already do,
 named once.
 
@@ -198,7 +198,7 @@ up to four lifecycle callbacks (§5.3). A definition is a *value*: the
 same definition object may back many instances, and may be registered in
 many hosts.
 
-**Instance** — one live incarnation of a definition inside one host,
+**Instance** — one concrete incarnation of a definition inside one host,
 addressed by name+tag (§4). Has resolved options, plugin-owned persistent state, a status
 (§5.1), a set of bindings into the host's extension points, and a
 resource scope (§8). An instance is the unit of naming, configuration,
@@ -229,7 +229,7 @@ belongs to exactly one.
                                  ▼
                        instance 'retry$fast'
               ┌────────────────────────────────────────┐
-              │ ref/name/tag/id     status: active     │
+              │ ref/name/tag/id     status: live        │
               │ options  (resolved, §9.3)              │
               │ state    (plugin-owned, persists §5.4) │
               │ bindings (declared in define, §6)      │
@@ -321,12 +321,12 @@ loss and the invariant is worth more than the cosmetics.
    forward, and each step implies the ones before it:
 
               declare()         load()         activate()     requirements met
-   (absent) ───────────► declared ─────► loaded ─────────► pending ──────────► active
+   (absent) ───────────► declared ─────► loaded ─────────► pending ──────────► live
                                                               ▲                  │
                                                               └──────────────────┘
                                                                 requirements lost
 
-   back:   deactivate()   any of pending/active  ─────────►  loaded
+   back:   deactivate()   any of pending/live    ─────────►  loaded
            unload()       any state              ─────────►  (absent)
            ready(ref)     runs the whole forward path in one call
 
@@ -335,7 +335,7 @@ loss and the invariant is worth more than the cosmetics.
    plugin state survives every backward step except unload
 ```
 
-Seven statuses, and no more: `declared`, `loaded`, `pending`, `active`,
+Seven statuses, and no more: `declared`, `loaded`, `pending`, `live`,
 `failed`, plus the two transient ones `loading` and `closing` that are
 observable only from inside a callback or from another thread. A port
 that adds an eighth is diverging.
@@ -386,12 +386,12 @@ that adds an eighth is diverging.
   providers. This is the *deliberate* off state: it is ready and nobody
   has asked it to run.
 - **`pending`** — activation *has* been asked for, and cannot happen yet:
-  a declared requirement (§11) is not active. Observably identical to
+  a declared requirement (§11) is not live. Observably identical to
   `loaded` — nothing held, nothing bound — but it means something
   entirely different to whoever is reading `host.list()`, which is why
   it is a state and not a flag. The host activates it the moment the
   requirement arrives, without being asked again.
-- **`active`** — bindings are live, resources are held.
+- **`live`** — bindings are installed and running, resources are held.
 - **`failed`** — a lifecycle callback or a release raised, on any
   transition after `load`. The instance remains registered and
   inspectable (that is the point: a failed plugin must be visible, not
@@ -416,13 +416,13 @@ attached to the raised error and does not replace it.
 | `declare(spec)` | absent | `declared` | nothing registered; error raised |
 | `load(ref)` | `declared` | `loaded` | `close` runs, entry stays `declared`; error raised |
 | `load(spec)` | absent | `loaded` | declare, then load; `close` runs, nothing registered |
-| `activate(ref)` | `loaded` | `active`, or `pending` if a requirement is unmet | bindings removed, scope unwound in reverse; → `failed` |
-| *(automatic)* | `pending` | `active` | as `activate` |
-| *(automatic)* | `active` | `pending` | a requirement was lost (§11) |
-| `deactivate(ref)` | `active` | `loaded` | bindings removed, scope still fully unwound; → `failed` |
+| `activate(ref)` | `loaded` | `live`, or `pending` if a requirement is unmet | bindings removed, scope unwound in reverse; → `failed` |
+| *(automatic)* | `pending` | `live` | as `activate` |
+| *(automatic)* | `live` | `pending` | a requirement was lost (§11) |
+| `deactivate(ref)` | `live` | `loaded` | bindings removed, scope still fully unwound; → `failed` |
 | `deactivate(ref)` | `pending` | `loaded` | — (nothing to undo; see below) |
 | `unload(ref)` | `declared`, `loaded`, `pending`, `failed` | absent | error raised; registry entry dropped anyway |
-| `unload(ref)` | `active` | absent | deactivate first, then close |
+| `unload(ref)` | `live` | absent | deactivate first, then close |
 
 **Every transition implies the ones before it.** `activate` on a
 `declared` instance loads it first; `load` on an absent ref declares it
@@ -436,7 +436,7 @@ packages.
 
 The two automatic rows are the reactive half of §11, and they are the
 reason `pending` exists: activation is a *standing request*, not a
-one-shot event. Asking for an instance to be active means it is active
+one-shot event. Asking for an instance to be live means it is live
 whenever it can be, and `deactivate` — an operator withdrawing the
 request — is the only thing that returns it to `loaded`.
 
@@ -457,7 +457,7 @@ always removed before the status changes, so a `failed` instance never
 participates in anything, whatever went wrong.
 
 Every transition is **idempotent in the trivial direction**:
-`activate` on an active instance is a no-op returning success, not an
+`activate` on a live instance is a no-op returning success, not an
 error. This matters more than it looks — it is what lets declarative
 config be applied repeatedly (§9.6) without the host tracking what it
 already did.
@@ -495,15 +495,15 @@ resource.
 is deliberate: it means the host knows an instance's complete binding
 set while the instance is still inert, so `activate` is a pure insertion
 and `deactivate` a pure removal, with no discovery in between. It also
-means `host.list()` can tell a developer exactly what a loaded-but-
-inactive plugin *would* do.
+means `host.list()` can tell a developer exactly what a loaded-but-not-
+live plugin *would* do.
 
 ### 5.4 State
 
 `instance.state` is a plugin-owned value the host never reads, writes,
 copies or serializes. It is created in `define` and destroyed in
 `close`. It **survives deactivate/activate cycles unchanged** — that is
-what makes the instance "an active instance with persistent state"
+what makes the instance "a live instance with persistent state"
 rather than a factory: deactivating a rate limiter and reactivating it
 ten seconds later must not reset its window counters unless the plugin
 chose to reset them in `deactivate`.
@@ -539,7 +539,7 @@ actually needed, and no more:
 
 Many bindings, all called, no composition. The sdkgen hook vocabulary
 (`PrePoint`, `PreRequest`, …) is exactly this. The host calls
-`host.emit(point, arg)`; every active binding runs, in resolved order
+`host.emit(point, arg)`; every live binding runs, in resolved order
 (§7); return values are ignored.
 
 **A hook point declares its dispatch mode, and "fan-out" is not one
@@ -607,7 +607,7 @@ Ordered wrappers around a host-owned base function. This is
 `utility.fetcher`, seneca's prior chain, and station's transport
 middleware. The host declares the point with a base implementation and
 calls `host.call(point, args…)`; the host composes
-`b1(b2(b3(base)))` from the active bindings in resolved order, where the
+`b1(b2(b3(base)))` from the live bindings in resolved order, where the
 first binding is outermost.
 
 **A plugin cannot replace the base, and does not need to.** The base
@@ -624,7 +624,7 @@ because position already carries it. A host that wants the invariant
 enforced pins the innermost slot (§7) rather than trusting a
 self-declared role.
 
-The composition is **recomputed by the host** whenever the active set
+The composition is **recomputed by the host** whenever the live set
 changes, and cached between changes. Plugins receive `next` as an
 argument; they never see or store the previous value of anything. A
 plugin that stashes `next` and calls it after deactivation is a bug the
@@ -633,9 +633,9 @@ pretending otherwise.
 
 ### 6.3 `provider` — exactly one
 
-A named slot with at most one active implementation, and a host-supplied
+A named slot with at most one live implementation, and a host-supplied
 default. sdkgen's `__replace__` and "the secret store" are this. When
-several active instances bind the same provider point, the winner is the
+several live instances bind the same provider point, the winner is the
 highest `order`, ties broken by ref sort, and **the losers are visible**
 (`host.status()` lists them as shadowed) rather than silently ignored.
 A point declared `{ exclusive: true }` makes a second binding an error
@@ -692,7 +692,7 @@ which runs an unmodified sdkgen feature class as a plugin. The inner
 host is the bridge, not the SDK: it populates its catalog from the
 SDK's `FEATURE_CLASS` table, maps the SDK's 13 hook points and its
 `request` chain onto plugin points, and composes the SDK's own feature
-array from its active set. A fleet-wide default therefore reaches an
+array from its live set. A fleet-wide default therefore reaches an
 instance through a nested host **with the generated SDK unmodified**,
 which is the form P3's bar is written against.
 
@@ -727,10 +727,10 @@ Three rules keep this from becoming a graph:
 
   **An inherited capability stays live across the boundary.** It is a
   *view* of the outer host's capability, not a copy taken at creation:
-  when the outer provider leaves `active`, §11's reactive deactivation
+  when the outer provider leaves `live`, §11's reactive deactivation
   fires inside the child exactly as it would for a native one, and the
   child's consumers return to `pending` until it comes back. Anything
-  else would leave an inner plugin `active` against a dead provider —
+  else would leave an inner plugin `live` against a dead provider —
   the precise failure §11 exists to prevent — reintroduced by the
   nesting. The inner host's `resolve()` (§11.4) therefore includes
   inherited capabilities and reports their outer provider by its full
@@ -752,7 +752,7 @@ Station's §3.3 found that a plugin can need to *know* it is in the right
 place — its middleware must sit immediately outside the base transport
 or its "wire truth" events are fiction. So a chain binding may query its
 resolved position: `inst.position('request')` returns `{index, count,
-innermost, outermost}`, valid while active. A plugin that requires a
+innermost, outermost}`, valid while live. A plugin that requires a
 position it did not get fails loudly rather than reporting nonsense.
 The host does not police this; it just makes the fact available.
 
@@ -831,7 +831,7 @@ verifying after the fact where it landed — and the two are not
 substitutes: verification tells a plugin it was misplaced, a pin stops
 the misplacement from being expressible.
 
-The resolved order is recomputed on any change to the active set, is
+The resolved order is recomputed on any change to the live set, is
 exposed by `host.order(point)`, and is pinned by the corpus's `order`
 section — including the awkward cases (a constraint against a
 deactivated instance, two instances of one definition ordered relative
@@ -1343,9 +1343,9 @@ document.
 
 `host.options(ref, patch)` is a merge at the top of the precedence
 stack, and is re-validated. It applies immediately to a loaded instance
-and, for an active one, invokes the optional definition callback
+and, for a live one, invokes the optional definition callback
 `reconfigure(instance, options, previous)`. A definition without
-`reconfigure` that receives a patch while active is deactivated and
+`reconfigure` that receives a patch while live is deactivated and
 reactivated by the host, which is always correct and sometimes
 expensive; `reconfigure` exists to make the common case cheap. Whether
 that automatic cycle is the right default is §20.
@@ -1395,7 +1395,7 @@ sorting, obtained without the sort.
 
 `apply` **declares everything and activates only what asked for it**:
 every instance in the document reaches `declared`, and those with
-`start: "eager"` and `active: true` go on to `active`. A document of
+`start: "eager"` and `active: true` go on to `live`. A document of
 twenty lazy instances is therefore twenty map entries and no executed
 code, which is the property station needs and the reason §5.1's
 `declared` state exists.
@@ -1606,10 +1606,10 @@ exports that key, it resolves to that one. If two do, it is
 last-wins, because with multi-instance as a headline feature, an
 ambiguous alias is a defect waiting for production.
 
-Exports of a `loaded` (inactive) instance are **visible**. They are
+Exports of a `loaded` (not live) instance are **visible**. They are
 declared in `define`, they are data, and hiding them would make the
 loaded state useless for introspection. An export whose value is only
-meaningful while active is the plugin's problem to signal, and the
+meaningful while live is the plugin's problem to signal, and the
 convention is a getter closing over `inst.state`.
 
 ### 11.1 Capabilities
@@ -1631,12 +1631,12 @@ requires: [{ name: 'store', range: '2.1',
              match: { transactional: true } }]
 ```
 
-- **`name`** — the capability. Any active instance providing it
+- **`name`** — the capability. Any live instance providing it
   satisfies a requirement for it, so deactivating one of two `clock`
   providers moves nobody.
 
   **When several match, one is selected, deterministically.** Rank the
-  matching active providers by: highest `version` first, then lowest
+  matching live providers by: highest `version` first, then lowest
   **`priority`** — an integer on the `provides` entry, default 0 —
   then declaration position `pos` (§4 rule 4) ascending. The first is
   bound, and `inst.capability(name)` returns it.
@@ -1653,7 +1653,7 @@ requires: [{ name: 'store', range: '2.1',
   **A binding is to an instance, not to a capability**, and that
   decides what happens when the bound provider leaves while another
   match remains. Rebinding stays reluctant (§11.3) — a bound provider
-  is not swapped for a better one while it remains active — but when
+  is not swapped for a better one while it remains live — but when
   *the selected one* deactivates, a `static` consumer is deactivated
   to `pending` and reactivated against the new winner, exactly as if
   no provider remained. It is not silently re-pointed: `static` is the
@@ -1738,7 +1738,7 @@ because only it knows what it can cope with:
 
 | | **`static`** (default) | **`dynamic`** |
 |---|---|---|
-| **mandatory** (default) | unmet → `pending`; lost → back to `pending`, recursively | unmet → `pending`; lost → **stays `active`**, notified, must cope |
+| **mandatory** (default) | unmet → `pending`; lost → back to `pending`, recursively | unmet → `pending`; lost → **stays `live`**, notified, must cope |
 | **`optional: true`** | never gates activation; a change deactivates and reactivates | never gates activation; a change is a notification, nothing else |
 
 - **Optional requirements** are the case this design could not express
@@ -1769,7 +1769,7 @@ arbitrary later moment the consumer actually calls the thing.
   `pending` (§5.1) and **waits**. Not an error: a document listing a
   consumer before its provider is fine, and a provider arriving thirty
   seconds later is fine.
-- When the last provider of a capability leaves `active`, its `static`
+- When the last provider of a capability leaves `live`, its `static`
   mandatory consumers are **deactivated back to `pending`** — scope
   unwound, bindings removed, state kept — and reactivated when a
   provider returns, recursively.
@@ -1838,7 +1838,7 @@ host.resolve()          // -> { resolved: [...refs], blocked: [{ ref, unmet, why
 `resolve()` is a **pure function of the registry and the intended
 activation set**: no callbacks run, no state changes, nothing is
 touched. It answers, for the whole graph at once, which instances can
-be active and which cannot — and for each blocked one, the specific
+be live and which cannot — and for each blocked one, the specific
 requirement that is unmet, and why: no provider at all, a provider at
 an incompatible version (with both the range and the version found), a
 provider whose attributes fail the `match` (with the failing leaf), or
@@ -1960,7 +1960,7 @@ can see the state of is a plugin system people stop trusting.
   requirement it is waiting on, because "pending" without that is a
   shrug, and this is the row an operator stares at when an integration
   did not come up.
-- `host.order(point)` — the resolved order, active bindings only.
+- `host.order(point)` — the resolved order, live bindings only.
 - `host.status()` — the whole picture: host name, declared points and
   their kinds, catalog contents, resolver presence, instances, shadowed
   providers, the last error per failed instance, and the current
@@ -2036,7 +2036,7 @@ host, runs the script, and returns the observable.
     ]
   },
   "out": {
-    "instance": [ { "ref": "probe$a", "status": "active", "seen": 2 } ],
+    "instance": [ { "ref": "probe$a", "status": "live", "seen": 2 } ],
     "resource": { "open": 1, "opened": 2, "closed": 1 },
     "result":   [ "probe:x", "y", "probe:z" ]
   }
@@ -2047,9 +2047,9 @@ host, runs the script, and returns the observable.
 `instance.state` survived the deactivation. `resource` is the ledger
 assertion, and it is worth reading carefully, because the obvious wrong
 answer (`opened: 2, closed: 2`) would quietly demand that ports release
-resources while the instance is still active: `probe` acquires one
+resources while the instance is still live: `probe` acquires one
 synthetic handle per activation, the deactivation released the first,
-and the script *ends active*, so the second is still held. A scenario
+and the script *ends live*, so the second is still held. A scenario
 that wants the balanced ledger ends with an explicit `deactivate` or
 `close`. `result` shows the middle call bypassing the deactivated chain
 binding entirely.
@@ -2226,7 +2226,7 @@ are requirements on this one, and two of them changed this design:
 | `api.<slug>` blocks, inherited by every instance of an api | the `default` map, keyed by name (§9.1, §9.3) — settled by station's review |
 | `stripe-test`, an instance of api `stripe` | `stripe$test` — name is the api, tag is the instance (§4) |
 | twenty declared, constructed on first `sdk(name)` | `declared` state + `start: "lazy"` + `ready(ref)` (§5.1) — **the reason `declared` exists** |
-| `instances()` (declared) vs `plugins()` (live) | `host.list()` over all states vs the `active` rows of it |
+| `instances()` (declared) vs `plugins()` (live) | `host.list()` over all states vs the `live` rows of it |
 | `active: false` in a profile overlay | `active: false` in the document (§9.1) |
 | `create()` returning uncached clients | auto-tagged instances, `tag: '?'` → `stripe$1` (§4 rule 3) |
 | SDK features managed fleet-wide, per instance | an instance that is itself a host (§6.5) — **the reason nested hosts are in the model**, and contingent on §17.2 (see below) |
@@ -2315,11 +2315,33 @@ names its api. Instance names get longer where the api slug is long
 (`voxgig-solardemo$eu`, not `solar-eu`); that is the visible cost and it
 is worth paying for one identity instead of two.
 
-One smaller collision, resolved here so neither repo hits it in code:
-station's `active: false` means *barred from running*, which is §9.1's
-`active`, distinct from the runtime `active` **state**. The document key
-and the status word share a spelling and not a meaning, and both
-documents should say so where they define it.
+One smaller collision, settled here so neither repo hits it in code.
+Station's `active: false` means *barred from running* and §9.1's
+document key `active` means *may this run* — that is **one predicate
+stated in two polarities, not two meanings**, and it was miscounted as
+a three-way clash for as long as the two were listed separately.
+
+The genuine clash is between that document key and the runtime
+**status**, and it is real: `active: true` with `start: "lazy"` sits at
+`declared` indefinitely, so the same word answers two questions whose
+answers legitimately differ.
+
+**It is resolved in favour of the key.** The status is named `live`
+(§5.1); the document key keeps `active` in both repos. The asymmetry is
+one of cost, not taste: `active` as a config key was already shipped
+across station's ports, its `station.json` documents, and sdkgen's
+`options.feature.<name>.active` in ~23 languages, while the status was
+unshipped when this was decided — no code, and no `lifecycle` corpus
+section yet. Renaming the unshipped one costs a documentation pass;
+renaming the shipped one is a breaking change to a user-facing file.
+
+The word was not invented for the occasion. This design already defined
+the status as "bindings are live" (§5.1), and station's `instances()`
+already reported `{active, live}` for exactly this distinction — both
+repos reached for the same second word independently, which is the
+strongest evidence available that it is the right one. Station's
+boolean `live` is now precisely `status == "live"`, so the two
+vocabularies agree rather than merely coexisting.
 
 **The sequencing, stated plainly because it is a real cost.** An
 earlier version of this section discussed sequencing entirely in
@@ -2346,7 +2368,7 @@ carried by the only consumer that exists.
 
 **So the order is the other one.** Station builds Stages 2 and 3
 natively, to the semantics in this document — the ref grammar, the
-`declared`/`loaded`/`active` states, §9.3's precedence,
+`declared`/`loaded`/`live` states, §9.3's precedence,
 list-replaces-on-merge, vacuous constraint satisfaction — and this
 library extracts them afterwards. Same destination; station's sixteen
 ports stay green throughout; and plugin's P3 becomes an extraction from
@@ -2632,7 +2654,7 @@ integration-tested in every port (§11.4).
 
 1. **Automatic deactivate/reactivate on a runtime option patch** (§9.4)
    is always correct and sometimes surprising — a rate limiter loses its
-   in-flight window. The alternative is to reject a patch on an active
+   in-flight window. The alternative is to reject a patch on a live
    instance without `reconfigure`. Resolve in P1, with the corpus.
 2. **Does `unload` destroy state, or may a host keep it for a later
    reload?** Currently destroyed at `close`. A "detached state" concept
@@ -2808,7 +2830,7 @@ about which parts were mistakes. Both halves are useful.
 Its core shape will look familiar, because much of this design
 converges on it independently: bundle states `INSTALLED` (not resolved)
 / `RESOLVED` (wired, not running) / `ACTIVE` are our `pending` /
-`loaded` / `active`; `BundleContext` is the instance scope (§8.3); the
+`loaded` / `live`; `BundleContext` is the instance scope (§8.3); the
 **whiteboard pattern** is §6's inversion, named in 2004 in a paper
 called *Listeners Considered Harmful*; and Declarative Services'
 `static` reference policy — deactivate the component when a mandatory

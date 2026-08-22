@@ -117,16 +117,30 @@ machine to a fixed point, not by suspending on a promise. Every one of
 those is cheaper to obey now than to remove at P4. A canonical that
 reaches for a JavaScript convenience is a bill twenty ports pay.
 
-**`active` means three things and this is not yet fixed.** Station's
-`active: false` is *barred from running*; this design's `active` status
-is *bindings live, resources held*; and this design's own document key
-`active` is *may this run*. All three are in play, two of them in the
-`config` and `lifecycle` corpus sections. The plan
-([station-and-plugin-plan.md](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md)
-§6) recommends settling it inside P1 or closing it won't-fix, because an
-undated naming question on an API surface gets decided by whoever types
-first. If you are implementing P1, decide it before you write the
-fixtures.
+**The lifecycle status is `live`, and the config key is `active`.
+Settled — do not re-open it by typing.** They answer different
+questions, and the answers legitimately differ: `active: true` with
+`start: "lazy"` sits at `declared` indefinitely. So:
+
+- **`active`** — the *document key*, in plugin and station alike: *may
+  this run?* Also sdkgen's `options.feature.<name>.active`. Shipped
+  everywhere; never rename it.
+- **`live`** — the *lifecycle status* (§5.1): bindings installed,
+  resources held. `declared → loaded → pending → live`.
+- **`activate()` / `deactivate()`** — the verbs, unchanged. The verb
+  names the transition, the status names the result, the way *enable*
+  yields *running*.
+
+It was decided this way on cost, not taste: `active`-as-key was already
+in station's ports, its `station.json`, and ~23 sdkgen template trees,
+while the status was unshipped. Station's `instances()` already reported
+`{active, live}` for exactly this split, so the vocabularies now agree.
+
+Watch for one trap when editing prose: **`live` also means "real" in
+ordinary English**, and "a live instance" now says something specific
+and false about a `loaded` one. Say *concrete* or *runtime* when you
+mean the instance rather than the status — three sentences in the design
+had to be fixed for exactly this.
 
 **Two corpus sections are owed to another repo, earlier than they look
 (§17.1, and the plan's §3).** `ref` and `config` are owed to station
