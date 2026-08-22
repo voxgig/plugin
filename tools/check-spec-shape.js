@@ -52,7 +52,7 @@ function entryspecs(args) {
 // Unify one spec source with the shape. Returns aontu's stderr on failure,
 // null on success.
 function checkspec(specfile) {
-  const work = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'omni-shape-'))
+  const work = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'plugin-shape-'))
   const check = Path.join(work, 'check.aontu')
 
   try {
@@ -60,6 +60,10 @@ function checkspec(specfile) {
       check,
       '@"' + SHAPE + '"\n' +
       '@"' + specfile + '"\n' +
+      // The corpus metadata marker. Checked as well as the groups: it is
+      // the smallest thing in the file and the one whose loss is quietest,
+      // since every runner reads it to decide whether to validate strictly.
+      'PLUGIN: $.Meta\n' +
       // Every section under `primary`, and every group within it.
       'primary: &: { &: $.Group }\n'
     )
@@ -81,10 +85,15 @@ const REDCASES = [
   ['non-string id', 'primary: s: g: set: [ { in: 1, out: 1, id: null } ]'],
   ['non-boolean doc', 'primary: s: g: set: [ { in: 1, out: 1, doc: yes } ]'],
   ['map-valued err', 'primary: s: g: set: [ { in: 1, err: { code: 1 } } ]'],
+  // The marker. Absence is not here because unification cannot catch it -
+  // build-spec.js checks that against the built artifact instead.
+  ['misspelled version key', 'PLUGIN: versoin: 1'],
+  ['non-numeric version', "PLUGIN: version: 'one'"],
+  ['unknown spec version', 'PLUGIN: version: 2'],
 ]
 
 function selftest() {
-  const work = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'omni-shape-red-'))
+  const work = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'plugin-shape-red-'))
   let bad = 0
 
   try {
