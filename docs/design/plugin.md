@@ -276,11 +276,18 @@ Rules, all pinned by the corpus:
    instances from one declared name (a per-request credential scope,
    station's `create()`): they are ordinary tagged instances, not a
    parallel identity scheme.
-4. **Sequence is metadata, not identity.** Each instance carries a
-   monotonic `seq` from the host's counter, so a trace can tell one
-   incarnation of `stripe$test` from the next after an unload and
-   reload. It travels *beside* the ref in trace records and status
-   rows; it is never part of the address.
+4. **Two numbers, and they are not the same number.** Each instance
+   carries **`pos`**, its position in the declaration order — the
+   document's array index, or the sorted-ref index for the map form —
+   and **`seq`**, a monotonic counter from the host incremented on
+   every declaration. `pos` is *stable across a redeclaration*: an
+   instance unloaded and declared again by `apply` (§9.6) keeps the
+   position its document gives it, while `seq` advances. So `pos`
+   decides ordering ties (§7) and `seq` distinguishes one incarnation
+   of `stripe$test` from the next in a trace. Collapsing them would
+   let a re-applied document silently reorder a chain: toggle an early
+   instance and its fresh `seq` would sort it behind everything that
+   never moved. Neither is part of the address.
 5. **Refs are canonicalized on the way in.** `"stripe$"`, `"stripe"` and
    `{name: 'stripe', tag: ''}` all normalize to `stripe`. Ports must
    canonicalize before comparison; the corpus's `ref` section is the
@@ -333,22 +340,30 @@ Seven statuses, and no more: `declared`, `loaded`, `pending`, `active`,
 observable only from inside a callback or from another thread. A port
 that adds an eighth is diverging.
 
-- **`declared`** — the ref exists, its **raw configuration is merged
-  and normalized**, and nothing else has happened: the definition has
-  not been resolved, no module has been imported, no plugin code has
-  run. It is a row in the registry and an entry in the config, and it
-  costs a map entry.
+- **`declared`** — the ref exists, its **configuration layers are
+  collected and normalized but not yet merged**, and nothing else has
+  happened: the definition has not been resolved, no module has been
+  imported, no plugin code has run. It is a row in the registry and a
+  list of layers, and it costs a map entry.
 
-  Raw, not resolved, and the distinction is load-bearing rather than
-  pedantic. §9.3's precedence starts at the *definition's* option
-  defaults and §9.4 validates against the *definition's* option shape —
-  neither of which exists until the definition is resolved, which this
-  state forbids. A `declared` instance therefore carries the merged
-  document layers and nothing from the definition; **options are
-  resolved and validated at `load`**, which is also the first moment a
-  bad option value can be reported. A port that resolved options here
-  would have to import plugin code to do it, which is the one thing
-  this state exists to avoid.
+  Layers, not a merged value, and the distinction is load-bearing
+  rather than pedantic — twice over. §9.3's precedence starts at the
+  *definition's* option defaults and §9.4 validates against the
+  *definition's* option shape, neither of which exists until the
+  definition is resolved, which this state forbids. **And the shape
+  decides how the merge behaves**: a definition may mark an option
+  `` {"`$MERGE`": "append"} `` (§9.4), which turns list replacement
+  into list append. Merging before that is known would discard
+  lower-precedence elements irrecoverably — a base list overlaid by a
+  profile list, flattened at declaration, cannot be un-flattened at
+  load.
+
+  So a `declared` instance holds the ordered layers as data; **the
+  merge, the resolution and the validation all happen at `load`**, in
+  that order, which is also the first moment a bad option value can be
+  reported. A port that merged or resolved here would have to import
+  plugin code to do it correctly, which is the one thing this state
+  exists to avoid.
 
   This state is here because the first real consumer cannot work
   without it. Station (§17.1) declares twenty-plus SDK instances in one
@@ -571,7 +586,14 @@ production path nobody tests — the reporting is pinned:
   the point is declared `{ raise: true }`, for hosts that would rather
   not check a return value;
 - `{ strict: true }` on the point declaration stops at the first error
-  and propagates it unwrapped — remaining bindings do not run.
+  and propagates it unwrapped — remaining bindings do not run. **It
+  therefore forces `serial` dispatch**, whatever mode the point
+  otherwise declares: "stop before the next one runs" is only
+  meaningful if each binding has settled before the next starts, and
+  on a fire-and-forget `emit` every binding would already have been
+  launched before the first rejection arrived. Declaring `strict` is
+  declaring an ordered, awaited fan-out; the mode field records that
+  rather than contradicting it.
 
 `call` on a chain point needs none of this: an error propagates through
 the composed chain to the caller, which is what a chain is for.
@@ -714,15 +736,15 @@ topological sort**:
    hook. Bands break constraint-free ordering globally, which is what
    lets a host say "the base transport wrapper is band 100" once,
    instead of every plugin naming it.
-3. **Declaration order last.** Ties break by the instance's
-   **declaration** sequence — the `seq` assigned at `declare` (§4 rule
-   4), not the order in which instances happened to load. With lazy
-   instances (§5.1) those differ: twenty instances declared in document
-   order may load in whatever order their first `ready()` calls
-   arrive, so a load-order tie-break would let two unconstrained
-   bindings swap places depending on which ref a request touched
-   first. Declaration order is the order the document visibly states,
-   and it is the one that must decide.
+3. **Declaration order last.** Ties break by the instance's `pos`
+   (§4 rule 4) — its position in the declaration order, not the order
+   in which instances happened to load and not its incarnation `seq`.
+   Both distinctions are load-bearing: with lazy instances (§5.1)
+   twenty declared in document order may load in whatever order their
+   first `ready()` calls arrive, and with `apply` redeclaring a
+   toggled instance (§9.6) a counter-based tie-break would sort it
+   behind everything that never moved. `pos` is the order the document
+   visibly states, and it is the one that must decide.
 
 **Bands are OSGi start levels, and they carry the same hazard** (§23).
 A global integer ordering is the thing people reach for when they have
@@ -763,8 +785,9 @@ def.define = (inst, options) => {
 }
 
 def.activate = (inst) => {
-  // the host has just inserted the bindings declared above, and will
-  // remove them again on deactivate. Nothing here re-declares them.
+  // the bindings declared above are NOT live yet: the host inserts them
+  // only once this function has returned successfully (§8.1). Nothing
+  // here re-declares them.
 
   inst.timer(1000, poll)                      // recorded: the host owns the undo
   const conn = inst.connect(inst.options.addr)// recorded, where the host offers it
@@ -774,8 +797,25 @@ def.activate = (inst) => {
 }
 ```
 
-Two things are unwound on deactivate, from two different places, and
-conflating them is a mistake this document made in an earlier draft:
+### 8.1 Bindings go live only when activation succeeds
+
+The host inserts an instance's declared bindings **after `activate`
+returns successfully**, never before. §14 permits point invocation
+concurrently with a lifecycle transition, so inserting first would let
+a request enter a chain wrapper whose connection, timer or cache the
+plugin is still in the middle of acquiring — and, worse, let traffic
+run through a plugin whose activation then failed and which the host is
+about to unwind. Insertion is atomic with success: the instance is
+either not participating, or participating with everything it declared
+it needed.
+
+The symmetric rule already holds on the way down: bindings are removed
+*before* the status changes (§5.2), so nothing new enters while
+teardown runs.
+
+Two things are then unwound on deactivate, from two different places,
+and conflating them is a mistake this document made in an earlier
+draft:
 
 - **bindings**, declared in `define` and inserted by the host at
   activation — the host removes them itself, and they are not scope
@@ -793,7 +833,7 @@ every author can forget an entry in, silently, forever — and a plugin
 that forgot one looks identical to a plugin that had nothing to
 release. Making the handle itself the ledger removes the whole class:
 the author cannot forget to register what they never registered. This
-is Cordis's model (§8.1), and it is a straight improvement over what
+is Cordis's model (§8.3), and it is a straight improvement over what
 was here before.
 
 - The scope belongs to the instance and is unwound by the host on
@@ -815,7 +855,7 @@ was here before.
   so far, in reverse, and the instance goes `failed`.
 - `inst.release` outside `activate` is `plugin_release_scope`.
 
-### 8.0 What the host can actually promise
+### 8.2 What the host can actually promise
 
 Before the mechanism, its limit — because OSGi (§23) has had total
 lifecycle control since 1999 and *still* cannot deliver clean teardown,
@@ -859,7 +899,7 @@ the expected output includes the ledger — so "deactivate released
 exactly what activate captured" is a data assertion, in every language,
 rather than a property nobody checks.
 
-### 8.1 Why the scope, and not the ledger
+### 8.3 Why the scope, and not the ledger
 
 The mechanism has two independent precedents, twenty years apart, which
 is about as good as design evidence gets.
@@ -1131,8 +1171,9 @@ transition and there should not be one: going back to `declared` means
 allocated state and declared bindings that only `close` can properly
 undo. So when a re-applied document flips `start` to `"lazy"` or
 `active` to `false` on an instance that is currently `loaded` or
-beyond, `apply` **unloads it and declares it again** — its plugin state
-is destroyed, which is the honest meaning of the change. Without this
+beyond, `apply` **unloads it and declares it again**, at its document `pos`
+(§4 rule 4) so ordering is untouched — its plugin state is destroyed,
+which is the honest meaning of the change. Without this
 the same document would yield `declared` on a first apply and `loaded`
 after a toggle, and "re-runnable" would be false. `apply` reports these
 in its plan, because silently destroying an instance's state on a
@@ -1301,14 +1342,30 @@ requires: [{ name: 'store', range: '2.1',
 
   **When several match, one is selected, deterministically.** Rank the
   matching active providers by: highest `version` first, then lowest
-  §7 `order` band, then declaration `seq` (§4 rule 4) ascending. The
-  first is bound, and `inst.capability(name)` returns it. Without this
-  rule "any provider satisfies" is true of the *graph* and useless to
-  the *plugin* — two ports could bind different `store` instances, both
-  resolve green, and behave differently, which is precisely the
-  divergence a shared corpus exists to catch. Rebinding stays reluctant
-  (§11.3): a bound provider is not swapped for a better one while it
-  remains active.
+  **`priority`** — an integer on the `provides` entry, default 0 —
+  then declaration position `pos` (§4 rule 4) ascending. The first is
+  bound, and `inst.capability(name)` returns it.
+
+  `priority` is a field on the capability rather than §7's `order`
+  band, because bands live on *point bindings*: a provider may have
+  several bindings with different bands, or none at all, so a rank
+  that reached for one would be undefined in the common case. Without
+  a total rank, "any provider satisfies" is true of the *graph* and
+  useless to the *plugin* — two ports could bind different `store`
+  instances, both resolve green, and behave differently, which is
+  precisely the divergence a shared corpus exists to catch.
+
+  **A binding is to an instance, not to a capability**, and that
+  decides what happens when the bound provider leaves while another
+  match remains. Rebinding stays reluctant (§11.3) — a bound provider
+  is not swapped for a better one while it remains active — but when
+  *the selected one* deactivates, a `static` consumer is deactivated
+  to `pending` and reactivated against the new winner, exactly as if
+  no provider remained. It is not silently re-pointed: `static` is the
+  plugin saying in writing that it cannot survive a provider swap, and
+  a survivor being available does not make the swap survivable. A
+  `dynamic` consumer is re-pointed in place and notified, which is
+  what it signed up for.
 - **`attrs`** — what this provider is like. Free-form JSON.
 - **`match`** — what the consumer needs it to be like: a **partial
   match against `attrs`**, with exactly the semantics `voxgig/struct`
@@ -1329,35 +1386,48 @@ the current registry*, and §11.4 is how you ask for it.
 A capability carries a version; a requirement carries a range. The
 grammar is two forms, and no more:
 
-A capability declares **`version`**, a concrete version, and a
-requirement declares **`range`**. Where a provider needs to say which
-versions of a capability *it* can stand behind — the asymmetry below —
-it declares **`compat`**, a range, alongside its concrete `version`.
-Three fields, each with one job, because `version: "2.3"` meaning
-sometimes a point and sometimes a range would be unreadable:
+**Two fields, and one predicate.** A capability declares `version`, a
+concrete version. A requirement declares `range`. A requirement is
+satisfied by a provider when the names match, the `match` passes
+(§11.1), and:
+
+> **the provider's `version` falls inside the requirement's `range`.**
+
+That is the whole rule. There is no third field and no second
+comparison — an earlier draft added a provider-side `compat` range,
+which left three values and no statement of how they combine: with
+`range: '2.1'`, `version: '2.3'` and `compat: '~2.1'`, matching on
+version accepts, checking version against compat rejects, and
+intersecting the ranges accepts again. Three defensible readings of one
+declaration is worse than the ambiguity it was introduced to fix.
 
 ```ts
-provides: [{ name: 'store', version: '2.3', compat: '~2.1' }]
+provides: [{ name: 'store', version: '2.3' }]
 requires: [{ name: 'store', range: '2.1' }]
 ```
 
-Ranges, in both `range` and `compat`, have two forms and no more:
+Ranges have two forms and no more:
 
-| form | means | typical of |
-|---|---|---|
-| `'2.1'` | `>= 2.1.0` and `< 3.0.0` | a **consumer**'s `range` |
-| `'~2.1'` | `>= 2.1.0` and `< 2.2.0` | a **provider**'s `compat` |
+| form | means |
+|---|---|
+| `'2.1'` | `>= 2.1.0` and `< 3.0.0` |
+| `'~2.1'` | `>= 2.1.0` and `< 2.2.0` |
 
-The asymmetry is the part worth importing wholesale from OSGi's
-semantic-versioning work, because it is genuinely counter-intuitive and
-it is right: **a consumer of a capability and a provider of the same
-capability do not tolerate the same range.** Add one method to an
+**The asymmetry lives in which range a requirer writes**, and that is
+the part worth importing wholesale from OSGi's semantic-versioning
+work, because it is genuinely counter-intuitive and it is right: **two
+plugins requiring the same capability do not tolerate the same range,
+depending on what they do with it.** Add one method to an
 interface and that is a *minor* bump — every existing consumer still
 works, and every existing provider is now broken, because it does not
-implement the new method. So a plugin that merely calls `store` can
-accept `range: '2.1'`; a plugin that *implements* `store` for someone
-else to call declares `compat: '~2.1'` and is updated deliberately.
-A provider with no `compat` stands behind its `version` alone.
+implement the new method. So a plugin that merely calls `store` requires `range: '2.1'`; a plugin
+that *implements* the `store` interface for someone else to call —
+and therefore has to implement every method in it — requires
+`range: '~2.1'` and is updated deliberately. Same field, same grammar,
+different width, chosen by the requirer who knows which kind it is.
+This is guidance the corpus can only partly pin: it can prove `'~2.1'`
+excludes `2.2.0` and `'2.1'` admits it, but not that a given plugin
+picked the right one.
 
 Getting this wrong is not a subtle degradation — it is a provider that
 silently satisfies a requirement it cannot actually meet, failing at
@@ -1416,16 +1486,24 @@ arbitrary later moment the consumer actually calls the thing.
   it is about to lose is exactly what a `deactivate` callback is for,
   and a cascade that fired after the provider was already gone would
   make that impossible. Order: consumers deepest-first, then the
-  provider. `unload` and `close` inherit it, which is what makes
-  `apply`'s reverse-load-order teardown (§9.6) safe even when a
-  document happens to list a consumer before its provider.
-- A cycle **through mandatory requirements** is
-  `plugin_dependency_cycle`, detected at load. Optional edges are
-  excluded from that detection, and must be: two plugins that
-  optionally consume each other's capabilities both activate happily —
-  neither gates on the other — and then bind reactively once the other
-  is up. Rejecting that pair at load would forbid a working
-  arrangement because of a cycle in a graph that never gates anything.
+  provider. `unload` and `close` inherit it — **under either
+  dependency policy** — which is what makes `apply`'s
+  reverse-load-order teardown (§9.6) safe even when a document happens
+  to list a consumer before its provider.
+- A cycle through **restart-causing** requirements is
+  `plugin_dependency_cycle`, detected at load. Those are the mandatory
+  ones *and the `static` optional ones*, because both make a
+  capability change deactivate and reactivate the consumer — and a
+  cycle of restarts does not settle: A comes up, B restarts, which
+  changes B's capability, which restarts A, indefinitely.
+
+  **Only `dynamic` optional edges are excluded**, and they are the ones
+  the exclusion was for: two plugins that optionally and dynamically
+  consume each other's capabilities both activate happily, neither
+  gates on the other, and each is merely *notified* when the other
+  appears. Nothing restarts, so nothing oscillates. An earlier draft
+  excluded every optional edge and thereby admitted the
+  non-terminating case it was trying to permit.
 
 This is provider replacement as an ordinary runtime operation rather
 than a restart: deactivate the old secret store, activate the new one,
@@ -1439,6 +1517,15 @@ For a host that wants the strict reading, `makeHost({dependency:
 `plugin_dependency_held`, naming the holders. Not the default, because
 a station that cannot swap a provider without a restart has lost the
 argument for having a plugin system.
+
+**The hold check is a guard on ad-hoc deactivation, not on coordinated
+teardown.** In a bulk operation that is removing the holders too —
+`host.close()`, or an `apply` plan whose own steps deactivate them —
+it is suspended for exactly those holders, and the teardown still runs
+consumers before providers. Otherwise `close()` under `hold` would
+raise on the first provider it reached whenever a document happened to
+list a consumer after it, which is the policy refusing to allow the
+one teardown it has no reason to object to.
 
 ### 11.4 Resolution is a phase, not a discovery
 
@@ -1694,12 +1781,12 @@ port-specific:
 
 | section | what it pins | pure? |
 |---|---|---|
-| `ref` | name/tag grammar, parse, format, canonicalization, auto-tag | yes |
+| `ref` | name/tag grammar, parse, format, canonicalization, auto-tag, and `pos` vs `seq` across a redeclaration | yes |
 | `config` | document normalization, array/map forms, profile overlay, precedence, list-replace | yes |
 | `env` | `VOXGIG_PLUGIN_*` parsing, ACTIVE/INACTIVE | yes |
 | `resolve` | name → candidate module ids | yes |
-| `capability` | provides/requires matching: name, `match` against `attrs`, satisfaction by any active provider, and the deterministic selection rank when several match (§11.1) | yes |
-| `version` | range grammar, `version` vs `range` vs `compat`, boundary cases, `plugin_bad_range` | yes |
+| `capability` | provides/requires matching: name, `match` against `attrs`, the selection rank (version, `priority`, `pos`), and a `static` consumer restarting when its *selected* provider leaves though another matches (§11.1) | yes |
+| `version` | range grammar, the one satisfaction predicate (provider `version` inside requirer `range`), boundary cases, `plugin_bad_range` | yes |
 | `graph` | whole-graph resolution (§11.4): resolved/blocked sets, and the *explanation* for each blocked instance | yes |
 | `lifecycle` | the state machine, idempotence, illegal transitions, failure paths | driver |
 | `declare` | `declared` costs nothing: introspection without loading, raw-vs-resolved options, `start` eager vs lazy, `ready` walking the staircase, `active: false` barring, callback-free `deactivate(pending)`, and `apply` unloading a toggled instance back to `declared` (§5.1, §9.1, §9.6) | driver |
@@ -1724,7 +1811,7 @@ station's split, for station's reason.
 And one thing that is not testable anywhere, stated so a green suite
 cannot be read as claiming it: **the corpus proves the host stopped
 routing to a deactivated instance and unwound what it registered. It
-cannot prove the instance stopped running** (§8.0). A probe that
+cannot prove the instance stopped running** (§8.2). A probe that
 squirrels a reference away in a global and keeps using it after
 deactivation would pass every entry in this file. That is a limit of
 the architecture, not a gap in the corpus, and no amount of test design
@@ -2204,7 +2291,7 @@ legible and so the two places we deliberately diverge are on the record.
 
 ### 22.1 What we took
 
-- **The scope, not the ledger** (§8.1). Every registration made through
+- **The scope, not the ledger** (§8.3). Every registration made through
   a plugin's context is inherently disposable and owned by that
   plugin's fiber; `ctx.effect()` covers anything foreign. This design's
   first draft made the plugin author keep the list by hand.
@@ -2295,7 +2382,7 @@ about which parts were mistakes. Both halves are useful.
 Its core shape will look familiar, because much of this design
 converges on it independently: bundle states `INSTALLED` (not resolved)
 / `RESOLVED` (wired, not running) / `ACTIVE` are our `pending` /
-`loaded` / `active`; `BundleContext` is the instance scope (§8.1); the
+`loaded` / `active`; `BundleContext` is the instance scope (§8.3); the
 **whiteboard pattern** is §6's inversion, named in 2004 in a paper
 called *Listeners Considered Harmful*; and Declarative Services'
 `static` reference policy — deactivate the component when a mandatory
@@ -2324,7 +2411,7 @@ Cordis fifteen years later.
 
 The failures are worth more than the features.
 
-- **Teardown is approachable, never achievable** (§8.0). OSGi has total
+- **Teardown is approachable, never achievable** (§8.2). OSGi has total
   lifecycle control and bundles still leak — a static field, a
   `ThreadLocal`, an unstopped thread. The lesson is not to try harder;
   it is to state the guarantee narrowly and make the safe path the
@@ -2348,7 +2435,7 @@ The failures are worth more than the features.
   a stated requirement here, so it is load-bearing — but the cost must
   land on the hosts that use it, not on every plugin author in every
   language. That is the argument for the automatic scope being the
-  default path (§8.0), and against importing every knob OSGi offers
+  default path (§8.2), and against importing every knob OSGi offers
   just because it exists.
 
 ### 23.3 The shape of the disagreement
