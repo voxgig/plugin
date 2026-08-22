@@ -18,8 +18,19 @@
 # real result, and a green tick over nothing would be a lie.
 
 # Every port directory. Target names are the directory names, used verbatim
-# as `make -C <dir>`. Each port ships at least `test`; `build`, `inspect`
-# and `clean` are invoked tolerantly.
+# as `make -C <dir>`.
+#
+# EVERY PORT DEFINES ALL FOUR of test, build, inspect and clean — as a
+# no-op where the language has nothing to do. Inherited drafts of this
+# file invoked the last three "tolerantly", with `|| echo "(no build
+# target)"`, and that unconditional `||` converts a real compiler or
+# packaging failure into a successful run: a port build exiting 7 left the
+# top-level `make build` exiting 0, indistinguishable from an absent
+# optional target.
+#
+# Requiring the targets costs a two-line no-op per port and removes the
+# error-swallowing branch entirely. It is free to decide now, with no
+# ports written, and expensive to retrofit across twenty.
 # P1 adds typescript (canonical). P4 adds go and python. P5, P6 the rest.
 LANGS =
 
@@ -35,14 +46,14 @@ test-%:
 
 build-%:
 	@echo "======== $* ========"
-	@$(MAKE) -C $* build 2>/dev/null || echo "(no build target)"
+	@$(MAKE) -C $* build
 
 inspect-%:
 	@printf "%-12s " "$*"
-	@$(MAKE) -s -C $* inspect 2>/dev/null || echo "(no inspect target)"
+	@$(MAKE) -s -C $* inspect
 
 clean-%:
-	@$(MAKE) -C $* clean 2>/dev/null || true
+	@$(MAKE) -C $* clean
 
 # ---- aggregates ----
 
@@ -57,18 +68,21 @@ build:
 	@if [ -z "$(LANGS)" ]; then \
 	  echo "plugin: no ports yet"; \
 	else \
-	  for lang in $(LANGS); do $(MAKE) build-$$lang; done; \
+	  for lang in $(LANGS); do $(MAKE) build-$$lang || exit 1; done; \
 	fi
 
+# inspect prints toolchain versions - a port that cannot report one is a
+# diagnostic gap rather than a build failure, so this one stays tolerant
+# and says so, instead of being tolerant by accident.
 inspect:
 	@if [ -z "$(LANGS)" ]; then \
 	  echo "plugin: no ports yet"; \
 	else \
-	  for lang in $(LANGS); do $(MAKE) inspect-$$lang; done; \
+	  for lang in $(LANGS); do $(MAKE) inspect-$$lang || echo "(inspect failed)"; done; \
 	fi
 
 clean:
-	@for lang in $(LANGS); do $(MAKE) clean-$$lang; done
+	@for lang in $(LANGS); do $(MAKE) clean-$$lang || exit 1; done
 
 # ---- contract ----
 

@@ -64,6 +64,14 @@ plugin/
 └── <lang>/                      one per port: src, driver, test, Makefile, README, AGENTS
 ```
 
+**Every port's Makefile defines `test`, `build`, `inspect` and `clean`** —
+as a no-op where the language has nothing to do. None of them is
+optional. The top-level targets propagate a port's exit status rather
+than tolerating a missing target, because "tolerantly invoked" and
+"silently swallows a compiler error" are the same `||` (see the Makefile
+comment on `LANGS`). `inspect` is the one exception, and it says so
+where it is written.
+
 
 ## 3. Commands
 

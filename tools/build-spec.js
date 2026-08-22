@@ -26,6 +26,7 @@
 'use strict'
 
 const Fs = require('node:fs')
+const Os = require('node:os')
 const Path = require('node:path')
 const { execFileSync } = require('node:child_process')
 
@@ -100,6 +101,34 @@ function buildOne(entry) {
 // conflicts. It cannot catch ABSENCE: unifying `{}` with `{version: 1}`
 // fills the key in rather than objecting. So absence is checked here,
 // against the built artifact, which is the thing every port reads.
+// The corpus root. `primray:` instead of `primary:` is the quietest
+// possible corpus defect: the build happily emits the misspelled tree,
+// the marker is still present, the shape check passes — and every runner
+// reads `primary`, finds nothing, and reports zero tests as success.
+//
+// This cannot be caught by unification either. The shape is imported INTO
+// the generated check, so its own definitions live at that file's root;
+// closing the root there would conflict with them, and aontu has no way
+// to apply a closed template to a file's root (`$.Root`, `&: $.Root` and
+// `*: $.Root` are a parse error, a path cycle, and a parse error). So it
+// is checked here, against the artifact, exactly as absence of the marker
+// is.
+const ROOTKEYS = ['PLUGIN', 'primary']
+
+function requireroot(json) {
+  const data = JSON.parse(Fs.readFileSync(json, 'utf8'))
+  const unknown = Object.keys(data).filter((k) => !ROOTKEYS.includes(k))
+  if (unknown.length) {
+    throw new Error(
+      Path.relative(process.cwd(), json) +
+      ' has unknown top-level key(s): ' + unknown.join(', ') + '\n' +
+      'Expected one of: ' + ROOTKEYS.join(', ') + '.\n' +
+      'A misspelled section key builds cleanly and leaves every runner ' +
+      'reading an empty corpus.'
+    )
+  }
+}
+
 function requiremarker(json) {
   const data = JSON.parse(Fs.readFileSync(json, 'utf8'))
   const version = data && data.PLUGIN && data.PLUGIN.version
@@ -156,37 +185,39 @@ function main() {
   const stale = []
   for (const entry of entries) {
     const json = entry.replace(/\.aontu$/, '.json')
-    const before = args.check && Fs.existsSync(json)
-      ? Fs.readFileSync(json, 'utf8') : null
-
-    // Put back exactly what was there. When nothing was, the entry is
-    // missing its committed JSON entirely - remove what this run
-    // generated, so that --check leaves the worktree as it found it.
-    const restore = () => {
-      if (null != before) Fs.writeFileSync(json, before)
-      else if (Fs.existsSync(json)) Fs.unlinkSync(json)
-    }
 
     if (args.check) {
-      // The generator can write or truncate the output and THEN fail, so
-      // restoring only on a clean run leaves --check mutating the very
-      // artifact it promises not to touch. Every exit path restores.
-      let after
+      // --check NEVER WRITES THE COMMITTED ARTIFACT. It builds into a
+      // throwaway mirror of the spec directory and compares.
+      //
+      // An earlier version built in place and restored the stashed
+      // content on failure. That is not enough: a SIGINT or SIGTERM while
+      // the generator is writing kills Node without running any catch or
+      // finally, leaving the committed JSON truncated - and no amount of
+      // signal handling closes it, because SIGKILL and a power cut are
+      // the same shape of problem. Not writing the file at all is the
+      // only version of "non-mutating" that survives being interrupted.
+      const work = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'plugin-spec-'))
       try {
-        buildOne(entry)
-        requiremarker(json)
-        after = Fs.readFileSync(json, 'utf8')
-      } catch (err) {
-        restore()
-        throw err
-      }
+        Fs.cpSync(Path.dirname(entry), work, { recursive: true })
+        const mirror = Path.join(work, Path.basename(entry))
+        const mirrorjson = mirror.replace(/\.aontu$/, '.json')
 
-      if (before !== after) {
-        stale.push(Path.relative(process.cwd(), json))
-        restore()
+        buildOne(mirror)
+        requireroot(mirrorjson)
+        requiremarker(mirrorjson)
+
+        const after = Fs.readFileSync(mirrorjson, 'utf8')
+        const before = Fs.existsSync(json) ? Fs.readFileSync(json, 'utf8') : null
+        if (before !== after) {
+          stale.push(Path.relative(process.cwd(), json))
+        }
+      } finally {
+        Fs.rmSync(work, { recursive: true, force: true })
       }
     } else {
       buildOne(entry)
+      requireroot(json)
       requiremarker(json)
       console.log('built ' + Path.relative(process.cwd(), json))
     }
