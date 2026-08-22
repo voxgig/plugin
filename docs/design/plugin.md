@@ -653,15 +653,25 @@ behind.
 ### 6.5 An instance may itself be a host
 
 The model as far as §6.4 has hosts and plugins and no way for one to be
-the other. The first real consumer needs exactly that, so it is in the
-model rather than discovered later.
+the other. The first real consumer will need exactly that, so it is in
+the model rather than discovered later.
 
 Station (§17.1) declares SDK instances as plugins — and every generated
 SDK carries **its own** plugin system, sdkgen's features (`retry`,
 `cache`, `debug`, `proxy`, `test`…), which station also configures
-fleet-wide from the same document. So a station plugin instance is
-itself a host of feature plugins. Two levels, and the outer one owns
+fleet-wide from the same document. So a station plugin instance would
+itself be a host of feature plugins. Two levels, and the outer one owns
 the inner one's lifetime.
+
+**This is a future fit, not a current one.** The mapping holds only
+once **sdkgen adopts this library**, which §17.2 explicitly declines to
+commit to. Until then a generated SDK is not a host: it has
+`options.feature` (map or ordered array) and a `FEATURE_CLASS` table,
+and station configures features by composing that array (§17.1), so
+`inst.host(...)` around one would be a host-shaped object wrapping a
+non-host. What follows is specified now because it is far cheaper to
+carry from the start than to retrofit onto a shipped lifecycle — not
+because a consumer exercises it today.
 
 ```ts
 def.activate = (inst) => {
@@ -1978,8 +1988,8 @@ or ordered array) and a `FEATURE_CLASS` table, and station configures
 features by composing that array, which is what its §8 describes and
 what already works. Wrapping that in `inst.host(...)` would be a
 host-shaped object around a non-host. The model is still right and
-still worth having; the row is a *future* fit, and §6.5's "the first
-real consumer needs exactly that" should read "will need".
+still worth having; the row is a *future* fit, and §6.5 now says
+"will need" and carries this caveat inline rather than only here.
 
 **Where the two designs still disagree, and who moves.** Station's
 document is further along and names things in its own domain; this
@@ -2055,10 +2065,17 @@ Four things follow, and they are obligations on *this* repo:
 3. **Station's Stage 1 does not wait.** Its grammar, shape file,
    normalizer and corpus sections are station's own data and depend on
    nothing here.
-4. **Ship the corpus sections early, even in draft.** `ref`, `config`,
-   `lifecycle` and `order` are pure data (§15), and they are what stops
-   two implementations drifting before they meet. Station has said it
-   will hold itself to them; this repo owes them sooner than P1's exit.
+4. **Ship the corpus sections early, even in draft** — and the driver
+   contract with them. `ref` and `config` are pure data (§15.3): the
+   files are the whole deliverable. `lifecycle` and `order` are
+   *driver* sections, so executing them also takes §15.2's driver
+   contract — the probe catalog, the command interpreter and the
+   canonical observable — and shipping the four without it would hand
+   station two contracts it cannot run. Ordering and lifecycle are
+   exactly where two independent implementations drift furthest, so
+   the answer is to bring the driver contract forward in draft, not to
+   narrow the promise to the pure pair. Station has said it will hold
+   itself to them; this repo owes them sooner than P1's exit.
 
 The dependency question reopens when this library reaches tier 3 — at
 which point most of station's ports have something to depend on, and
@@ -2318,8 +2335,14 @@ integration-tested in every port (§11.4).
    `instance` map, feeding level 2 — but whether that is the right
    spelling, whether it should instead be a `defaults: true` marker on
    an instance entry, and how it interacts with profile overlays, are
-   this repo's to settle rather than station's to propose. Resolve
-   before P2's `apply()`.
+   this repo's to settle rather than station's to propose. **Resolve
+   before P1's configuration work**, not merely before P2's `apply()`:
+   P1 already ships the document normalizer and option resolution at
+   load, and requires the `config` corpus — which pins profile overlay,
+   precedence and list-replace (§15.3) — green at its exit. A
+   name-keyed `default` map or a `defaults: true` marker introduced
+   after that would not extend the canonical API and its fixtures, it
+   would invalidate them.
 5. **Per-instance scoping of the host** — seneca's delegate gives each
    plugin a view of the host that attributes its calls automatically. It
    is genuinely useful and genuinely hard to port. Deferred to P2 as a
