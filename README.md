@@ -24,7 +24,25 @@ programmatic API over the same normalized model.
 
 ## Status
 
-Design only. Nothing is implemented yet.
+**P0 — the repository skeleton.** The design is complete and agreed with
+its first host; the build machinery exists and turns over; there is no
+code in any language yet, and the corpus is empty.
+
+That last part is deliberate rather than a gap: `make spec` and
+`make spec-check` are proven against an empty corpus *before* there is
+anything to compile, so that when the first sections land, a failure is
+about the data rather than about the pipeline.
+
+| | |
+|---|---|
+| design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
+| agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
+| corpus | empty — `ref` and `config` land first, in P1 |
+| ports | none — `typescript/` is canonical and arrives with P1 |
+
+Next is P1, the TypeScript tracer bullet. Its first deliverables are the
+two corpus sections owed to station, not its last — see
+[`AGENTS.md`](./AGENTS.md) §6.
 
 The initial use case is [station](https://github.com/voxgig/station)
 loading generated SDKs as plugins: twenty-plus SDK instances declared in
