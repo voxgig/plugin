@@ -138,9 +138,18 @@ while the status was unshipped. Station's `instances()` already reported
 
 Watch for one trap when editing prose: **`live` also means "real" in
 ordinary English**, and "a live instance" now says something specific
-and false about a `loaded` one. Say *concrete* or *runtime* when you
-mean the instance rather than the status — three sentences in the design
-had to be fixed for exactly this.
+and false about a `loaded` one. Say *concrete*, *runtime* or *real*
+when you mean the instance rather than the status.
+
+Five sentences in the design had to be fixed for exactly this, and
+**the first pass caught only three** — review found §5.4 ("what makes
+the instance a *live* instance with persistent state", in a paragraph
+whose entire subject is state surviving while the instance is *not*
+live) and §19 ("shows up as a *live* instance in `host.list()`", which
+lists every status). Both read as correct English and assert something
+false. Re-read any sentence you write with `live` in it against the
+`declared`/`loaded` cases specifically — that is where this trap
+lands.
 
 **Two corpus sections are owed to another repo, earlier than they look
 (§17.1, and the plan's §3).** `ref` and `config` are owed to station

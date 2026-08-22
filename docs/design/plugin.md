@@ -503,7 +503,7 @@ live plugin *would* do.
 `instance.state` is a plugin-owned value the host never reads, writes,
 copies or serializes. It is created in `define` and destroyed in
 `close`. It **survives deactivate/activate cycles unchanged** — that is
-what makes the instance "a live instance with persistent state"
+what makes the instance "a concrete instance with persistent state"
 rather than a factory: deactivating a rate limiter and reactivating it
 ten seconds later must not reset its window counters unless the plugin
 chose to reset them in `deactivate`.
@@ -2671,7 +2671,7 @@ integration-tested in every port (§11.4).
    not of the *block*. The alternative shapes — a `defaults: true`
    marker on an instance entry, or keeping the untagged instance as the
    carrier — both leave one key doing two jobs, and the untagged-carrier
-   form shows up as a live instance in `host.list()` and in every status
+   form shows up as a real instance in `host.list()` and in every status
    row built from it.
 
    Settled here rather than deferred because P1 ships the document
