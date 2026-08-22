@@ -10,9 +10,10 @@ can be extended by the developers using it, in the same way, with the
 same vocabulary, in whatever language they are writing.
 
 A **definition** is a plugin kind. An **instance** is a live, named,
-stateful incarnation of one — `retry$fast` and `retry$slow` are two
-instances of one definition, in one host, at the same time. An instance
-is **loaded** (configured, stateful, inert) or **active** (bound into the
+stateful incarnation of one — `stripe` and `stripe-test`, or `retry$fast`
+and `retry$slow`, coexisting in one host and individually addressable.
+An instance is **declared** (a name and its config, nothing executed),
+**loaded** (defined, stateful, inert) or **active** (bound into the
 host's extension points, holding resources). Activation is a separate,
 reversible, runtime-controllable transition, and it is the only thing
 that captures resources. Definitions come from a static in-code catalog
@@ -23,6 +24,12 @@ programmatic API over the same normalized model.
 ## Status
 
 Design only. Nothing is implemented yet.
+
+The initial use case is [station](https://github.com/voxgig/station)
+loading generated SDKs as plugins: twenty-plus SDK instances declared in
+one config file, constructed lazily at the point of use, each managing
+its own SDK features. That use case set most of the model's harder
+requirements — see the design's §17.1.
 
 - [`docs/design/plugin.md`](./docs/design/plugin.md) — the design and the
   implementation plan: the model, naming, the state machine, extension
