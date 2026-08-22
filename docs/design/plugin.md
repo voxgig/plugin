@@ -309,20 +309,40 @@ diverging.
   receives no hook calls, is not in any chain, and provides no
   providers. It costs memory and nothing else.
 - **`active`** — bindings are live, resources are held.
-- **`failed`** — a lifecycle callback raised. The instance remains
-  registered and inspectable (that is the point: a failed plugin must be
-  visible, not vanished), participates in nothing, and accepts only
-  `unload`. `failed` records the failing transition and the error.
+- **`failed`** — a lifecycle callback or a release raised, on any
+  transition after `load`. The instance remains registered and
+  inspectable (that is the point: a failed plugin must be visible, not
+  vanished), participates in nothing, and accepts only `unload`.
+  `failed` records the failing transition and the error.
+
+A `define` that raises is the exception, and it is the one case where
+nothing is registered — so it needs an explicit cleanup path, or a port
+with manual memory leaks on every failed load. The rule: **when `define`
+raises, the host runs the definition's `close` on the partially
+constructed instance, best-effort, then discards it** and raises
+`plugin_define_failed`. `close` must therefore tolerate an instance
+whose `define` did not finish: a half-set `state`, no bindings, no
+ledger. Bindings declared before the raise are dropped by the host with
+the instance; they were never live. An error from that `close` is
+attached to the raised error and does not replace it.
 
 ### 5.2 Transitions
 
 | call | from | to | on failure |
 |---|---|---|---|
-| `load(spec)` | absent | `loaded` | nothing registered; error raised |
-| `activate(ref)` | `loaded` | `active` | releases run in reverse; → `failed` |
-| `deactivate(ref)` | `active` | `loaded` | releases still all run; → `failed` |
+| `load(spec)` | absent | `loaded` | `close` runs, nothing registered; error raised |
+| `activate(ref)` | `loaded` | `active` | bindings removed, releases run in reverse; → `failed` |
+| `deactivate(ref)` | `active` | `loaded` | bindings removed, all releases still run; → `failed` |
 | `unload(ref)` | `loaded`, `failed` | absent | error raised; registry entry dropped anyway |
 | `unload(ref)` | `active` | absent | deactivate first, then close |
+
+**Any** failure during a transition — a lifecycle callback raising, or a
+ledger entry raising (§8) — lands the instance in `failed`. There is no
+second, softer failure state for "deactivated, but the release was
+messy": the whole point of `failed` is that it is not trustworthy, and a
+plugin whose resources may still be held is exactly that. Bindings are
+always removed before the status changes, so a `failed` instance never
+participates in anything, whatever went wrong.
 
 Every transition is **idempotent in the trivial direction**:
 `activate` on an active instance is a no-op returning success, not an
@@ -399,9 +419,25 @@ actually needed, and no more:
 Many bindings, all called, no composition. The sdkgen hook vocabulary
 (`PrePoint`, `PreRequest`, …) is exactly this. The host calls
 `host.emit(point, arg)`; every active binding runs, in resolved order
-(§7); return values are ignored; a raising binding is reported (§12) and
-does not stop the others by default (`{ strict: true }` on the point
-declaration makes the first error abort and propagate).
+(§7); return values are ignored.
+
+A raising binding does not stop the others by default. Because "reported"
+is not a specification — one port collecting errors and another
+discarding them would be a genuine cross-port divergence in exactly the
+production path nobody tests — the reporting is pinned:
+
+- each error emits a `fail` trace record (§13) carrying the ref, the
+  point and the cause, *and* is collected;
+- `emit` returns the collected list, empty when every binding was clean.
+  A host that ignores the return value has ignored the errors, visibly;
+- the collected list is also raised as a single `plugin_hook_failed` when
+  the point is declared `{ raise: true }`, for hosts that would rather
+  not check a return value;
+- `{ strict: true }` on the point declaration stops at the first error
+  and propagates it unwrapped — remaining bindings do not run.
+
+`call` on a chain point needs none of this: an error propagates through
+the composed chain to the caller, which is what a chain is for.
 
 ### 6.2 `chain` — composition
 
@@ -519,10 +555,15 @@ def.activate = (inst) => {
 - `deactivate` on the definition is optional and runs *before* the
   ledger, for anything that must happen while resources still exist
   (draining, flushing, a graceful goodbye).
-- **A failing release does not stop the rest.** Every entry runs; errors
-  are collected and reported as one `plugin_release_failed`; the
-  instance still ends `loaded`, because a half-released instance that
-  claims to be active is worse than one that admits it had trouble.
+- **A failing release does not stop the rest.** Every entry runs, in
+  reverse order, whatever any of them does; the errors are collected and
+  raised as one `plugin_release_failed`.
+- **A failed release ends the instance in `failed`**, exactly as a failed
+  callback does (§5.2) — a release that raised may have leaked, and an
+  instance that may be holding resources it cannot account for must not
+  be reactivated. Its bindings are removed either way, so it
+  participates in nothing meanwhile. `unload` is the only way out, and
+  it still runs `close`.
 - If `activate` raises partway, the host runs the entries registered so
   far, in reverse, and the instance goes `failed`.
 - `inst.release` outside `activate` is `plugin_release_scope`.
@@ -694,6 +735,17 @@ One prefix, stated as a rule so nothing drifts: `VOXGIG_PLUGIN_*`.
 - `VOXGIG_PLUGIN_<REF>_<PATH>` — one option. Ref and path are upper-
   snake with `$` → `__` and `.` → `_` (`VOXGIG_PLUGIN_RETRY__FAST_MIN_DELAY`).
   Values parse as JSON, falling back to string.
+
+  **The encoding is lossy, and the design says so rather than pretending
+  otherwise.** `_` is legal in a name and in a tag, and the mapping folds
+  case, so the refs `retry$fast` and `retry__fast` both encode to
+  `RETRY__FAST`, as do `Retry$fast` and `retry$Fast`. Rather than
+  restrict a grammar the rest of the stack already uses, the host
+  **detects the collision**: it encodes every ref it holds, and a key
+  that two refs claim is `plugin_env_ambiguous`, naming both. The
+  affected pair is configurable by document and by API, just not by
+  environment — which is the honest trade, and is a pure function over
+  the ref set, so the corpus pins it.
 - `VOXGIG_PLUGIN_ACTIVE` / `VOXGIG_PLUGIN_INACTIVE` — comma-separated
   refs, forced on or off. `INACTIVE` wins. This is the "turn it off in
   production without a deploy" lever, and it is the one thing an
@@ -707,8 +759,13 @@ without touching a real environment.
 `host.apply(document)` is idempotent and re-runnable: load what is
 missing, unload what is gone, patch what changed, and move activation
 state to match. It is how a host does config reload, and it is why every
-transition is trivially idempotent (§5.2). Ordering: unloads first
-(reverse load order), then loads, then activations in load order.
+transition is trivially idempotent (§5.2). Ordering: deactivations and
+unloads first (reverse dependency order, then reverse load order), then
+loads, then activations **in dependency order** (§11), ties broken by
+load order. Dependency order governs, not the document's array position:
+a document that lists a consumer before the instance satisfying its
+requirement is a perfectly ordinary document, and must not fail with
+`plugin_dependency_missing` because of how it was written down.
 
 
 ## 10. Loading: dynamic and static
@@ -739,11 +796,26 @@ to, in what order*. That is extracted as a pure function,
 ```
 retry           -> ['@voxgig/plugin-retry', 'voxgig-plugin-retry', 'plugin-retry', 'retry']
 @acme/thing     -> ['@acme/thing']                    // scoped: verbatim only
-./local/thing   -> ['./local/thing']                  // path: verbatim only
 ```
 
 Prefixes come from the config `source` list, so a host can add its own
-(`@voxgig/station-plugin-`). *Applying* the ids — `require`,
+(`@voxgig/station-plugin-`).
+
+**A module path is not a name.** The ref grammar (§4) starts a name with
+a letter or `@`, so `./local/thing` is not a ref and never reaches
+candidate generation — seneca allows a path where a plugin name goes,
+and this design deliberately does not, because a ref is an address
+within a host and a path is a location on a disk. Loading from an
+explicit location is a separate field on the load spec, which bypasses
+candidate generation entirely:
+
+```ts
+host.load({ ref: 'thing', from: './local/thing' })
+```
+
+and in the document, `{ "thing": { "from": "./local/thing" } }`. `from`
+is passed to the resolver verbatim; a resolver that cannot honour a
+location raises `plugin_resolve_failed`. *Applying* the ids — `require`,
 `importlib`, `ServiceLoader` — is per-port integration-tested, because a
 JSON corpus cannot import a Python module in Go. The split is station's
 (pure-contract corpus, live integration suites), for the same reason.
@@ -809,6 +881,19 @@ capability, not on someone's configuration.
 - `host.apply` and `host.activate(...refs)` order activation by
   dependency, then by the §7 rules. A dependency cycle is
   `plugin_dependency_cycle`.
+- **Deactivation runs the dependency graph backwards, and is refused by
+  default.** Checking requirements only at activation would leave a
+  consumer `active` and calling a provider that has since been
+  deactivated or unloaded — active in name, broken in fact. So
+  deactivating or unloading an instance that active instances still
+  require is `plugin_dependency_held`, naming the holders.
+  `deactivate(ref, {cascade: true})` deactivates the dependents first,
+  in reverse dependency order, and reports what it touched.
+  `host.apply` cascades within its own plan (§9.6), and `host.close()`
+  always cascades, since it is tearing everything down anyway.
+- A requirement is satisfied by *any* active instance whose definition
+  provides that name, so deactivating one of two instances providing
+  `clock` is not held — the graph is over capabilities, not refs.
 
 `provides: [...]` lets a definition satisfy a requirement under another
 name — one definition supplying `clock` regardless of what it is called.
@@ -816,9 +901,37 @@ name — one definition supplying `clock` regardless of what it is called.
 
 ## 12. Errors
 
-Error codes are API. They are the same string in every port, the message
-format is fixed, and the corpus asserts on both — omni's lesson, learned
-by twenty-three runners printing the same failure differently.
+Error codes are API. They are the same string in every port, and so is
+the message — omni's lesson, learned by twenty-three runners printing
+the same failure differently. So the format is specified here, not left
+to each port to guess:
+
+```
+plugin/<code>: <text> [<key>=<value> …]
+```
+
+- `<code>` is the code from the table below, verbatim.
+- `<text>` is one fixed English sentence per code, listed in `DOCS.md`
+  and identical in every port. It interpolates only values that also
+  appear in the detail fields.
+- The bracketed detail carries the fields that apply to the code, in a
+  fixed order — `host`, `ref`, `define`, `point`, `key`, `cause` —
+  omitting those that do not, and is absent entirely when none do.
+  Values are rendered as compact JSON, so a value containing a space or
+  a bracket cannot break the parse.
+- The cause of a wrapped plugin error is reachable as a field on the
+  error object in every port; `cause=` in the text is its message, never
+  a replacement for the object.
+
+```
+plugin/plugin_ref_duplicate: instance already loaded [host="station" ref="retry$fast"]
+plugin/plugin_point_unknown: no such extension point [host="station" ref="retry$fast" point="requst"]
+```
+
+The corpus asserts the code on every error entry and the full rendered
+message on a representative few — omni's `err` matching is substring by
+default, so pinning the meaningful part everywhere and the exact format
+in a handful of places is both cheap and sufficient.
 
 | code | when |
 |---|---|
@@ -837,6 +950,9 @@ by twenty-three runners printing the same failure differently.
 | `plugin_release_scope` | `release` registered outside `activate` |
 | `plugin_order_cycle` | before/after constraints cycle |
 | `plugin_dependency_missing` / `plugin_dependency_cycle` | §11 |
+| `plugin_dependency_held` | deactivate/unload of an instance active instances require (§11) |
+| `plugin_hook_failed` | collected binding errors on a `{raise: true}` hook point (§6.1) |
+| `plugin_env_ambiguous` | two refs encode to one environment key (§9.5) |
 | `plugin_export_ambiguous` | §11 |
 | `plugin_define_failed` / `plugin_activate_failed` / `plugin_deactivate_failed` / `plugin_close_failed` | a callback raised; wraps the cause |
 | `plugin_release_failed` | one or more ledger entries raised |
@@ -862,7 +978,10 @@ can see the state of is a plugin system people stop trusting.
   their kinds, catalog contents, resolver presence, instances, shadowed
   providers, and the last error per failed instance.
 - `host.trace(fn)` — a tap over lifecycle events: `load`, `activate`,
-  `deactivate`, `unload`, `bind`, `unbind`, `release`, `fail`. Buffered
+  `deactivate`, `unload`, `bind`, `unbind`, `release`, `fail`. `fail`
+  covers both a failed transition and a binding that raised during
+  `emit`/`call` (§6.1), which is what makes a non-strict hook failure
+  observable rather than merely returned. Buffered
   in a bounded ring so it is available after the fact, exactly as
   station's event ring is. Trace records are data (a JSON-shaped map),
   which is what lets the corpus assert on them.
@@ -929,7 +1048,7 @@ host, runs the script, and returns the observable.
   },
   "out": {
     "instance": [ { "ref": "probe$a", "status": "active", "seen": 2 } ],
-    "resource": { "open": 0, "opened": 2, "closed": 2 },
+    "resource": { "open": 1, "opened": 2, "closed": 1 },
     "result":   [ "probe:x", "y", "probe:z" ]
   }
 }
@@ -937,8 +1056,14 @@ host, runs the script, and returns the observable.
 
 `seen: 2` is the persistent-state assertion: the counter in
 `instance.state` survived the deactivation. `resource` is the ledger
-assertion: two activations, two releases, nothing left open. `result`
-shows the middle call bypassing the deactivated chain binding entirely.
+assertion, and it is worth reading carefully, because the obvious wrong
+answer (`opened: 2, closed: 2`) would quietly demand that ports release
+resources while the instance is still active: `probe` acquires one
+synthetic handle per activation, the deactivation released the first,
+and the script *ends active*, so the second is still held. A scenario
+that wants the balanced ledger ends with an explicit `deactivate` or
+`close`. `result` shows the middle call bypassing the deactivated chain
+binding entirely.
 
 ### 15.2 The driver
 
