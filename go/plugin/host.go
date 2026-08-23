@@ -1060,6 +1060,46 @@ func (h *Host) reconcile() {
 			break
 		}
 
+		// RE-POINT FIRST. §11.3: a `dynamic` consumer "is re-pointed in
+		// place". With the selection remembered (§11.4) that is no
+		// longer automatic — a recorded choice naming an instance that
+		// is no longer a candidate would go stale, so reads would answer
+		// the new winner while the record still named the old one, and a
+		// provider that left and came back would be preferred over the
+		// one the consumer had actually been using in between.
+		//
+		// The NOTIFICATION half of §11.3's sentence is not implemented,
+		// because the design promises it three times and never names the
+		// callback or its signature. Open in doc/plan/status.md.
+		for _, r := range sortedkeys(h.inst) {
+			e := h.inst[r]
+			if StatusLive != e.Status {
+				continue
+			}
+			for _, req := range Requirements(e.Options) {
+				held, has := e.selected[req.Name]
+				if !has {
+					continue
+				}
+				cands := h.providersof(req)
+				still := false
+				for _, c := range cands {
+					if c.Ref == held {
+						still = true
+						break
+					}
+				}
+				if still {
+					continue
+				}
+				if 0 == len(cands) {
+					delete(e.selected, req.Name)
+				} else {
+					e.selected[req.Name] = cands[0].Ref
+				}
+			}
+		}
+
 		// Losses first, so a cascade settles in one pass rather than
 		// alternating with re-activations.
 		for _, r := range sortedkeys(h.inst) {
@@ -1126,6 +1166,21 @@ func (h *Host) reconcile() {
 }
 
 // --- ordering --------------------------------------------------------
+
+// SelectedOf is §11.4's remembered choice, read back. A READ and never
+// a selection — `chosen(..., false)` would still rank when nothing is
+// recorded, and a host that let introspection pick has made asking a
+// question change the answer.
+func (h *Host) SelectedOf(ref string, name string) (any, error) {
+	e, err := h.need(ref)
+	if nil != err {
+		return nil, err
+	}
+	if held, has := e.selected[name]; has {
+		return held, nil
+	}
+	return nil, nil
+}
 
 func (h *Host) Order(point string) ([]string, error) {
 	// Sorted by declaration SEQUENCE, which is what makes §7's sort

@@ -275,6 +275,11 @@ module Driver
       return [host, host.hostdeclare(ref, spec)['ref']]
     when 'declare' then return [host, host.declare(ref, spec)['ref']]
     when 'order' then return [host, host.order(point)]
+    when 'selected'
+      # Section 11.4's remembered choice, read directly. Every other
+      # observable - status, log, even `hold` - is identical under a host
+      # that re-ranks on every question.
+      return [host, host.selectedof(ref, cmd['name'])]
     when 'seq'
       entry = host.instance(ref)
       return [host, entry ? entry['seq'] : nil]

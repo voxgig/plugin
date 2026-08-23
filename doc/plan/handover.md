@@ -933,6 +933,36 @@ ends. Two more pin it through `hold`, which names the holder, and one
 pins that the selection does not survive the consumer's own restart.
 
 
+### The instrument, not the fix, was the hard part
+
+§11.3's other half — a `dynamic` consumer "re-pointed in place" — is a
+three-line change. Proving it took three attempts, and the failures are
+the lesson:
+
+1. **`hold` as the lens.** The entry deactivated the low-ranked provider
+   and expected `plugin_dependency_held`. It got one — from the *wrong
+   command*, because a mandatory consumer always holds its selected
+   provider, so the run stopped before reaching the question.
+2. **Declaration order.** The next version declared the better provider
+   before the consumer, so the consumer selected it at its own activate
+   and there was never a stale record to re-point.
+3. **The selection had no observable at all.** Status, log and `hold`
+   are *identical* under a host that re-ranks on every question — which
+   is exactly why the original defect survived every entry in `depend`.
+
+So the fix was a new driver verb: **`selected`**, which reads the
+remembered choice and nothing else. It is a READ and never a selection —
+a host that let introspection rank has made asking a question change the
+answer, and the corpus would then pass on a host with no memory at all.
+
+The general rule this round keeps re-teaching: **when a defect is
+invisible to every existing observable, the work is to add the
+observable, not to find a cleverer sequence.** Three of this round's
+findings needed that — `stray` needed the probe to export its instance
+api, `slow` needed a corpus entry that loaded it, and this needed a
+verb.
+
+
 ## 12. Open, and deliberately so
 
 | | |

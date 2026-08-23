@@ -377,6 +377,7 @@ needs it present, because the next section will.
 | `provider` | `point`, `arg?` | invoke a provider point; the winner's value becomes `result` |
 | `export` | `key?` | read the export map, or one key |
 | `order` | `point?` | the resolved order; the value becomes `result` |
+| `selected` | `ref`, `name` | the provider ref this instance's **activation** chose for the requirement `name`, or null (§11.4). A READ, never a selection: a host that picks one here has made introspection create a binding. This exists because §11.4's always-reluctant rule and §11.3's "re-pointed in place" are both statements about the remembered choice, and every other observable — status, log, `hold` — is identical under a host that re-ranks instead. |
 | `list` | — | the status map; the value becomes `result` |
 | `env` | `vars` | set `VOXGIG_PLUGIN_*` for subsequent commands |
 | `close` | — | tear the host down, unwinding every instance |

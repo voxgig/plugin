@@ -741,7 +741,36 @@ module VoxgigPlugin
         rounds += 1
         break if rounds > 1000
 
-        # Losses first, so a cascade settles in one pass rather than
+        # RE-POINT FIRST. Section 11.3: a `dynamic` consumer "is
+      # re-pointed in place". With the selection remembered (section
+      # 11.4) that is no longer automatic - a recorded choice naming an
+      # instance that is no longer a candidate would go stale, so reads
+      # would answer the new winner while the record still named the old
+      # one.
+      #
+      # The NOTIFICATION half of that sentence is not implemented,
+      # because the design promises it three times and never names the
+      # callback. Open in doc/plan/status.md.
+      @inst.keys.sort.each do |r|
+        entry = @inst[r]
+        next unless entry['status'] == 'live'
+
+        VoxgigPlugin.requirements(entry['options']).each do |req|
+          held = entry['selected'][req['name']]
+          next if held.nil?
+
+          cands = providersof(req)
+          next if cands.any? { |c| c['ref'] == held }
+
+          if cands.empty?
+            entry['selected'].delete(req['name'])
+          else
+            entry['selected'][req['name']] = cands[0]['ref']
+          end
+        end
+      end
+
+      # Losses first, so a cascade settles in one pass rather than
         # alternating with re-activations.
         @inst.keys.sort.each do |r|
           entry = @inst[r]
@@ -793,6 +822,15 @@ module VoxgigPlugin
     end
 
     # --- ordering ---------------------------------------------------
+
+    # Section 11.4's remembered choice, read back. A READ and never a
+    # selection - `chosen(..., false)` would still rank when nothing is
+    # recorded, and a host that let introspection pick has made asking a
+    # question change the answer.
+    def selectedof(ref, name)
+      entry = need(ref)
+      entry['selected'][name]
+    end
 
     def order(point = nil)
       # Sorted by declaration SEQUENCE, which is what makes the section 7

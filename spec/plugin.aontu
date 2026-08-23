@@ -3272,6 +3272,86 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$hi': 'loaded', 'dep$c': 'live', 'dep$lo': 'live' } } }
     }
+    # THE SELECTION IS READ DIRECTLY, because nothing else can see it.
+    # A host that re-ranks on every question produces the same statuses,
+    # the same log, and — in the sequences that matter — the same `hold`
+    # answer. The first version of these entries used `hold` as the lens
+    # and passed with the fix removed.
+    #
+    # §11.4: `dep$c` activates against `dep$lo`, the only provider. A
+    # better one arriving afterwards does NOT take it.
+    {
+      id: 'depend/select#reluctant-holds-its-choice', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: { result: 'dep$lo' } }
+    }
+    # §11.3: a `dynamic` consumer "is RE-POINTED IN PLACE" when its
+    # selected provider goes. With the selection remembered (§11.4) that
+    # stopped being automatic - a record naming a departed instance goes
+    # stale, so reads would answer the new winner while the record still
+    # named the old one, and a provider that left and CAME BACK would be
+    # preferred over the one the consumer had actually been using.
+    {
+      id: 'depend/select#dynamic-repoints', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        # `dep$c` BEFORE `dep$hi`, so the selection it remembers is
+        # `dep$lo` - the whole point. Declaring `dep$hi` first lets the
+        # consumer pick the better provider at its own activate, and the
+        # entry then passes whatever re-pointing does. It did, at first.
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1', policy: 'dynamic' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$lo' }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: { result: 'dep$hi', status: { 'dep$c': 'live' } } }
+    }
+    # ...and the re-point STICKS when the old provider returns. This is
+    # the half a stale record gets wrong in the other direction: it
+    # still says `dep$lo`, so the consumer would prefer an instance it
+    # had not been using since the moment it left.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1', policy: 'dynamic' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$lo' }
+        { do: 'activate', ref: 'dep$lo' }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: { result: 'dep$hi' } }
+    }
+    # ...and a consumer that never activated has chosen nothing.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: { result: '__NULL__' } }
+    }
+    # ...and the consumer never left `live` doing it, which is the whole
+    # meaning of `dynamic`. The LOG is what says so: a restart would
+    # spell `dep$c:deactivate` and `dep$c:activate` around the loss.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1', policy: 'dynamic' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$lo' }
+      ]
+      match: { out: { log: [
+        'dep$lo:define', 'dep$lo:activate',
+        'dep$c:define', 'dep$c:activate',
+        'dep$hi:define', 'dep$hi:activate',
+        'dep$lo:deactivate'
+      ], status: { 'dep$c': 'live' } } }
+    }
     # ...and a selection belongs to ONE activation. After the consumer
     # goes down and comes back, it ranks afresh and takes `dep$hi`, so
     # `dep$hi` is now the one that cannot be deactivated under `hold`.

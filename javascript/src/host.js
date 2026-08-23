@@ -616,6 +616,28 @@ function makehost(options) {
       moved = false
       if (1000 < ++rounds) break
 
+      // RE-POINT FIRST. §11.3: a `dynamic` consumer "is re-pointed in
+      // place". With the selection remembered (§11.4) that is no longer
+      // automatic — a recorded choice naming an instance that is no
+      // longer a candidate would go stale, so reads would answer the new
+      // winner while the record still named the old one.
+      //
+      // The NOTIFICATION half of that sentence is not implemented,
+      // because the design promises it three times and never names the
+      // callback. Open in doc/plan/status.md.
+      for (const r of Object.keys(inst).sort()) {
+        const e = inst[r]
+        if ('live' !== e.status) continue
+        for (const req of requirements(e.options)) {
+          const held = e.selected[req.name]
+          if (undefined === held) continue
+          const cands = providersof(req)
+          if (cands.some((c) => c.ref === held)) continue
+          if (0 === cands.length) delete e.selected[req.name]
+          else e.selected[req.name] = cands[0].ref
+        }
+      }
+
       // Losses first, so a cascade settles in one pass rather than
       // alternating with re-activations.
       for (const r of Object.keys(inst).sort()) {
@@ -662,6 +684,17 @@ function makehost(options) {
   }
 
   // --- ordering ----------------------------------------------------
+
+  /** §11.4's remembered choice, read back. A READ and never a
+   * selection — `chosen(..., false)` would still rank when nothing is
+   * recorded, and a host that let introspection pick has made asking a
+   * question change the answer. */
+  function selectedof(ref, name) {
+    const e = inst[canonref(ref)]
+    if (!e) fail('plugin_not_loaded', 'no such instance: ' + ref, { ref })
+    const held = e.selected[name]
+    return undefined === held ? null : held
+  }
 
   function order(point) {
     // Sorted by declaration SEQUENCE, which is what makes the §7 sort's
@@ -920,7 +953,7 @@ function makehost(options) {
   const self = {
     catalog, list, instance, order, observable, hostdeclare,
     trace: () => events.slice(),
-    autotag, positionof,
+    autotag, positionof, selectedof,
     emit, call, provider: provide, shadowed, exports, capability,
     declare, load, activate, deactivate, unload, ready, apply, close,
     options: setoptions,

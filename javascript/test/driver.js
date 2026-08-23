@@ -275,6 +275,12 @@ function drive(cmds) {
           break
         }
         case 'order': last = host.order(c.point); break
+      case 'selected':
+        // §11.4's remembered choice, read directly. Every other
+        // observable — status, log, even `hold` — is identical under a
+        // host that re-ranks on every question.
+        last = host.selectedof(c.ref, c.name)
+        break
         case 'call': {
           const e = host.instance(c.ref)
           if (!e) {

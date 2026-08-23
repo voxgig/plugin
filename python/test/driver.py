@@ -323,6 +323,11 @@ def docmd(host, cmd):
         return host, host.declare(ref, spec)['ref']
     if 'order' == verb:
         return host, host.order(point)
+    if 'selected' == verb:
+        # Section 11.4's remembered choice, read directly. Every other
+        # observable - status, log, even `hold` - is identical under a
+        # host that re-ranks on every question.
+        return host, host.selectedof(ref, cmd.get('name'))
 
     if 'seq' == verb:
         entry = host.instance(ref)

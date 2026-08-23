@@ -5902,6 +5902,290 @@
           {
             "cmd": [
               {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#reluctant-holds-its-choice",
+            "match": {
+              "out": {
+                "result": "dep$lo"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "policy": "dynamic",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$lo"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#dynamic-repoints",
+            "match": {
+              "out": {
+                "result": "dep$hi",
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "policy": "dynamic",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$lo"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$lo"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$hi"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "policy": "dynamic",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$lo"
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "dep$lo:define",
+                  "dep$lo:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$hi:define",
+                  "dep$hi:activate",
+                  "dep$lo:deactivate"
+                ],
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
                 "dependency": "hold",
                 "do": "host"
               },

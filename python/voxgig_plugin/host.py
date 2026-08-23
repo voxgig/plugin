@@ -735,6 +735,32 @@ class Host:
             if 1000 < rounds:
                 break
 
+            # RE-POINT FIRST. Section 11.3: a `dynamic` consumer "is
+            # re-pointed in place". With the selection remembered
+            # (section 11.4) that is no longer automatic - a recorded
+            # choice naming an instance that is no longer a candidate
+            # would go stale, so reads would answer the new winner while
+            # the record still named the old one.
+            #
+            # The NOTIFICATION half of that sentence is not implemented,
+            # because the design promises it three times and never names
+            # the callback. Open in doc/plan/status.md.
+            for r in sorted(self._inst):
+                entry = self._inst[r]
+                if 'live' != entry['status']:
+                    continue
+                for req in requirements(entry['options']):
+                    held = entry['selected'].get(req['name'])
+                    if None is held:
+                        continue
+                    cands = self._providersof(req)
+                    if any(c['ref'] == held for c in cands):
+                        continue
+                    if 0 == len(cands):
+                        del entry['selected'][req['name']]
+                    else:
+                        entry['selected'][req['name']] = cands[0]['ref']
+
             # Losses first, so a cascade settles in one pass rather than
             # alternating with re-activations.
             for ref in sorted(self._inst):
@@ -786,6 +812,15 @@ class Host:
                     moved = True
 
     # --- ordering -----------------------------------------------------
+
+    def selectedof(self, ref, name):
+        """Section 11.4's remembered choice, read back. A READ and never
+        a selection - `_chosen(..., False)` would still rank when nothing
+        is recorded, and a host that let introspection pick has made
+        asking a question change the answer.
+        """
+        entry = self._need(ref)
+        return entry['selected'].get(name)
 
     def order(self, point=None):
         # Sorted by declaration SEQUENCE, which is what makes the

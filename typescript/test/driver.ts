@@ -290,6 +290,14 @@ export function drive(cmds: Cmd[]): any {
         break
       }
       case 'order': last = host.order(c.point); break
+      case 'selected':
+        // §11.4's remembered choice, read directly. Every other
+        // observable — status, log, even `hold` — is identical under a
+        // host that re-ranks on every question, which is how the first
+        // version of the re-pointing entries passed with the fix
+        // removed.
+        last = (host as any).selectedof(c.ref, c.name)
+        break
       case 'call': {
         const e: any = host.instance(c.ref)
         if (!e) throw Object.assign(new Error('no such instance'), { code: 'plugin_not_loaded' })

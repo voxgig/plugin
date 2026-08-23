@@ -554,6 +554,13 @@ func docmd(host *plugin.Host, c map[string]any) (*plugin.Host, *produced, error)
 		v, err := host.Order(point)
 		return nil, &produced{v}, err
 
+	case "selected":
+		// §11.4's remembered choice, read directly. Every other
+		// observable — status, log, even `hold` — is identical under a
+		// host that re-ranks on every question.
+		v, err := host.SelectedOf(ref, tostr(c["name"]))
+		return nil, &produced{v}, err
+
 	case "call":
 		return docall(host, c, ref, point)
 	}

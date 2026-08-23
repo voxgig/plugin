@@ -13,16 +13,29 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**voxgig/plugin#15** — P3.2 (the sdkgen bridge), **P4 complete** (the go
-and python ports) and **P5's first two** (javascript, ruby). Five
-implementations pass all 19 corpus sections; seven canonical defects
-found and fixed along the way.
+**Both PRs are merged.** plugin `main` is `153c878` (#15: the sdkgen
+bridge, **P4 complete**, and **P5's first two**); station `main` is
+`f7656aa` (#9: Stages 2, 3, 3b and the port sweep, which **discharges
+C3**). C1 and C2 were discharged by voxgig/plugin#7.
 
-**voxgig/station#9** — Stages 2, 3 and 3b, 11/11 CI ports green, awaiting
-review. **It discharges C3.**
+Five implementations pass all **19 corpus sections, 532 entries** —
+typescript (canonical), go, python, javascript, ruby.
 
-plugin `main` is `090529c`; station `main` is `600fdfe` (Stage 1
-merged). C1 and C2 were discharged by voxgig/plugin#7.
+**Two review rounds against the ports produced 24 findings, and the
+count that matters is the split:** eight were canonical defects with
+explicit design backing, eight more were port-local, and a further six
+turned out to be neither — rules the design states that no
+implementation had, in every port at once (`bail`'s null, the `slow`
+probe, `plugin_bind_scope`, the `active` bar, `hold`'s holder set, and
+always-reluctant rebinding). `handover.md` §16–§17 has each.
+
+**Station carries sixteen open findings from #9**, six of them P1 —
+including a verified allowlist bypass for imperatively tagged instances
+(`connect(SDK, {as: 'test'})` gets no `profile.api` fallback, so the
+policy's `hosts` list does not reach it) and two secret-name defects
+that can route the wrong credential. Merged on the owner's call with the
+fixes scheduled as a follow-up; they are the next station work, ahead of
+Stages 4 and 5.
 
 
 ## Pick this up first
@@ -70,17 +83,74 @@ they do, see station `spec/README.md`).
 
 ## Blocked on a human
 
-Two decisions, neither the implementer's to make. Both are recorded in
-[`progress.md`](progress.md) and neither blocks P1.
-
-**Three**, and each has a row in [`progress.md`](progress.md) — this
-table is the summary, that file is the authority. None blocks P1.
+**Three decisions**, none the implementer's to make, and each with a row
+in [`progress.md`](progress.md) — this table is the summary, that file is
+the authority. None blocks P1.
 
 | Decision | Register row | Gates |
 |---|---|---|
 | **Does station hold Stage 5 after ts/js until P4?** | 5.3 | station's fourteen remaining ports. P4 is scheduled early to make model changes cheap; porting first makes them expensive again, in the other repo. The alternative is to accept divergence and budget a migration pass — said out loud rather than discovered. |
 | **Does station take the library as a dependency?** | 5.2 | Only whether station's ports later *replace* their native implementation, and the +800-lines-per-port trade. Deferred to P5 by design and **non-blocking** for the native rollout. |
 | **Does sdkgen adopt plugin?** (§17.2) | 6.2 | Nested hosts natively, `transport`'s deletion, the seventeen-model change. Uncommitted. If it never adopts, station is a sixteen-language library carrying a generic abstraction for a single consumer — the risk that invalidates the plan rather than delaying it. |
+
+
+## Two rules the design states that no phase owns
+
+Both surfaced by review of the go port, both confirmed against the
+design, and **neither is a port defect** — the canonical does not
+implement them either. They are here rather than in `progress.md`
+because `adoption.md`'s P0–P6 never scheduled either one, which is the
+actual gap.
+
+### Option validation against the definition's shape
+
+§16 says "this library validates an instance's `options` against **the
+definition's** option shape", and §12 has carried `plugin_option_invalid`
+— "options failed the definition's shape" — since the error table was
+written. Nothing validates anything. A definition with a numeric option
+default accepts a string from any of the ten configuration layers.
+
+It is not a small fix, and the two reasons are not about effort:
+
+- **It needs the repo's first runtime dependency, in five ports.**
+  `AGENTS.md` §1 permits exactly one — `voxgig/struct` — and no port has
+  taken it. That is a decision about every port's build.
+- **There is nothing yet to validate against.** The `shape` today
+  carries `$MERGE` directives and the level-1 defaults. It has **no
+  vocabulary for types**. So the work starts by deciding what a shape
+  says about types — adopting struct's `validate` vocabulary into the
+  model and pinning it in the corpus across every port — and only then
+  calls it.
+
+Scheduling it means adding a phase or widening one. Suggested: after P5,
+before the P6 tier, so it lands once and every subsequent port inherits
+it rather than fourteen ports needing a second pass.
+
+### The `dynamic` capability-change notification
+
+§11.1 says a `dynamic` consumer "is re-pointed in place **and
+notified**", and §11.3's policy matrix repeats it in both the mandatory
+and the optional row. **The re-pointing is implemented** (§11.4's
+remembered selection, and `reconcile` re-points a stale one). The
+notification is not — and the design never names the callback, its
+signature, or its failure semantics, so there is nothing to implement.
+
+What has to be decided, and is deliberately not being guessed:
+
+- **Name and shape.** The precedent is §9.4's `reconfigure(instance,
+  options, previous)` — the existing "something changed under you, cope"
+  callback — which suggests `rebind(instance, name, ref, previous)`.
+- **What a definition without it gets.** `reconfigure`'s answer is
+  deactivate-and-reactivate, which is exactly what `dynamic` promises
+  will *not* happen. So this needs a different answer, and "nothing" is
+  defensible.
+- **Whether it can raise.** Every other callback lands the instance in
+  `failed` via `plugin_<phase>_failed`. A notification that can fail a
+  live instance is a much larger claim than a notification.
+
+That is a new lifecycle callback across 23 ports. Until it is decided,
+a mandatory-dynamic consumer keeps a correct selection and no signal —
+which is the state the design describes minus its last two words.
 
 
 ## Recently settled
