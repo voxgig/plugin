@@ -13,33 +13,41 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**Nothing open.** plugin `main` is `e8ca92c`; station `main` is
-`088f204`. **C1 and C2 are both discharged** — voxgig/plugin#7, 234
-entries across four sections plus the driver contract.
+**Two PRs open.**
+
+- **voxgig/station#8** — Stage 1, the config grammar as data. CI green,
+  11/11 ports. Awaiting review.
+- **voxgig/plugin** — P3b, this change.
+
+plugin `main` was `ebb54ee`; station `main` is `088f204`. **C1 and C2
+are both discharged** — voxgig/plugin#7, 234 entries across four
+sections plus the driver contract.
 
 
 ## Pick this up first
 
-**P3 — extraction against a working station, and the `FeatureHost`
-bridge.** P2 is complete: nineteen corpus sections, 400+ entries, the
-canonical passing all of them, and `DOCS.md` written.
-
-**P3 IS BLOCKED, AND NOT ON THIS REPO.** It is gated on **C3** —
-station's Stages 2–3b — because P3's acceptance bar *is* station's own
+**Station's track, still.** P3 remains gated on **C3** — station's
+Stages 2–3b — because P3's acceptance bar *is* station's own
 integration test: twenty-plus declared instances with none constructed
 at `open()`, two instances of one api with distinct placeholders, and a
 fleet-wide feature default reaching an instance that never mentions it.
-Station is still at Stage 0.
 
-So the next work is **station's track**, not plugin's. Stage 1 (the
-grammar) is independent of plugin entirely and can start immediately;
-Stage 2 consumes C1, which is delivered.
+Stage 1 has now landed, so the next station work is **Stage 2**
+(instances — the identity change), which consumes C1 and is delivered.
+Then Stage 3 and 3b, at which point C3 is discharged and plugin's P3
+unblocks.
 
-**P3b (capabilities, §11)** could be brought forward — it is
-deliberately scheduled after the station proof because station uses none
-of §11, but nothing blocks it. It is the largest single tranche in the
-library, so doing it while P3 waits is a real option rather than
-make-work.
+**P3b is done** and no longer the answer to "what can plugin do while it
+waits". §11 is complete: 11.1 ranking and 11.2 versions from P2, 11.3
+from this change, and 11.4's `resolve()` already carried all four `Why`
+kinds. What is left in plugin before P4 is 3.1 and 3.2, and both are
+blocked.
+
+**Station also owes itself a port sweep.** Stage 1 crossed ts, js and py
+over the `plugin` → `sdk` rename; thirteen ports have not crossed, and
+the corpus carries both grammars until they do (station
+`spec/README.md`). That is mechanical and unblocked, and it is the
+cheapest thing available to anyone with capacity.
 
 
 ## Blocked on a human

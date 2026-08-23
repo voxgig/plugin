@@ -3515,6 +3515,646 @@
           }
         ]
       },
+      "cascade": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cascade#consumer-first",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$p:define",
+                  "dep$p:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$c:deactivate",
+                  "dep$p:deactivate"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    "x"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "y"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cascade#deepest-first",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$a:define",
+                  "dep$a:activate",
+                  "dep$b:define",
+                  "dep$b:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$c:deactivate",
+                  "dep$b:deactivate",
+                  "dep$a:deactivate"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$z"
+              },
+              {
+                "do": "close"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cascade#close-inherits",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$a:define",
+                  "dep$a:activate",
+                  "dep$z:define",
+                  "dep$z:activate",
+                  "dep$z:deactivate",
+                  "dep$z:close",
+                  "dep$a:deactivate",
+                  "dep$a:close"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "cycle": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ],
+                  "requires": [
+                    "y"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    "x"
+                  ]
+                },
+                "ref": "dep$b"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_dependency_cycle",
+            "id": "depend/cycle#mutual-mandatory"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ],
+                  "requires": [
+                    "z"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    "x"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "z"
+                    }
+                  ],
+                  "requires": [
+                    "y"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "err": "plugin_dependency_cycle",
+            "id": "depend/cycle#three-node"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "y",
+                      "optional": true
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "x",
+                      "optional": true
+                    }
+                  ]
+                },
+                "ref": "dep$b"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_dependency_cycle",
+            "id": "depend/cycle#static-optional-still-cycles"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "y",
+                      "optional": true,
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "x",
+                      "optional": true,
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$b"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cycle#dynamic-optional-is-permitted",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live",
+                  "dep$b": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "y",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "x",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$b"
+              }
+            ],
+            "err": "plugin_dependency_cycle",
+            "id": "depend/cycle#mandatory-dynamic-still-cycles"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    "x"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "y"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cycle#chain-is-not-a-cycle",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live",
+                  "dep$b": "live",
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "hold": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_dependency_held",
+            "id": "depend/hold#ad-hoc-deactivate-is-refused"
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "err": true,
+            "id": "depend/hold#names-the-holders",
+            "match": {
+              "err": {
+                "message": "/holders=\\[\"dep\\$c\"\\]/"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "id": "depend/hold#unheld-deactivates-normally",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$z"
+              },
+              {
+                "do": "close"
+              }
+            ],
+            "doc": true,
+            "id": "depend/hold#close-is-coordinated",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$a:define",
+                  "dep$a:activate",
+                  "dep$z:define",
+                  "dep$z:activate",
+                  "dep$z:deactivate",
+                  "dep$z:close",
+                  "dep$a:deactivate",
+                  "dep$a:close"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/hold#restart-is-the-default",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          }
+        ]
+      },
       "lost": {
         "set": [
           {
@@ -3841,6 +4481,290 @@
                 "status": {
                   "dep$a": "live"
                 }
+              }
+            }
+          }
+        ]
+      },
+      "policy": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "clock",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/policy#per-requirement-dynamic",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "store"
+                    }
+                  ]
+                },
+                "ref": "dep$s"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "metrics"
+                    }
+                  ]
+                },
+                "ref": "dep$m"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "store"
+                    },
+                    {
+                      "name": "metrics",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$m"
+              }
+            ],
+            "doc": true,
+            "id": "depend/policy#mixed-keeps-live-on-dynamic-loss",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "store"
+                    }
+                  ]
+                },
+                "ref": "dep$s"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "metrics"
+                    }
+                  ]
+                },
+                "ref": "dep$m"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "store"
+                    },
+                    {
+                      "name": "metrics",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$s"
+              }
+            ],
+            "doc": true,
+            "id": "depend/policy#mixed-restarts-on-static-loss",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "clock",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/policy#dynamic-still-gates-first-activation",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "clock",
+                      "optional": true
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/policy#optional-static-restarts",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$p:define",
+                  "dep$p:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$c:deactivate",
+                  "dep$p:deactivate",
+                  "dep$c:activate"
+                ],
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "clock",
+                      "optional": true,
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/policy#optional-dynamic-is-untouched",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$p:define",
+                  "dep$p:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$p:deactivate"
+                ]
               }
             }
           }

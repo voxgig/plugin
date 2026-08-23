@@ -172,6 +172,11 @@ export function drive(cmds: Cmd[]): any {
           catalog: withprobes(),
           reserved: c.reserved, keys: c.keys, defaults: c.defaults,
           profile: c.profile, points: withpoints(c.points),
+          // §11.3's strict reading. Absent means `restart`, which is
+          // the default precisely because a station that cannot swap a
+          // provider without a restart has lost the argument for
+          // having a plugin system.
+          dependency: c.dependency,
         })
         break
       case 'define':
