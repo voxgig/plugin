@@ -14,6 +14,12 @@ export type Source =
 
 export function resolvecandidates(name: string, sources?: Source[]): string[] {
   const out: string[] = []
+
+  // A SCOPED NAME RESOLVES VERBATIM ONLY (§10.2). `@acme/thing` is
+  // already a package id; prefixing it produces
+  // `@voxgig/plugin-@acme/thing`, which is not a thing that can exist.
+  if (name.startsWith('@')) return [name]
+
   const list = sources && 0 < sources.length ? sources : DEFAULT_SOURCES
 
   for (const src of list) {
@@ -36,3 +42,17 @@ export function resolvecandidates(name: string, sources?: Source[]): string[] {
 const DEFAULT_SOURCES: Source[] = [
   { kind: 'module', prefix: ['@voxgig/plugin-', 'voxgig-plugin-', 'plugin-', ''] },
 ]
+
+/** A MODULE PATH IS NOT A NAME (§10.2). The ref grammar starts a name
+ * with a letter or `@`, so `./local/thing` is not a ref and never
+ * reaches candidate generation — seneca allows a path where a plugin
+ * name goes, and this design deliberately does not, because a ref is an
+ * ADDRESS WITHIN A HOST and a path is a LOCATION ON A DISK.
+ *
+ * Loading from an explicit location is a separate field that bypasses
+ * candidate generation entirely: `from` is passed to the resolver
+ * verbatim, and a resolver that cannot honour a location raises
+ * plugin_resolve_failed. */
+export function resolvefrom(from: string): string[] {
+  return [from]
+}

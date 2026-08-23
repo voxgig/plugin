@@ -2177,11 +2177,38 @@ primary: resolve: {
       in: { name: 'r', sources: [ { kind: 'module', prefix: ['a-', 'a-'] } ] }
       out: ['a-r']
     }
-    # A scoped name passes through unchanged.
+    # A SCOPED NAME RESOLVES VERBATIM ONLY (§10.2), whatever the
+    # sources say — it is already a package id, and prefixing it
+    # produces `@voxgig/plugin-@acme/thing`, which is not a thing that
+    # can exist. The default sources are the case that matters: a port
+    # honouring this only when the prefix list happens to be empty
+    # passes the second entry and fails the first.
     {
-      in: { name: '@acme/thing', sources: [ { kind: 'module', prefix: [''] } ] }
+      id: 'resolve/candidates#scoped-verbatim'
+      in: { name: '@acme/thing' }
       out: ['@acme/thing']
     }
+    {
+      in: { name: '@acme/thing', sources: [ { kind: 'module', prefix: ['x-'] } ] }
+      out: ['@acme/thing']
+    }
+    {
+      in: { name: '@acme/thing', sources: [ { kind: 'path', dir: './p' } ] }
+      out: ['@acme/thing']
+    }
+  ]
+
+
+  # `from` BYPASSES CANDIDATE GENERATION ENTIRELY (§10.2). A MODULE PATH
+  # IS NOT A NAME: the ref grammar starts a name with a letter or `@`,
+  # so `./local/thing` is not a ref and never reaches this function at
+  # all. seneca allows a path where a plugin name goes; this design
+  # deliberately does not, because a ref is an ADDRESS WITHIN A HOST and
+  # a path is a LOCATION ON A DISK.
+  from: set: [
+    { id: 'resolve/from#verbatim', doc: true, in: './local/thing', out: ['./local/thing'] }
+    { in: '/abs/path', out: ['/abs/path'] }
+    { in: '../up/one', out: ['../up/one'] }
   ]
 }
 
@@ -2386,6 +2413,65 @@ primary: point: {
         { do: 'provider', point: 'v' }
       ]
       match: { out: { result: 'A' } }
+    }
+  ]
+
+
+  # POSITION VERIFICATION (§6.6). Station found that a plugin can need
+  # to KNOW it is in the right place: its middleware must sit
+  # immediately outside the base transport or its "wire truth" events
+  # are fiction.
+  #
+  # `outermost` and `innermost` are NOT index 0 and index count-1 read
+  # the other way round — §6.2 composes b1(b2(b3(base))) with the FIRST
+  # binding OUTERMOST. Getting that backwards is the exact error the
+  # positional pin vocabulary exists to prevent, so both flags are
+  # pinned against a chain with a known composition.
+  #
+  # THE HOST DOES NOT POLICE THIS; it makes the fact available. A plugin
+  # that requires a position it did not get fails loudly rather than
+  # reporting nonsense, and that is the plugin's call because only it
+  # knows what its position means. Verification tells a plugin it was
+  # misplaced; a pin stops the misplacement from being expressible. The
+  # two are not substitutes.
+  position: set: [
+    {
+      id: 'point/position#outermost', doc: true
+      cmd: [
+        { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
+        { do: 'call', ref: 'probe$a', method: 'position', point: 'c' }
+      ]
+      match: { out: { result: { index: 0, count: 2, outermost: true, innermost: false } } }
+    }
+    {
+      id: 'point/position#innermost'
+      cmd: [
+        { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
+        { do: 'call', ref: 'probe$b', method: 'position', point: 'c' }
+      ]
+      match: { out: { result: { index: 1, count: 2, outermost: false, innermost: true } } }
+    }
+    # A LONE binding is both, which a port special-casing one flag gets
+    # wrong.
+    {
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'position', point: 'c' }
+      ]
+      match: { out: { result: { index: 0, count: 1, outermost: true, innermost: true } } }
+    }
+    # And the composition AGREES with the flags — the same chain, read
+    # both ways, so a port cannot satisfy one and invert the other.
+    {
+      id: 'point/position#agrees-with-composition'
+      cmd: [
+        { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'ABx' } }
     }
   ]
 

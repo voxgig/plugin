@@ -6,7 +6,7 @@ import * as Assert from 'node:assert'
 import { section, check, label, Entry } from './corpus'
 import {
   applyenv, parserange, satisfies,
-  resolvecapability, resolvegraph, resolvecandidates,
+  resolvecapability, resolvegraph, resolvecandidates, resolvefrom,
 } from '../src/index'
 
 const SUBJECT: { [sec: string]: { [group: string]: (e: Entry) => any } } = {
@@ -33,6 +33,7 @@ const SUBJECT: { [sec: string]: { [group: string]: (e: Entry) => any } } = {
   },
   resolve: {
     candidates: (e) => resolvecandidates(e.in.name, e.in.sources),
+    from: (e) => resolvefrom(e.in),
   },
 }
 

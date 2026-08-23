@@ -226,6 +226,12 @@ export function drive(cmds: Cmd[]): any {
         if (!e) throw Object.assign(new Error('no such instance'), { code: 'plugin_not_loaded' })
         if ('bump' === c.method) { e.state.count = (e.state.count || 0) + 1; break }
         if ('count' === c.method) { last = e.state.count || 0; break }
+        if ('position' === c.method) {
+          // Reached through the instance api, which is where §6.6 puts
+          // it — a plugin asks about itself.
+          last = (host as any).positionof(c.ref, c.point)
+          break
+        }
         if ('stray' === c.method) {
           // A release from outside a lifecycle callback. The scope
           // belongs to the activation; a call from anywhere else has no

@@ -187,10 +187,33 @@ export function makehost(options?: HostOptions) {
       /** What this instance can do for others (§11.1). */
       provides: (p: Provided) => { e.provides.push(p) },
 
-      /** Where this binding landed — the plugin-side counterpart to a
-       * host pin (§6.6). Verification tells a plugin it was misplaced;
-       * a pin stops the misplacement from being expressible. */
-      position: (point: string) => order(point).indexOf(e.ref),
+      /** Where this binding landed (§6.6) — the plugin-side counterpart
+       * to a host pin. Station found that a plugin can need to KNOW it
+       * is in the right place: its middleware must sit immediately
+       * outside the base transport or its "wire truth" events are
+       * fiction.
+       *
+       * THE HOST DOES NOT POLICE THIS; it just makes the fact
+       * available. A plugin that requires a position it did not get
+       * fails loudly rather than reporting nonsense — and that is the
+       * plugin's call, because only it knows what its position means.
+       * Verification tells a plugin it was misplaced; a pin (§7) stops
+       * the misplacement from being expressible at all. The two are not
+       * substitutes. */
+      position: (point: string) => {
+        const ranked = order(point)
+        const index = ranked.indexOf(e.ref)
+        return {
+          index,
+          count: ranked.length,
+          // §6.2 composes b1(b2(b3(base))) with the FIRST binding
+          // OUTERMOST, so these are not index 0 and index count-1 the
+          // other way round. Getting this backwards is the exact error
+          // the positional pin vocabulary exists to prevent.
+          outermost: 0 === index,
+          innermost: index === ranked.length - 1,
+        }
+      },
 
       /** AN INSTANCE MAY ITSELF BE A HOST (§6.5), and THE OUTER ONE
        * OWNS THE INNER ONE'S LIFETIME. Registering the teardown in the
@@ -642,10 +665,24 @@ export function makehost(options?: HostOptions) {
     for (const r of Object.keys(inst).sort().reverse()) unload(r)
   }
 
+  /** The same record §6.6 gives a plugin about itself, reachable from
+   * outside for the corpus. A plugin asks via `inst.position(point)`. */
+  function positionof(ref: string, point: string): any {
+    const e = inst[canonref(ref)]
+    if (!e) fail('plugin_not_loaded', 'no such instance: ' + ref, { ref })
+    const ranked = order(point)
+    const index = ranked.indexOf(e.ref)
+    return {
+      index, count: ranked.length,
+      outermost: 0 === index,
+      innermost: index === ranked.length - 1,
+    }
+  }
+
   const self = {
     catalog, list, instance, order, observable,
     trace: () => events.slice(),
-    autotag,
+    autotag, positionof,
     emit, call, provider: provide, shadowed, exports, capability,
     declare, load, activate, deactivate, unload, ready, apply, close,
     options: setoptions,
