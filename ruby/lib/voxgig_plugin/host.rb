@@ -756,11 +756,18 @@ module VoxgigPlugin
         next unless entry['status'] == 'live'
 
         VoxgigPlugin.requirements(entry['options']).each do |req|
-          held = entry['selected'][req['name']]
-          next if held.nil?
+          # RE-POINTING IN PLACE IS WHAT `dynamic` MEANS, and only that.
+          # Section 11.3 restarts a `static` consumer on a capability
+          # change precisely because it said in writing it cannot
+          # survive a swap.
+          next if VoxgigPlugin.restartsonloss(req)
 
+          held = entry['selected'][req['name']]
           cands = providersof(req)
-          next if cands.any? { |c| c['ref'] == held }
+          # ABSENT COUNTS AS INVALID: skipping an absent record left a
+          # consumer whose ONLY provider went away never selecting again
+          # when it came back.
+          next if !held.nil? && cands.any? { |c| c['ref'] == held }
 
           if cands.empty?
             entry['selected'].delete(req['name'])
@@ -809,6 +816,13 @@ module VoxgigPlugin
 
           begin
             run(entry, 'activate', 'activate')
+            # Section 11.4: RECONCILE'S ACTIVATION IS AN ACTIVATION, so
+            # it records the selection like the public one. It did not,
+            # so a consumer restarted by a cascade came back live having
+            # chosen nothing.
+            VoxgigPlugin.requirements(entry['options']).each do |q|
+              chosen(entry, q, true)
+            end
             entry['status'] = 'live'
             entry['unmet'] = []
             moved = true

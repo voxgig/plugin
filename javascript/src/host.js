@@ -629,10 +629,17 @@ function makehost(options) {
         const e = inst[r]
         if ('live' !== e.status) continue
         for (const req of requirements(e.options)) {
+          // RE-POINTING IN PLACE IS WHAT `dynamic` MEANS, and only
+          // that. §11.3 restarts a `static` consumer on a capability
+          // change precisely because it said in writing it cannot
+          // survive a swap.
+          if (restartsonloss(req)) continue
           const held = e.selected[req.name]
-          if (undefined === held) continue
           const cands = providersof(req)
-          if (cands.some((c) => c.ref === held)) continue
+          // ABSENT COUNTS AS INVALID: skipping an absent record left a
+          // consumer whose ONLY provider went away never selecting
+          // again when it came back.
+          if (undefined !== held && cands.some((c) => c.ref === held)) continue
           if (0 === cands.length) delete e.selected[req.name]
           else e.selected[req.name] = cands[0].ref
         }
@@ -670,6 +677,9 @@ function makehost(options) {
         if (0 < unmetof(e).length) continue
         try {
           run(e, 'activate', 'activate')
+          // §11.4: RECONCILE'S ACTIVATION IS AN ACTIVATION, so it
+          // records the selection like the public one.
+          for (const q of requirements(e.options)) chosen(e, q, true)
           e.status = 'live'
           e.unmet = []
           moved = true

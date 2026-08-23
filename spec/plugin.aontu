@@ -3326,6 +3326,70 @@ primary: depend: {
       ]
       match: { out: { result: 'dep$hi' } }
     }
+    # ...and a consumer whose ONLY provider goes away RE-SELECTS it when
+    # it returns. The re-point pass deletes a record it cannot satisfy,
+    # and the first version then skipped an absent record forever — so
+    # `selected` answered null with both instances live. The entry above
+    # has TWO providers, so its delete branch never ran; this one is the
+    # single-provider case that reaches it.
+    {
+      id: 'depend/select#dynamic-reselects', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1', policy: 'dynamic' } ] } }
+        { do: 'deactivate', ref: 'dep$p' }
+        { do: 'activate', ref: 'dep$p' }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: { result: 'dep$p', status: { 'dep$c': 'live' } } }
+    }
+    # ...and while it is gone, the record is EMPTY rather than naming a
+    # provider that is not there.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1', policy: 'dynamic' } ] } }
+        { do: 'deactivate', ref: 'dep$p' }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: { result: '__NULL__', status: { 'dep$c': 'live' } } }
+    }
+    # A STATIC consumer RESTARTS rather than being re-pointed: the
+    # cascade takes it down and reconciliation brings it back against
+    # the survivor, and the LOG is what proves it went through
+    # `deactivate`/`activate` rather than being moved in place. It also
+    # pins that reconcile's activation RECORDS the selection — it did
+    # not, so a restarted consumer came back live having chosen nothing.
+    #
+    # THIS ENTRY DOES NOT TEST THE `restartsonloss` GUARD in the
+    # re-point pass, and saying so is the point. Removing that guard
+    # leaves this green, because the cascade has already cleared the
+    # selection before the pass runs. The guard's own case — a live
+    # static consumer whose REQUIREMENT changed under `reconfigure`, so
+    # its provider is still live but no longer matches — needs a probe
+    # with `reconfigure`, and what should happen there is genuinely
+    # undecided (§11.3 restarts on a CAPABILITY change; this is a
+    # requirement change). Raised on the review thread rather than
+    # pinned to a guess.
+    {
+      id: 'depend/select#static-restarts-not-repoints', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$lo' }
+        { do: 'selected', ref: 'dep$c', name: 's' }
+      ]
+      match: { out: {
+        result: 'dep$hi'
+        log: [
+          'dep$lo:define', 'dep$lo:activate',
+          'dep$c:define', 'dep$c:activate',
+          'dep$hi:define', 'dep$hi:activate',
+          'dep$c:deactivate', 'dep$lo:deactivate', 'dep$c:activate'
+        ]
+      } }
+    }
     # ...and a consumer that never activated has chosen nothing.
     {
       cmd: [

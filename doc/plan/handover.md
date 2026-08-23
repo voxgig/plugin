@@ -963,6 +963,51 @@ api, `slow` needed a corpus entry that loaded it, and this needed a
 verb.
 
 
+### The review of the fix found the fix's own blind spot
+
+R2g added `selected` so the re-pointing could be seen at all. Review of
+that commit then found **three more, two of them in the code it had just
+added** — and the reason is the same one, one level up.
+
+- The pass **deleted a record it could not satisfy, then skipped an
+  absent one forever.** A consumer whose ONLY provider went away never
+  selected again when it came back: `selected` answered null with both
+  instances live. My entry had TWO providers, so its delete branch never
+  ran. Fourth time this round an entry passed without reaching the line
+  it was written for.
+- It applied to **`static`** requirements too, though re-pointing in
+  place is what `dynamic` MEANS — §11.3 restarts a static consumer
+  precisely because it said in writing it cannot survive a swap.
+- And **reconcile's activation recorded no selection at all**, so a
+  consumer restarted by a cascade came back `live` having chosen
+  nothing. Found by the new static entry, which is what a discriminating
+  entry is for.
+
+**One of the three fixes has no entry, and that is written down rather
+than papered over.** Removing the `restartsonloss` guard leaves the
+suite green, because the cascade clears a static consumer's selection
+before the pass ever runs. The guard's own case — a live static consumer
+whose REQUIREMENT changed under `reconfigure`, so its provider is still
+live but no longer matches — needs a probe with `reconfigure`, and what
+*should* happen there is genuinely undecided: §11.3 restarts on a
+CAPABILITY change, and this is a requirement change. Raised rather than
+pinned to a guess, because an entry asserting the wrong answer is worse
+than none.
+
+### And two register defects, both mine
+
+A blanket count update rewrote **four historical endpoints** in
+`progress.md` to the current total, so rows recording earlier rounds
+claimed the entries of a later one. A phase register is a history, not a
+display of the present; the endpoints are restored and the chain now
+runs unbroken from 476 to 535. The same edit left a finding split that
+did not add up — 8 + 8 + 6 against a stated 24.
+
+Neither is a code defect and both are the same mistake: a mechanical
+edit applied to a file whose numbers mean different things in different
+rows.
+
+
 ## 12. Open, and deliberately so
 
 | | |

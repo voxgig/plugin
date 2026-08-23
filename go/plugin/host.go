@@ -1077,16 +1077,25 @@ func (h *Host) reconcile() {
 				continue
 			}
 			for _, req := range Requirements(e.Options) {
-				held, has := e.selected[req.Name]
-				if !has {
+				// RE-POINTING IN PLACE IS WHAT `dynamic` MEANS, and only
+				// that. §11.3 restarts a `static` consumer on a
+				// capability change precisely because it said in writing
+				// it cannot survive a swap.
+				if RestartsOnLoss(req) {
 					continue
 				}
+				held, has := e.selected[req.Name]
 				cands := h.providersof(req)
+				// ABSENT COUNTS AS INVALID: skipping an absent record
+				// left a consumer whose ONLY provider went away never
+				// selecting again when it came back.
 				still := false
-				for _, c := range cands {
-					if c.Ref == held {
-						still = true
-						break
+				if has {
+					for _, c := range cands {
+						if c.Ref == held {
+							still = true
+							break
+						}
 					}
 				}
 				if still {
@@ -1157,6 +1166,13 @@ func (h *Host) reconcile() {
 				e.Status = StatusFailed
 				moved = true
 				continue
+			}
+			// §11.4: RECONCILE'S ACTIVATION IS AN ACTIVATION, so it
+			// records the selection like the public one. It did not, so
+			// a consumer restarted by a cascade came back `live` having
+			// chosen nothing.
+			for _, q := range Requirements(e.Options) {
+				h.chosen(e, q, true)
 			}
 			e.Status = StatusLive
 			e.unmet = []string{}

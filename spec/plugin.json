@@ -6092,6 +6092,178 @@
                     }
                   ]
                 },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "policy": "dynamic",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#dynamic-reselects",
+            "match": {
+              "out": {
+                "result": "dep$p",
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "policy": "dynamic",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__",
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$lo"
+              },
+              {
+                "do": "selected",
+                "name": "s",
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#static-restarts-not-repoints",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$lo:define",
+                  "dep$lo:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$hi:define",
+                  "dep$hi:activate",
+                  "dep$c:deactivate",
+                  "dep$lo:deactivate",
+                  "dep$c:activate"
+                ],
+                "result": "dep$hi"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
                 "ref": "dep$lo"
               },
               {

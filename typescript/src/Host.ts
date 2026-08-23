@@ -777,10 +777,22 @@ export function makehost(options?: HostOptions) {
         const e = inst[r]
         if ('live' !== e.status) continue
         for (const req of requirements(e.options)) {
+          // RE-POINTING IN PLACE IS WHAT `dynamic` MEANS, and only
+          // that. §11.3 restarts a `static` consumer on a capability
+          // change precisely because it said in writing it cannot
+          // survive a swap — so silently moving its recorded provider
+          // here would perform the swap while skipping the restart that
+          // makes it safe.
+          if (restartsonloss(req)) continue
           const held = e.selected[req.name]
-          if (undefined === held) continue
           const cands = providersof(req)
-          if (cands.some((c) => c.ref === held)) continue
+          // ABSENT COUNTS AS INVALID, which the first version missed:
+          // it `continue`d on an absent record, so a consumer whose ONLY
+          // provider went away — deleting the record — never selected
+          // again when that provider came back, and `selected` answered
+          // null with both instances live. My own entry had two
+          // providers, so the delete branch never ran in it.
+          if (undefined !== held && cands.some((c) => c.ref === held)) continue
           if (0 === cands.length) delete e.selected[req.name]
           else e.selected[req.name] = cands[0].ref
         }
@@ -821,6 +833,12 @@ export function makehost(options?: HostOptions) {
         if (0 < unmetof(e).length) continue
         try {
           run(e, 'activate', 'activate')
+          // §11.4: RECONCILE'S ACTIVATION IS AN ACTIVATION, so it
+          // records the selection like the public one. It did not, so a
+          // consumer restarted by a cascade came back `live` having
+          // chosen nothing — `unwind` had cleared the record on the way
+          // down and nothing wrote it on the way up.
+          for (const q of requirements(e.options)) chosen(e, q, true)
           e.status = 'live'
           e.unmet = []
           moved = true

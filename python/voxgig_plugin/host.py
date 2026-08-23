@@ -750,14 +750,22 @@ class Host:
                 if 'live' != entry['status']:
                     continue
                 for req in requirements(entry['options']):
-                    held = entry['selected'].get(req['name'])
-                    if None is held:
+                    # RE-POINTING IN PLACE IS WHAT `dynamic` MEANS, and
+                    # only that. Section 11.3 restarts a `static`
+                    # consumer on a capability change precisely because
+                    # it said in writing it cannot survive a swap.
+                    if restartsonloss(req):
                         continue
+                    held = entry['selected'].get(req['name'])
                     cands = self._providersof(req)
-                    if any(c['ref'] == held for c in cands):
+                    # ABSENT COUNTS AS INVALID: skipping an absent
+                    # record left a consumer whose ONLY provider went
+                    # away never selecting again when it came back.
+                    if (None is not held
+                            and any(c['ref'] == held for c in cands)):
                         continue
                     if 0 == len(cands):
-                        del entry['selected'][req['name']]
+                        entry['selected'].pop(req['name'], None)
                     else:
                         entry['selected'][req['name']] = cands[0]['ref']
 
@@ -803,6 +811,12 @@ class Host:
                     continue
                 try:
                     self._run(entry, 'activate', 'activate')
+                    # Section 11.4: RECONCILE'S ACTIVATION IS AN
+                    # ACTIVATION, so it records the selection like the
+                    # public one. It did not, so a consumer restarted by
+                    # a cascade came back live having chosen nothing.
+                    for q in requirements(entry['options']):
+                        self._chosen(entry, q, True)
                     entry['status'] = 'live'
                     entry['unmet'] = []
                     moved = True

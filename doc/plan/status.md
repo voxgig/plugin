@@ -18,13 +18,13 @@ bridge, **P4 complete**, and **P5's first two**); station `main` is
 `f7656aa` (#9: Stages 2, 3, 3b and the port sweep, which **discharges
 C3**). C1 and C2 were discharged by voxgig/plugin#7.
 
-Five implementations pass all **19 corpus sections, 532 entries** —
+Five implementations pass all **19 corpus sections, 535 entries** —
 typescript (canonical), go, python, javascript, ruby.
 
-**Two review rounds against the ports produced 24 findings, and the
-count that matters is the split:** eight were canonical defects with
-explicit design backing, eight more were port-local, and a further six
-turned out to be neither — rules the design states that no
+**Two review rounds against the ports produced twenty-two categorised
+findings, and the split is the count that matters:** eight were
+canonical defects with explicit design backing, eight more were
+port-local, and a further six turned out to be neither — rules the design states that no
 implementation had, in every port at once (`bail`'s null, the `slow`
 probe, `plugin_bind_scope`, the `active` bar, `hold`'s holder set, and
 always-reluctant rebinding). `handover.md` §16–§17 has each.
