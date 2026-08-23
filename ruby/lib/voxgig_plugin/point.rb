@@ -25,8 +25,10 @@ module VoxgigPlugin
   def self.point_emit(bindings, mode, arg)
     if mode == 'bail'
       # Stops at the first binding that RETURNS A VALUE - the "handled,
-      # stop" case. `nil` is not a value; a binding that declines returns
-      # nothing.
+      # stop" case. A `nil` RETURN DECLINES (section 6.1): ruby has one
+      # way to say nothing, and the model's rule is written to that
+      # rather than to JavaScript's null/undefined pair. `unless
+      # v.nil?`, NOT `if v` - `false` is a value.
       bindings.each do |b|
         v = b['fn'].call(arg)
         return v unless v.nil?

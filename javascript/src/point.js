@@ -23,11 +23,17 @@ const MODES = ['emit', 'parallel', 'serial', 'bail']
 function emit(bindings, mode, arg) {
   if ('bail' === mode) {
     // Stops at the first binding that RETURNS A VALUE — the "handled,
-    // stop" case. `undefined` is not a value; a binding that declines
-    // returns nothing.
+    // stop" case. A NULL DECLINES, and so does `undefined`.
+    //
+    // JavaScript can tell the two apart and almost nothing else in the
+    // target set can — Go, Python, Ruby, PHP, Lua, Java and C# each have
+    // exactly one way to say nothing. Making the distinction
+    // load-bearing would cost every one of them a wrapper type carried
+    // through the whole dispatch path, to express a difference their
+    // plugin authors cannot write. §18's budget settles it (§6.1).
     for (const b of bindings) {
       const v = b.fn(arg)
-      if (undefined !== v) return v
+      if (null != v) return v
     }
     return undefined
   }

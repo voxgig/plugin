@@ -1307,6 +1307,39 @@ primary: lifecycle: {
   # AN ERROR THAT ALREADY CARRIES A CODE KEEPS IT: the code is the
   # error's identity, and a plugin raising `store_unreachable` must not
   # have it rewritten. Only the code-less case is wrapped.
+  # `slow` is the sixth probe DOCS.md §4.3 names, and until this entry
+  # NOTHING IN THE CORPUS EVER LOADED IT. `check_probes.py` asserted the
+  # definition exists; no run ever asked it to do anything, so a port
+  # could ship a `slow` that raised on activate and stay green.
+  #
+  # It behaves as `probe` does, deliberately: §18 makes the host
+  # synchronous, so a yielding callback would not "complete later", it
+  # would abandon everything past its first suspension point. The open
+  # question - whether a host should ever await - is recorded in
+  # DOCS.md §4.3 rather than guessed at here.
+  slow: set: [
+    {
+      id: 'lifecycle/slow#is-a-probe', doc: true
+      cmd: [
+        { do: 'ready', ref: 'slow$a' }
+        { do: 'deactivate', ref: 'slow$a' }
+        { do: 'unload', ref: 'slow$a' }
+      ]
+      out: {
+        status: {}
+        open: 0
+        result: null
+        log: ['slow$a:define', 'slow$a:activate', 'slow$a:deactivate', 'slow$a:close']
+      }
+    }
+    # ...and it settles EAGERLY: `ready` returns with the instance live
+    # and its resource held, in the same synchronous call.
+    {
+      cmd: [ { do: 'ready', ref: 'slow$a' } ]
+      match: { out: { status: { 'slow$a': 'live' }, open: 1 } }
+    }
+  ]
+
   wrap: set: [
     {
       id: 'lifecycle/wrap#bare-activate', doc: true
@@ -2642,8 +2675,8 @@ primary: point: {
 
 
   # `bail` — stops at the first binding that RETURNS A VALUE. The
-  # "handled, stop" case. `undefined` is not a value: a binding that
-  # declines returns nothing, and the next one gets its turn.
+  # "handled, stop" case. A NULL DECLINES: a binding that has nothing to
+  # say returns nothing, and the next one gets its turn.
   bail: set: [
     {
       id: 'point/bail#stops', doc: true
@@ -2662,6 +2695,35 @@ primary: point: {
         { do: 'emit', point: 'v' }
       ]
       match: { out: { result: '__NULL__' } }
+    }
+    # A NULL RETURN DECLINES, and the next binding gets its turn.
+    #
+    # §6.1: JavaScript can tell `null` from `undefined` and almost
+    # nothing else in the target set can, so a canonical that stopped on
+    # `null` had a rule go, python and ruby could not implement - and
+    # each of them had already, silently, implemented the other one. This
+    # entry is what makes the two readings disagree out loud.
+    {
+      id: 'point/bail#null-declines', doc: true
+      cmd: [
+        { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: null } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
+        { do: 'emit', point: 'v' }
+      ]
+      match: { out: { result: 'B' } }
+    }
+    # ...and a FALSE is a value. The rule is about absence, not about
+    # falsiness, which is where a port reaching for its own truthiness
+    # would land.
+    {
+      cmd: [
+        { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: false } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
+        { do: 'emit', point: 'v' }
+      ]
+      match: { out: { result: false } }
     }
   ]
 

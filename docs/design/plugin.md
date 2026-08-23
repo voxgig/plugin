@@ -569,6 +569,8 @@ part of the point declaration:
 | `serial` | every binding, awaited one at a time in resolved order | the collected errors |
 | `bail` | in resolved order, **stops at the first binding that returns a value** | that value, or absent |
 
+**Null declines.** "Returns a value" means a value, and a null — `nil`, `None`, `null`, `undefined`, whatever the port spells it — is the absence of one. JavaScript can tell `null` from `undefined` and almost nothing else in the target set can: Go, Python, Ruby, PHP, Lua, Java and C# each have exactly one way to say nothing. Making the distinction load-bearing would cost every one of them a wrapper type carried through the whole dispatch path, to express a difference a plugin author in those languages cannot even write. §18's budget settles it: a binding that returns null has declined, and the next one gets its turn.
+
 `bail` is the "handled — stop" case, and it earns its place: it is how a
 plugin overrides a default without replacing the whole implementation
 the way a `provider` point does. Cordis ships the same four (plus

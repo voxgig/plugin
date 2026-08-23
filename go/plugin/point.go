@@ -86,8 +86,9 @@ type Bound struct {
 func Emit(bindings []Bound, mode Mode, arg any) (any, error) {
 	if ModeBail == mode {
 		// Stops at the first binding that RETURNS A VALUE — the
-		// "handled, stop" case. A nil return is not a value; a binding
-		// that declines returns nothing.
+		// "handled, stop" case. A NIL RETURN DECLINES (§6.1): go has one
+		// way to say nothing, and the model's rule is written to that
+		// rather than to JavaScript's null/undefined pair.
 		for _, b := range bindings {
 			if v := b.Fn(arg); nil != v {
 				if err, bad := v.(error); bad {

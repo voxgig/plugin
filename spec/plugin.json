@@ -8110,6 +8110,55 @@
           }
         ]
       },
+      "slow": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "slow$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "slow$a"
+              },
+              {
+                "do": "unload",
+                "ref": "slow$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/slow#is-a-probe",
+            "out": {
+              "log": [
+                "slow$a:define",
+                "slow$a:activate",
+                "slow$a:deactivate",
+                "slow$a:close"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {}
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "slow$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1,
+                "status": {
+                  "slow$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
       "wrap": {
         "set": [
           {
@@ -9282,6 +9331,88 @@
             "match": {
               "out": {
                 "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": null
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "doc": true,
+            "id": "point/bail#null-declines",
+            "match": {
+              "out": {
+                "result": "B"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": false
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": false
               }
             }
           }

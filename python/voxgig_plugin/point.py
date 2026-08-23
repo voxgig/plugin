@@ -25,8 +25,9 @@ def emit(bindings, mode, arg):
     """Fan-out. Return values are ignored except in `bail`."""
     if 'bail' == mode:
         # Stops at the first binding that RETURNS A VALUE - the "handled,
-        # stop" case. `None` is not a value; a binding that declines
-        # returns nothing.
+        # stop" case. A `None` RETURN DECLINES (section 6.1): python has
+        # one way to say nothing, and the model's rule is written to that
+        # rather than to JavaScript's null/undefined pair.
         for b in bindings:
             value = b['fn'](arg)
             if None is not value:

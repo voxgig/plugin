@@ -814,6 +814,39 @@ than counted — and two SURVIVORS were the finding above, not a gap to
 paper over.
 
 
+### Two more the same round, both cross-cutting rather than port-local
+
+**`bail` needed a rule JavaScript had made for it.** §6.1 said "stops at
+the first binding that returns a value" and left null unsaid. The
+canonical and javascript stopped on `null`; go, python and ruby treated
+it as a decline — **three of five ports had already, silently,
+implemented the other reading.** The budget settles it rather than a
+vote: JavaScript can tell `null` from `undefined` and almost nothing else
+in the target set can, so making the distinction load-bearing costs every
+other port a wrapper type carried through the whole dispatch path, to
+express a difference their plugin authors cannot write. **Null declines**
+is now in §6.1, and `point/bail#null-declines` makes the two readings
+disagree out loud, with a second entry pinning `false` as a value so a
+port reaching for its own truthiness lands somewhere visible.
+
+**The `slow` probe asserted nothing, in all five ports.** DOCS.md §4.3
+said it yields once per callback where the language has async, to prove
+eager settling. No port implemented it — every one registers a plain
+`record` — and **no corpus entry had ever instantiated it**, so a port
+could ship a `slow` that raised on activate and stay green.
+`check_probes.py` checked the definition existed, which is not the same
+question.
+
+Implemented literally it does not work, and that is the finding rather
+than the fix: §18 makes the host synchronous, so an `async` callback
+hands back a promise the host drops and everything past the first `await`
+never runs — in python a coroutine called from a sync host executes
+nothing at all. Yielding cannot demonstrate eager settling; it can only
+demonstrate a truncated callback. So DOCS.md now says what `slow` is,
+`lifecycle/slow` loads it, and **whether a host should ever await a
+callback is written down as open** rather than guessed at.
+
+
 ## 12. Open, and deliberately so
 
 | | |
