@@ -17,7 +17,10 @@ import re
 
 from .types import fail
 
-VERSION_RE = re.compile(r'^(\d+)(?:\.(\d+))?(?:\.(\d+))?$')
+# `\Z`, NOT `$` — the same trap as the ref grammar. Python's `$` also
+# matches before a trailing newline, so `^...$` accepts "2.1\n" as a
+# range. Pinned by `version/rangebad#trailing-newline`.
+VERSION_RE = re.compile(r'^(\d+)(?:\.(\d+))?(?:\.(\d+))?\Z')
 
 
 def parse_range(text):

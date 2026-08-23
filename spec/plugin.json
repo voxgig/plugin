@@ -574,6 +574,52 @@
                   "pos": 0,
                   "provides": {
                     "attrs": {
+                      "n": "1"
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": 1
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": 1
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": "1"
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
                       "n": 1,
                       "transactional": true
                     },
@@ -9520,6 +9566,11 @@
             "out": false
           },
           {
+            "id": "ref/name#trailing-newline",
+            "in": "abc\n",
+            "out": false
+          },
+          {
             "in": "a!b",
             "out": false
           },
@@ -9700,6 +9751,15 @@
             "in": "a#b"
           },
           {
+            "err": "plugin_bad_name",
+            "id": "ref/parsebad#trailing-newline",
+            "in": "abc\n"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$b\n"
+          },
+          {
             "err": "plugin_bad_tag",
             "in": "a$b$c"
           },
@@ -9793,6 +9853,11 @@
           },
           {
             "in": "a!b",
+            "out": false
+          },
+          {
+            "id": "ref/tag#trailing-newline",
+            "in": "abc\n",
             "out": false
           }
         ]
@@ -10586,6 +10651,11 @@
           {
             "err": "plugin_bad_range",
             "in": "-1"
+          },
+          {
+            "err": "plugin_bad_range",
+            "id": "version/rangebad#trailing-newline",
+            "in": "2.1\n"
           }
         ]
       },

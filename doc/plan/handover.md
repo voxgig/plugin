@@ -576,6 +576,75 @@ languages. So it is bounded, tested where it can be, and written down in
 the file.
 
 
+## 15. P5's first two ports, and the bug a shipped port was hiding
+
+**javascript found nothing**, which is the expected result: it is the
+canonical with the types stripped, so a disagreement could only be
+carelessness. Recorded in its `AGENTS.md` as the reason a corpus failure
+*there* is a transcription error rather than a model question — the
+opposite of the standing advice for every other port.
+
+**ruby found four things, and one of them was a live bug in python.**
+
+### The one that matters: `^` and `$` are not string anchors
+
+Ruby's `^`/`$` match at every LINE boundary, so `/^[a-z]+$/` accepts
+`"abc\ndef"`. Writing `\A`/`\z` deliberately is what raised the
+question of what the design's grammar means by those characters — and
+checking the other ports found that **the python port had shipped with
+the same class of hole**: Python's `$` also matches *before a trailing
+newline*, so `check_name("abc\n")` returned `True`, and so did
+`check_tag` and `parse_range`.
+
+Three ports rejected it, one accepted it, and **no corpus entry
+distinguished them.** The grammar in §4 is written `^...$` because that
+is how a regex is conventionally written down; what it means is STRING
+start and end, and four languages spell that differently. Four entries
+now pin it — name, tag, the public `parse_ref` path, and the version
+grammar, which is the only other regex in the library and which a port
+fixing `ref` alone would leave broken.
+
+That is the sharpest example so far of the pattern §13 names: *a rule
+the design states, that no corpus entry can distinguish.* It survived
+two ports and a review round.
+
+### `1` is not `"1"`
+
+The type-strict `match` rule (§13's finding 5) was pinned for
+booleans-versus-integers. A ruby mutation comparing `to_s` survived,
+which is the string-versus-number half — and that one is what php's
+`==`, perl's `==`/`eq` split and lua's coercion each get wrong in their
+own way. Two more entries.
+
+### Two NON-mutations, and why they are worth recording
+
+Ruby makes two guards unreachable: `true == 1` is false, and
+`true.is_a?(Integer)` is false. So the explicit boolean guard the python
+port needs in `matchvalue` **cannot fire here**, and a mutation deleting
+it survived the whole corpus.
+
+A guard that cannot fire is dead code that reads as protection. It was
+deleted, with the reasoning moved into a comment — and
+`ruby/AGENTS.md` now says "do not re-add defensive code the language
+already makes unreachable". The same call went the other way for
+`JSON.parse(..., quirks_mode: true)`, which is also a no-op on ruby 3.x
+but is kept because json 1.x genuinely rejected bare scalars; the
+comment now says that accurately instead of claiming a protection it is
+not currently providing.
+
+**A surviving mutation is not always a corpus gap.** Sometimes it is the
+language telling you the line does nothing.
+
+### Scope: only six of P5's fourteen are verifiable here
+
+`javascript`, `ruby`, `php`, `java`, `rust` and `perl` have toolchains
+in this environment. `lua`, `csharp`, `swift`, `kotlin`, `scala`,
+`clojure`, `dart` and `elixir` do not. Porting a language nobody can
+execute ships an implementation nobody has run, which is the thing the
+corpus exists to prevent — the same call station's Stage 5 made about
+its own five gated ports.
+
+
 ## 12. Open, and deliberately so
 
 | | |

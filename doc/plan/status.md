@@ -13,8 +13,10 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**voxgig/plugin#15** — P3.2 (the sdkgen bridge) and **P4 complete**:
-the go and python ports, and the six canonical defects they found.
+**voxgig/plugin#15** — P3.2 (the sdkgen bridge), **P4 complete** (the go
+and python ports) and **P5's first two** (javascript, ruby). Five
+implementations pass all 19 corpus sections; seven canonical defects
+found and fixed along the way.
 
 **voxgig/station#9** — Stages 2, 3 and 3b, 11/11 CI ports green, awaiting
 review. **It discharges C3.**
@@ -25,10 +27,12 @@ merged). C1 and C2 were discharged by voxgig/plugin#7.
 
 ## Pick this up first
 
-**P5 — the fourteen tier-3 ports.** P4 is complete and the model has
-now survived a static-typed port and a dynamic one; from here a model
-change costs fifteen ports rather than three, which was the whole point
-of running the pair first.
+**The rest of P5.** javascript and ruby are in; **only four of the
+remaining twelve have a toolchain in the usual environment** — php,
+java, rust and perl. lua, csharp, swift, kotlin, scala, clojure, dart
+and elixir do not, and porting a language nobody can execute ships an
+implementation nobody has run. Say which are gated rather than shipping
+unverifiable work — the same call station's Stage 5 made.
 
 **Read [`handover.md`](handover.md) §13 first if you are porting.** All
 six defects the pair found were of two kinds — a rule the design states

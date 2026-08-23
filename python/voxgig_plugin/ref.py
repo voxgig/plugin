@@ -9,7 +9,14 @@ import re
 from .types import fail
 
 # Section 4: `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$`, max 1024.
-NAME_RE = re.compile(r'^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$')
+#
+# `\Z`, NOT `$`. PYTHON'S `$` ALSO MATCHES BEFORE A TRAILING NEWLINE, so
+# `^...$` accepts "abc\n" as a plugin name - and nothing else in the
+# grammar, in this file, or (until `ref/name#trailing-newline`) in the
+# corpus would ever say so. The anchors in the design's grammar mean
+# STRING start and end; ruby needs `\A`/`\z` for the same reason, and
+# worse, since its `^`/`$` match at every line boundary.
+NAME_RE = re.compile(r'^[a-zA-Z@][a-zA-Z0-9.~_\-/]*\Z')
 
 # Section 4: `^[a-zA-Z0-9.~_-]+$`, max 1024, or empty.
 #
@@ -17,7 +24,7 @@ NAME_RE = re.compile(r'^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$')
 # because auto-tagging assigns integer tags (`stripe$1`), and a tag admits
 # neither `@` nor `/` because a name is a package specifier and a tag is
 # not.
-TAG_RE = re.compile(r'^[a-zA-Z0-9.~_-]+$')
+TAG_RE = re.compile(r'^[a-zA-Z0-9.~_-]+\Z')
 
 MAX = 1024
 

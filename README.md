@@ -24,10 +24,11 @@ programmatic API over the same normalized model.
 
 ## Status
 
-**P4 complete — the proving pair.** The design is complete and agreed
-with its first host, the contract is complete (all 19 corpus sections,
-469 entries), and there are three implementations: `typescript/` the
-canonical, plus `go/` and `python/`. **All three pass every section.**
+**P5 — two of fourteen.** The design is complete and agreed with its
+first host, the contract is complete (all 19 corpus sections, 476
+entries), and there are five implementations: `typescript/` the
+canonical, plus `go/`, `python/`, `javascript/` and `ruby/`. **All five
+pass every section.**
 
 The pair went before the other fourteen ports on purpose — go for
 static-only registration, typed extension points and explicit errors;
@@ -40,15 +41,20 @@ design being wrong: a `match` that could not match a nested requirement,
 an unwind direction the design mandated and no entry could distinguish,
 a resource counter `release` leaked, an `unload` that leaked when
 `deactivate` failed, a `match` a loose-equality language would satisfy
-with `1` for `true`, and a provider tie nothing pinned. All fixed in the
-canonical and pinned by new corpus entries. See
-[`doc/plan/handover.md`](./doc/plan/handover.md) §13.
+with `1` for `true`, and a provider tie nothing pinned.
+
+P5's ruby port then found the sharpest example yet: **`^` and `$` are
+not string anchors in every language**, and the python port had shipped
+accepting `"abc\n"` as a plugin name. Three ports rejected it, one
+accepted it, and no corpus entry distinguished them. All of it is fixed
+in the canonical and pinned by new entries — see
+[`doc/plan/handover.md`](./doc/plan/handover.md) §13 and §15.
 
 | | |
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | **469 entries across all 19 sections** — the contract is complete |
+| corpus | **476 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
 | ports | `typescript/` (canonical), `go/` and `python/` — **all three pass every section**. P5's fourteen are next. |
 
@@ -56,7 +62,7 @@ Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is
 [`doc/plan/contracts.md`](./doc/plan/contracts.md).
 
-Next is P5, the fourteen tier-3 ports — see
+Next is the rest of P5 — see
 [`AGENTS.md`](./AGENTS.md) §6. Read
 [`doc/plan/handover.md`](./doc/plan/handover.md) §13 before writing one:
 the six defects the proving pair found were all of two kinds, and both

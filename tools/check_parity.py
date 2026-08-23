@@ -56,6 +56,7 @@ PORTS = {
     'go': ['go/plugin'],
     'python': ['python/voxgig_plugin'],
     'javascript': ['javascript/src'],
+    'ruby': ['ruby/lib'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj', '.lake'}

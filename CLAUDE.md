@@ -18,11 +18,12 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 - Build and check with `make spec`, `make spec-check`, `make parity`,
   `make check`.
 
-**Status: P4 complete.** P0–P4 are done: the corpus is 469 entries
-across 19 sections, and three implementations pass every one of them —
-`typescript/` (canonical), `go/` and `python/`. Next is P5's fourteen
-tier-3 ports. `AGENTS.md` §6 says what to pick up; the live per-item
-state is [`doc/plan/status.md`](./doc/plan/status.md).
+**Status: P5, two of fourteen.** P0–P4 are done and P5 is under way:
+the corpus is 476 entries across 19 sections, and **five
+implementations pass every one of them** — `typescript/` (canonical),
+`go/`, `python/`, `javascript/` and `ruby/`. `AGENTS.md` §6 says what to
+pick up; the live per-item state is
+[`doc/plan/status.md`](./doc/plan/status.md).
 
 The design is [`docs/design/plugin.md`](./docs/design/plugin.md). The
 agreement with its first host, and the cross-repo sequencing, live in

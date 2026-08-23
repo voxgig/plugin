@@ -4,12 +4,13 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P4 complete.** All **19 corpus sections** exist — 469 entries
-— with the driver contract in `DOCS.md` §4. Three implementations pass
-every one of them: `typescript/` (canonical), `go/` and `python/`, and
-`make check` is the whole gate. Next is P5's fourteen tier-3 ports. What
-that means for you is in "Where to start" at the bottom, and the live
-per-item state is [`doc/plan/status.md`](doc/plan/status.md).
+**Status: P5, two of fourteen.** All **19 corpus sections** exist — 476
+entries — with the driver contract in `DOCS.md` §4. **Five
+implementations pass every one of them**: `typescript/` (canonical),
+`go/`, `python/`, `javascript/` and `ruby/`, and `make check` is the
+whole gate. What that means for you is in "Where to start" at the
+bottom, and the live per-item state is
+[`doc/plan/status.md`](doc/plan/status.md).
 
 
 ## 1. Prime directives
@@ -72,6 +73,8 @@ plugin/
 ├── typescript/                  CANONICAL — src/ and test/
 ├── go/                          port — plugin/ (library) and test/ (driver + runner)
 ├── python/                      port — voxgig_plugin/ (library) and test/
+├── javascript/                  port — src/ and test/
+├── ruby/                        port — lib/ and test/
 └── <lang>/                      one per port: src, driver, test, Makefile, README, AGENTS
 ```
 
@@ -205,12 +208,15 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0–P4 are done: `typescript/` is the canonical, `go/` and `python/` are
-the proving pair, and all three pass all 19 corpus sections.
+P0–P4 are done and P5 is under way: `typescript/` is the canonical,
+`go/` and `python/` are the proving pair, `javascript/` and `ruby/` are
+P5's first two, and all five pass all 19 corpus sections.
 
-**Next is P5, the fourteen tier-3 ports.** From here a model change
-costs fifteen ports rather than three, which is exactly why P4 ran
-first.
+**Next is the rest of P5.** Only six of its fourteen have a toolchain in
+the usual environment — javascript, ruby, php, java, rust and perl — and
+porting a language nobody can execute ships an implementation nobody has
+run, which is the thing the corpus exists to prevent. Say which are
+gated rather than shipping unverifiable work.
 
 **If you are writing a port, read
 [`doc/plan/handover.md`](doc/plan/handover.md) §13 before you start.**
