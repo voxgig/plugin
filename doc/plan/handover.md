@@ -317,7 +317,41 @@ That ratio is the argument for writing the contract first.
   it is the pair that matters.
 
 
-## 11. Open, and deliberately so
+## 11. §17.2 says thirteen hook points; the model declares eleven
+
+Found by building the bridge, which needs the list to declare points
+before any feature can bind to one.
+
+§17.2 says the SDK "becomes a host by declaring its existing
+vocabulary: **13 `hook` points**, named exactly as today
+(`PostConstruct`, `PrePoint`, `PreRequest`, …)". sdkgen's
+`model/sdkgen.aontu` declares **eleven** under `main.kit.feature.&.hook`:
+`PostConstruct`, `PostConstructEntity`, `SetData`, `GetData`,
+`GetMatch`, `PreTarget`, `PreSpec`, `PreRequest`, `PreResponse`,
+`PreResult`, `PostOperation`.
+
+Two of the three names §17.2 uses as examples are in that list. The
+third, `PrePoint`, is **not** — it is declared by sdkgen-station's own
+feature (`.sdk/model/feature/station.aontu`), along with `PreDone` and
+`PreUnexpected`, because `hook: &:` admits any name a feature cares to
+declare.
+
+**So the count is not a property of the SDK; it is a property of which
+features are installed.** Eleven plus station's three is fourteen, not
+thirteen, and a different feature set gives a different number. The
+bridge therefore takes the extra names as an argument rather than
+carrying a list that pretends to be closed — `featurepoints(fetcher,
+extra?)` — and `SDK_HOOKS` is documented as the core eleven rather than
+as "the vocabulary".
+
+Nothing is broken by this: a fixed thirteen would have been wrong in the
+other direction, silently refusing to declare a point some feature
+needs. But §17.2's sentence should say "the hooks the SDK and its
+installed features declare" rather than naming a count, and the count
+should come out.
+
+
+## 12. Open, and deliberately so
 
 | | |
 |---|---|

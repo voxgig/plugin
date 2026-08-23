@@ -56,7 +56,7 @@ The four cross-repo obligations have their own register in
 | Item | Status | Notes |
 |---|---|---|
 | 3.1 Extraction against a working station | READY WHEN C3 MERGES | station's Stages 2, 3 and 3b are implemented and green in voxgig/station#9. What P3 extracts now exists: `feature.ts` carries the constraint-and-band resolver written to plugin's §7 semantics, deliberately so this extraction is a move rather than a rewrite. |
-| 3.2 The `FeatureHost` bridge | BLOCKED | On 3.1. |
+| 3.2 The `FeatureHost` bridge | DONE (ts) | `FeatureHost.ts` runs an unmodified sdkgen feature class as a plugin: hook methods become hook bindings, and an assignment to `ctx.utility.fetcher` becomes a `request` chain binding instead of an irreversible overwrite. That last is the whole point — the bridge DEACTIVATES a feature, which sdkgen alone cannot, because it assigns the slot and has nowhere to put the old value back. Six mutations, six caught. Not yet exercised against the generated test SDK (no checkout here), which is the half 3.1 carries. Found the §17.2 hook-count discrepancy — handover.md §11. |
 | 3.3 P3b — capabilities (§11) | DONE | Brought forward while 3.1 waits on C3, since nothing blocks it. §11.1 ranking and §11.2 versions landed in P2; §11.4's `resolve()` already carried all four `Why` kinds. This item closed §11.3: the four-cell cardinality/policy matrix read PER REQUIREMENT, the consumers-first cascade, `plugin_dependency_cycle` over restart-causing edges, and `dependency: 'hold'` with its coordinated-teardown suspension. New `Depend.ts`; corpus `depend` grew 12 → 32 across four new groups. Nine mutations, nine caught. |
 
 ## Phase 4 — go and python
