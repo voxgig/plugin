@@ -7,9 +7,10 @@
 # tests. Edit this file, run `npm run build-spec` in tools/, and commit
 # both. Never hand-edit the JSON (§16, prime directive 5).
 #
-# STATUS: P1 IN PROGRESS. Four sections are written — `ref` and `config`
-# (C1), `lifecycle` and `order` (C2). The rest are listed below and are
-# not yet delivered.
+# STATUS: P2 IN PROGRESS. Nine sections are written — `ref`, `config`,
+# `lifecycle`, `order` (P1, and C1/C2), plus `env`, `version`,
+# `capability`, `graph` and `resolve` (P2's pure half). The rest are
+# listed below and are not yet delivered.
 #
 # P0 built the machinery and proved it turns over on an EMPTY corpus,
 # which was its exit criterion: `make spec` compiles this file and
@@ -39,9 +40,13 @@
 #     order      topological sort, bands, ties, vacuous constraints,
 #                recomputation
 #
-# The remaining sections (§15.3) land with the phase that implements them:
-# env, resolve, capability, version, graph, declare, nest, state,
-# resource, point, export, depend, apply, error, trace.
+# P2's PURE sections are now written too — env, version, capability,
+# graph, resolve. Nine sections, and every one runs against the canonical
+# with no driver where §15.3 marks it pure.
+#
+# The remaining sections (§15.3) are all DRIVER-based and land with the
+# phase that implements them: declare, nest, state, resource, point,
+# export, depend, apply, error, trace.
 #
 # Adding a section here is not enough on its own — §15.3's table records
 # whether it is pure data or driver-based, and a driver section without
@@ -1666,6 +1671,516 @@ primary: order: {
         { do: 'order', point: 'c' }
       ]
       match: { out: { result: ['adapter$x', 'probe$a'] } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# env — VOXGIG_PLUGIN_* parsing (§9.5).
+#
+# PURE: a function over a string map and a ref set, so the corpus tests it
+# without touching a real environment.
+#
+#   in: { env: {...}, refs?: [...], reserved?: [...] }
+#     -> { profile?, options: {ref -> map}, active: [], inactive: [] }
+#
+# THE REF SET IS NOT OPTIONAL DECORATION. The encoding is LOSSY — `$` -> `__`
+# and `.` -> `_`, case-folded — so RETRY__FAST_MIN cannot be split into ref
+# and path without knowing which refs exist. A port that guesses at the
+# split will guess differently from the next one.
+# ---------------------------------------------------------------------------
+
+primary: env: {
+
+  # One option, on one ref.
+  option: set: [
+    {
+      id: 'env/option#simple', doc: true
+      in: { refs: ['retry'], env: { VOXGIG_PLUGIN_RETRY_RETRIES: '3' } }
+      out: { options: { retry: { retries: 3 } }, active: [], inactive: [] }
+    }
+    # A tag: `$` encodes as `__`.
+    {
+      in: { refs: ['retry$fast'], env: { VOXGIG_PLUGIN_RETRY__FAST_RETRIES: '3' } }
+      match: { out: { options: { 'retry$fast': { retries: 3 } } } }
+    }
+    # A dotted path: `.` encodes as `_`, and nests.
+    {
+      in: { refs: ['retry'], env: { VOXGIG_PLUGIN_RETRY_MIN_DELAY: '500' } }
+      match: { out: { options: { retry: { min: { delay: 500 } } } } }
+    }
+    # LONGEST ENCODED REF WINS. With both `retry` and `retry$fast` held,
+    # RETRY__FAST_MIN belongs to the tagged one — shortest-first would
+    # read `__fast` as part of the path and write it to the wrong ref.
+    {
+      id: 'env/option#longest'
+      in: { refs: ['retry', 'retry$fast'], env: { VOXGIG_PLUGIN_RETRY__FAST_MIN: '1' } }
+      match: { out: { options: { 'retry$fast': { min: 1 } } } }
+    }
+    # A key for a ref this host does not hold is IGNORED, not an error:
+    # one environment commonly serves several hosts.
+    {
+      in: { refs: ['retry'], env: { VOXGIG_PLUGIN_OTHER_X: '1' } }
+      out: { options: {}, active: [], inactive: [] }
+    }
+    # Keys without the prefix are not ours.
+    {
+      in: { refs: ['retry'], env: { PATH: '/usr/bin', HOME: '/root' } }
+      out: { options: {}, active: [], inactive: [] }
+    }
+  ]
+
+
+  # VALUES PARSE AS JSON, FALLING BACK TO STRING (§9.5). A port that
+  # treats every value as a string produces `"8080"` where a shape wants
+  # a number, and one that requires valid JSON rejects `hello`.
+  value: set: [
+    { id: 'env/value#number', doc: true
+      in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: '8080' } }
+      match: { out: { options: { r: { n: 8080 } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_B: 'true' } }
+      match: { out: { options: { r: { b: true } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_B: 'false' } }
+      match: { out: { options: { r: { b: false } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_S: 'hello' } }
+      match: { out: { options: { r: { s: 'hello' } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_M: '{"a":1}' } }
+      match: { out: { options: { r: { m: { a: 1 } } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_L: '[1,2]' } }
+      match: { out: { options: { r: { l: [1, 2] } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: 'null' } }
+      match: { out: { options: { r: { n: '__NULL__' } } } } }
+  ]
+
+
+  # ACTIVE / INACTIVE — the "turn it off in production without a deploy"
+  # lever, and the one thing an operator reaches for first.
+  toggle: set: [
+    { id: 'env/toggle#active', doc: true
+      in: { refs: ['a', 'b'], env: { VOXGIG_PLUGIN_ACTIVE: 'a,b' } }
+      match: { out: { active: ['a', 'b'] } } }
+    { in: { refs: ['a'], env: { VOXGIG_PLUGIN_INACTIVE: 'a' } }
+      match: { out: { inactive: ['a'] } } }
+    # Whitespace around a comma is an operator typing a list, not an error.
+    { in: { refs: ['a', 'b'], env: { VOXGIG_PLUGIN_ACTIVE: ' a , b ' } }
+      match: { out: { active: ['a', 'b'] } } }
+    # Refs canonicalize here as everywhere (§4 rule 5).
+    { in: { refs: ['a'], env: { VOXGIG_PLUGIN_INACTIVE: 'a$' } }
+      match: { out: { inactive: ['a'] } } }
+    # An empty value yields nothing rather than one empty ref.
+    { in: { refs: ['a'], env: { VOXGIG_PLUGIN_ACTIVE: '' } }
+      match: { out: { active: [] } } }
+  ]
+
+
+  # THE PROFILE, which selects the overlay §9.3's levels 5 and 6 come from.
+  profile: set: [
+    { id: 'env/profile#set', doc: true
+      in: { refs: [], env: { VOXGIG_PLUGIN_PROFILE: 'prod' } }
+      match: { out: { profile: 'prod' } } }
+  ]
+
+
+  # THE COLLISION IS DETECTED, NOT AVOIDED (§9.5). `_` is legal in a name
+  # and in a tag and the mapping folds case, so several distinct refs can
+  # encode to one key. Rather than restrict a grammar the rest of the
+  # stack already uses, the host encodes every ref it holds and refuses a
+  # key two of them claim, NAMING BOTH.
+  #
+  # Reported from the REF SET ALONE — no environment variable need
+  # exercise it. A latent ambiguity is still an ambiguity, and finding it
+  # at deploy time is the failure this exists to prevent.
+  ambiguous: set: [
+    { id: 'env/ambiguous#tag-vs-underscore', doc: true
+      in: { refs: ['retry$fast', 'retry__fast'], env: {} }
+      err: 'plugin_env_ambiguous' }
+    # Case folding collides too.
+    { in: { refs: ['retry$fast', 'Retry$fast'], env: {} }, err: 'plugin_env_ambiguous' }
+    { in: { refs: ['retry$fast', 'retry$Fast'], env: {} }, err: 'plugin_env_ambiguous' }
+    # The message names BOTH refs — one name leaves the reader bisecting.
+    { in: { refs: ['retry$fast', 'retry__fast'], env: {} }
+      err: true, match: { err: { message: '/retry\\$fast/' } } }
+    { in: { refs: ['retry$fast', 'retry__fast'], env: {} }
+      err: true, match: { err: { message: '/retry__fast/' } } }
+    # Refs that do NOT collide are fine, including near-misses.
+    { in: { refs: ['retry', 'retry$fast', 'other'], env: {} }
+      match: { out: { options: {} } } }
+  ]
+
+
+  # Reserved refs are barred HERE TOO (§9.1). Stating the guard for
+  # documents alone would leave the guarantee trivially bypassable:
+  # VOXGIG_PLUGIN_INACTIVE=station is easier to set than editing a config
+  # file, and INACTIVE has the final word — so the one lever this
+  # mechanism exists to deny would have been the one left open.
+  reserved: set: [
+    { id: 'env/reserved#inactive', doc: true
+      in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'station' } }
+      err: 'plugin_ref_reserved' }
+    { in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_ACTIVE: 'station' } }
+      err: 'plugin_ref_reserved' }
+    { in: { refs: ['station$eu'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'station$eu' } }
+      err: 'plugin_ref_reserved' }
+    { in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_STATION_X: '1' } }
+      err: 'plugin_ref_reserved' }
+    # A name merely starting with the reserved one is not reserved.
+    { in: { refs: ['stationary'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'stationary' } }
+      match: { out: { inactive: ['stationary'] } } }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# version — the range grammar and the ONE satisfaction predicate (§11.2).
+#
+#   satisfies: in: { version, range } -> boolean
+#   range:     in: <string>           -> { lo, hi }
+# ---------------------------------------------------------------------------
+
+primary: version: {
+
+  # TWO FORMS AND NO MORE.
+  #   '2.1'   >= 2.1.0 and < 3.0.0
+  #   '~2.1'  >= 2.1.0 and < 2.2.0
+  range: set: [
+    { id: 'version/range#caret', doc: true, in: '2.1', out: { lo: [2, 1, 0], hi: [3, 0, 0] } }
+    { in: '2', out: { lo: [2, 0, 0], hi: [3, 0, 0] } }
+    { in: '2.1.3', out: { lo: [2, 1, 3], hi: [3, 0, 0] } }
+    { in: '~2.1', out: { lo: [2, 1, 0], hi: [2, 2, 0] } }
+    { in: '~2', out: { lo: [2, 0, 0], hi: [2, 1, 0] } }
+    { in: '~2.1.3', out: { lo: [2, 1, 3], hi: [2, 2, 0] } }
+    { in: '0.1', out: { lo: [0, 1, 0], hi: [1, 0, 0] } }
+  ]
+
+
+  rangebad: set: [
+    { id: 'version/rangebad#empty', doc: true, in: '', err: 'plugin_bad_range' }
+    { in: 'x', err: 'plugin_bad_range' }
+    { in: '2.x', err: 'plugin_bad_range' }
+    { in: '>=2.1', err: 'plugin_bad_range' }
+    { in: '^2.1', err: 'plugin_bad_range' }
+    { in: '2.1.3.4', err: 'plugin_bad_range' }
+    { in: '~', err: 'plugin_bad_range' }
+    { in: '-1', err: 'plugin_bad_range' }
+  ]
+
+
+  # THE WHOLE RULE: the provider's `version` falls inside the
+  # requirement's `range`. There is no third field and no second
+  # comparison — an earlier draft added a provider-side `compat` range
+  # and left three defensible readings of one declaration.
+  satisfies: set: [
+    { id: 'version/satisfies#in', doc: true, in: { version: '2.3', range: '2.1' }, out: true }
+    { in: { version: '2.1', range: '2.1' }, out: true }
+    { in: { version: '2.1.0', range: '2.1' }, out: true }
+    { in: { version: '2.99.99', range: '2.1' }, out: true }
+    { in: { version: '3.0', range: '2.1' }, out: false }
+    { in: { version: '2.0', range: '2.1' }, out: false }
+    { in: { version: '2.0.9', range: '2.1' }, out: false }
+    { in: { version: '1.9', range: '2.1' }, out: false }
+
+    # The tilde form is tighter on the MINOR, which is the distinction
+    # the whole two-form grammar exists to draw.
+    { in: { version: '2.1.9', range: '~2.1' }, out: true }
+    { in: { version: '2.2.0', range: '~2.1' }, out: false }
+    { in: { version: '2.2', range: '2.1' }, out: true }
+
+    # Boundaries, both inclusive-low and exclusive-high.
+    { id: 'version/satisfies#lo-inclusive', in: { version: '2.1.0', range: '~2.1' }, out: true }
+    { in: { version: '2.0.99', range: '~2.1' }, out: false }
+    { in: { version: '3.0.0', range: '2.1' }, out: false }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# capability — provides/requires matching and the SELECTION RANK (§11.1).
+#
+#   in: { req: {...}, candidates: [ { ref, pos, provides } ] }
+#     -> the matching candidates, BEST FIRST
+#
+# WITHOUT A TOTAL RANK, "any provider satisfies" is true of the GRAPH and
+# useless to the PLUGIN: two ports could bind different `store` instances,
+# both resolve green, and behave differently — precisely the divergence a
+# shared corpus exists to catch. So the rank is pinned, not left to
+# whichever order a language's sort happens to produce.
+# ---------------------------------------------------------------------------
+
+primary: capability: {
+
+  # Matching: name, then range, then `match` against `attrs`.
+  match: set: [
+    {
+      id: 'capability/match#name', doc: true
+      in: { req: { name: 'clock' }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'clock' } } ] }
+      match: { out: [ { ref: 'a' } ] }
+    }
+    { in: { req: { name: 'clock' }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store' } } ] }
+      out: [] }
+
+    # `match` is checked KEY BY KEY against the provider's attrs, and a
+    # key the provider never declared is a MISS. A requirement asking
+    # for `transactional: true` must not be satisfied by a provider that
+    # never said whether it is.
+    {
+      id: 'capability/match#attrs'
+      in: { req: { name: 'store', match: { transactional: true } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: true } } } ] }
+      match: { out: [ { ref: 'a' } ] }
+    }
+    { in: { req: { name: 'store', match: { transactional: true } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { durable: true } } } ] }
+      out: [] }
+    { in: { req: { name: 'store', match: { transactional: true } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: false } } } ] }
+      out: [] }
+    { in: { req: { name: 'store', match: { transactional: true } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store' } } ] }
+      out: [] }
+    # Every key must pass, not merely one.
+    { in: { req: { name: 'store', match: { a: 1, b: 2 } }
+            candidates: [ { ref: 'x', pos: 0, provides: { name: 'store', attrs: { a: 1, b: 3 } } } ] }
+      out: [] }
+
+    # The range participates in matching, not only in diagnosis.
+    { in: { req: { name: 'store', range: '2.1' }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', version: '2.3' } } ] }
+      match: { out: [ { ref: 'a' } ] } }
+    { in: { req: { name: 'store', range: '2.1' }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', version: '3.0' } } ] }
+      out: [] }
+    # A requirement with a range is not satisfied by a provider with no
+    # version: "unversioned" is not "any version".
+    { in: { req: { name: 'store', range: '2.1' }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store' } } ] }
+      out: [] }
+  ]
+
+
+  # THE RANK, in order: highest `version`, then LOWEST `priority`
+  # (default 0), then declaration position `pos` ascending.
+  rank: set: [
+    {
+      id: 'capability/rank#version', doc: true
+      in: { req: { name: 's' }, candidates: [
+        { ref: 'lo', pos: 0, provides: { name: 's', version: '2.1' } }
+        { ref: 'hi', pos: 1, provides: { name: 's', version: '2.9' } }
+      ] }
+      match: { out: [ { ref: 'hi' }, { ref: 'lo' } ] }
+    }
+    # `priority` breaks a version tie, and LOWER wins — the opposite of
+    # what the word suggests to most readers, which is why it is pinned.
+    {
+      id: 'capability/rank#priority'
+      in: { req: { name: 's' }, candidates: [
+        { ref: 'b', pos: 0, provides: { name: 's', version: '2.1', priority: 5 } }
+        { ref: 'a', pos: 1, provides: { name: 's', version: '2.1', priority: 1 } }
+      ] }
+      match: { out: [ { ref: 'a' }, { ref: 'b' } ] }
+    }
+    # Default priority is 0, so an unset one beats an explicit 1.
+    {
+      in: { req: { name: 's' }, candidates: [
+        { ref: 'set', pos: 0, provides: { name: 's', version: '2.1', priority: 1 } }
+        { ref: 'unset', pos: 1, provides: { name: 's', version: '2.1' } }
+      ] }
+      match: { out: [ { ref: 'unset' }, { ref: 'set' } ] }
+    }
+    # `pos` breaks the remaining tie — declaration order, the same
+    # number §7 uses, so ordering and selection cannot disagree.
+    {
+      in: { req: { name: 's' }, candidates: [
+        { ref: 'second', pos: 1, provides: { name: 's', version: '2.1' } }
+        { ref: 'first', pos: 0, provides: { name: 's', version: '2.1' } }
+      ] }
+      match: { out: [ { ref: 'first' }, { ref: 'second' } ] }
+    }
+    # VERSION OUTRANKS PRIORITY. A port applying them in the other order
+    # passes both single-axis cases above and fails this one.
+    {
+      id: 'capability/rank#version-beats-priority'
+      in: { req: { name: 's' }, candidates: [
+        { ref: 'newer', pos: 0, provides: { name: 's', version: '3.0', priority: 9 } }
+        { ref: 'older', pos: 1, provides: { name: 's', version: '2.0', priority: 0 } }
+      ] }
+      match: { out: [ { ref: 'newer' }, { ref: 'older' } ] }
+    }
+    # And PRIORITY OUTRANKS pos, likewise.
+    {
+      in: { req: { name: 's' }, candidates: [
+        { ref: 'late', pos: 9, provides: { name: 's', version: '2.0', priority: 0 } }
+        { ref: 'early', pos: 0, provides: { name: 's', version: '2.0', priority: 5 } }
+      ] }
+      match: { out: [ { ref: 'late' }, { ref: 'early' } ] }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# graph — whole-graph resolution (§11.4).
+#
+#   in: [ { ref, pos, provides?, requires? } ]
+#     -> { resolved: [refs], blocked: [ { ref, unmet, why } ] }
+#
+# PURE: no callbacks run, no state changes, nothing is touched.
+#
+# THE `why` IS PART OF THE CONTRACT, not a nicety. The failure being
+# designed against is famous: OSGi's resolver is correct and its
+# diagnostics are legendarily unusable. A resolver that says "blocked"
+# without saying WHY has moved the problem rather than solved it — and
+# twenty ports each inventing their own explanation is the same problem
+# again, twenty times.
+# ---------------------------------------------------------------------------
+
+primary: graph: {
+
+  resolve: set: [
+    # Nothing required: everything resolves.
+    {
+      id: 'graph/resolve#trivial', doc: true
+      in: [ { ref: 'a', pos: 0 }, { ref: 'b', pos: 1 } ]
+      out: { resolved: ['a', 'b'], blocked: [] }
+    }
+    # A satisfied requirement.
+    {
+      in: [ { ref: 'p', pos: 0, provides: [ { name: 'clock' } ] }
+            { ref: 'c', pos: 1, requires: [ { name: 'clock' } ] } ]
+      out: { resolved: ['c', 'p'], blocked: [] }
+    }
+    # An OPTIONAL requirement never blocks.
+    {
+      in: [ { ref: 'c', pos: 0, requires: [ { name: 'clock', optional: true } ] } ]
+      out: { resolved: ['c'], blocked: [] }
+    }
+    # A chain resolves to a fixed point rather than in one pass.
+    {
+      id: 'graph/resolve#chain'
+      in: [ { ref: 'c', pos: 0, requires: [ { name: 'b' } ] }
+            { ref: 'b', pos: 1, provides: [ { name: 'b' } ], requires: [ { name: 'a' } ] }
+            { ref: 'a', pos: 2, provides: [ { name: 'a' } ] } ]
+      out: { resolved: ['a', 'b', 'c'], blocked: [] }
+    }
+  ]
+
+
+  # ONE BLOCKED INSTANCE, AND THE SPECIFIC REASON. Apply twenty
+  # instances against a registry missing one thing and the answer must
+  # be that one thing — not nineteen pending rows.
+  blocked: set: [
+    # No provider at all.
+    {
+      id: 'graph/blocked#absent', doc: true
+      in: [ { ref: 'c', pos: 0, requires: [ { name: 'clock' } ] } ]
+      out: { resolved: [], blocked: [ { ref: 'c', unmet: 'clock', why: { kind: 'absent' } } ] }
+    }
+    # A provider at an incompatible version — WITH BOTH the range asked
+    # for and the version found, because "version mismatch" without the
+    # numbers is the OSGi diagnostic this design exists to avoid.
+    {
+      id: 'graph/blocked#version'
+      in: [ { ref: 'p', pos: 0, provides: [ { name: 's', version: '1.0' } ] }
+            { ref: 'c', pos: 1, requires: [ { name: 's', range: '2.1' } ] } ]
+      out: { resolved: ['p'], blocked: [
+        { ref: 'c', unmet: 's', why: { kind: 'version', range: '2.1', found: ['1.0'] } } ] }
+    }
+    # A provider whose attributes fail the match — WITH THE FAILING LEAF.
+    {
+      id: 'graph/blocked#match'
+      in: [ { ref: 'p', pos: 0, provides: [ { name: 's', attrs: { transactional: false } } ] }
+            { ref: 'c', pos: 1, requires: [ { name: 's', match: { transactional: true } } ] } ]
+      out: { resolved: ['p'], blocked: [
+        { ref: 'c', unmet: 's'
+          why: { kind: 'match', failing: 'transactional', want: true, found: false } } ] }
+    }
+    # A missing attribute reports `found: null` rather than omitting the
+    # key — "the provider does not say" is an answer, and a port that
+    # drops the field makes the two cases indistinguishable.
+    #
+    # A REAL null, not the `__NULL__` marker: this is an `out` comparison
+    # and the value genuinely is null. The marker belongs to `match`,
+    # where it means "no value" rather than "the value null".
+    {
+      in: [ { ref: 'p', pos: 0, provides: [ { name: 's' } ] }
+            { ref: 'c', pos: 1, requires: [ { name: 's', match: { transactional: true } } ] } ]
+      out: { resolved: ['p'], blocked: [
+        { ref: 'c', unmet: 's'
+          why: { kind: 'match', failing: 'transactional', want: true, found: null } } ] }
+    }
+    # A provider that is ITSELF blocked, with the chain — so the reader
+    # follows one hop rather than re-deriving the graph.
+    {
+      id: 'graph/blocked#chain'
+      in: [ { ref: 'c', pos: 0, requires: [ { name: 'b' } ] }
+            { ref: 'b', pos: 1, provides: [ { name: 'b' } ], requires: [ { name: 'missing' } ] } ]
+      out: { resolved: [], blocked: [
+        { ref: 'b', unmet: 'missing', why: { kind: 'absent' } }
+        { ref: 'c', unmet: 'b', why: { kind: 'blocked', chain: ['b'] } } ] }
+    }
+    # ONE BLOCKED THING DOES NOT BLOCK THE INNOCENT. This is the whole
+    # point of resolving the graph as a phase.
+    {
+      id: 'graph/blocked#isolated'
+      in: [ { ref: 'c', pos: 0, requires: [ { name: 'missing' } ] }
+            { ref: 'x', pos: 1 }
+            { ref: 'y', pos: 2 } ]
+      match: { out: { resolved: ['x', 'y'] } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# resolve — name to candidate module ids (§10.2).
+#
+#   in: { name, sources? } -> [ids]
+#
+# PURE, and deliberately so: it returns the ids a host WOULD try, in
+# order, and loads nothing. That separation is what lets the corpus pin
+# resolution in every language INCLUDING those with no dynamic loading at
+# all, and it is why §15.4 puts real module loading in per-port
+# integration tests rather than here.
+# ---------------------------------------------------------------------------
+
+primary: resolve: {
+
+  candidates: set: [
+    {
+      id: 'resolve/candidates#default', doc: true
+      in: { name: 'retry' }
+      out: ['@voxgig/plugin-retry', 'voxgig-plugin-retry', 'plugin-retry', 'retry']
+    }
+    {
+      in: { name: 'retry', sources: [ { kind: 'module', prefix: ['x-'] } ] }
+      out: ['x-retry']
+    }
+    # ORDER IS THE ANSWER, not the set: the first id that loads wins, so
+    # a port returning the same ids in a different order resolves a
+    # different module.
+    {
+      in: { name: 'r', sources: [ { kind: 'module', prefix: ['a-', 'b-'] } ] }
+      out: ['a-r', 'b-r']
+    }
+    { in: { name: 'r', sources: [ { kind: 'path', dir: './plugin' } ] }, out: ['./plugin/r'] }
+    { in: { name: 'r', sources: [ { kind: 'path', dir: './plugin/' } ] }, out: ['./plugin/r'] }
+    # Several sources concatenate in declared order.
+    {
+      in: { name: 'r', sources: [ { kind: 'path', dir: './p' }, { kind: 'module', prefix: ['m-'] } ] }
+      out: ['./p/r', 'm-r']
+    }
+    # Duplicates collapse, keeping the FIRST occurrence — trying the
+    # same id twice is not wrong, it is just noise in the answer.
+    {
+      in: { name: 'r', sources: [ { kind: 'module', prefix: ['a-', 'a-'] } ] }
+      out: ['a-r']
+    }
+    # A scoped name passes through unchanged.
+    {
+      in: { name: '@acme/thing', sources: [ { kind: 'module', prefix: [''] } ] }
+      out: ['@acme/thing']
     }
   ]
 }
