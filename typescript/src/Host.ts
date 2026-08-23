@@ -22,6 +22,9 @@ import { Spec, Bound, Mode, emit as fanout, compose, provider as pickone } from 
 import { Exported, resolveexport } from './Export'
 import { Provided, Required, Candidate, resolvecapability } from './Capability'
 import { normalizeconfig, resolveoptions } from './Config'
+import {
+  Node, checkcycle, gatesactivation, requirements, restartsonloss,
+} from './Depend'
 
 export type PointSpec = Spec
 
@@ -32,6 +35,16 @@ export type HostOptions = {
   defaults?: { [name: string]: any }
   profile?: string
   points?: { [point: string]: PointSpec }
+  /** §11.3. `restart` (the default) treats provider replacement as an
+   * ordinary runtime operation: deactivate the old store, activate the
+   * new one, and everything that depended on it rides through, having
+   * released the old one's resources in between.
+   *
+   * `hold` is the strict reading — deactivating a required instance is
+   * `plugin_dependency_held`, naming the holders. NOT the default,
+   * because a station that cannot swap a provider without a restart
+   * has lost the argument for having a plugin system. */
+  dependency?: 'restart' | 'hold'
 }
 
 type Live = {
@@ -65,6 +78,11 @@ type Live = {
 export type Host = ReturnType<typeof makehost>
 
 export function makehost(options?: HostOptions) {
+  const dependency = (options && options.dependency) || 'restart'
+  /** Set for the duration of a bulk teardown, so `held` knows this is a
+   * coordinated operation rather than an ad-hoc deactivation. */
+  let coordinated = false
+
   const opts = options || {}
   const catalog = opts.catalog || makecatalog()
   const reserved = opts.reserved || []
@@ -296,7 +314,27 @@ export function makehost(options?: HostOptions) {
       throw err
     }
     e.status = 'loaded'
+
+    // AT LOAD, and before anything runs: a cycle through
+    // restart-causing requirements does not settle, and the only safe
+    // time to report a non-terminating reconcile is before it starts
+    // (§11.3). `provides` is populated by `define`, which has just run,
+    // so this is the first moment the graph is complete.
+    try { checkcycle(graphnodes()) }
+    catch (err: any) {
+      e.status = 'failed'
+      throw err
+    }
     return e
+  }
+
+  /** The requirement graph as plain data, for the pure detector. */
+  function graphnodes(): Node[] {
+    return Object.keys(inst).sort().map((r) => ({
+      ref: r,
+      provides: inst[r].provides.map((p) => p.name),
+      requires: requirements(inst[r].options),
+    }))
   }
 
   function activate(ref: string): Live {
@@ -347,6 +385,9 @@ export function makehost(options?: HostOptions) {
       return e
     }
 
+    held(e)
+    cascade(e)
+
     try {
       run(e, 'deactivate', 'deactivate')
       unwind(e)
@@ -366,6 +407,8 @@ export function makehost(options?: HostOptions) {
     const e = need(ref)
     if ('live' === e.status || 'pending' === e.status) {
       if ('live' === e.status) {
+        held(e)
+        cascade(e)
         run(e, 'deactivate', 'deactivate')
         unwind(e)
       }
@@ -408,14 +451,40 @@ export function makehost(options?: HostOptions) {
    * A ref satisfies too, because a host that genuinely needs a specific
    * instance should not have to invent a capability for it. */
   function unmetof(e: Live): string[] {
-    const req: any[] = (e.options && e.options.requires) || []
-    const optional: string[] = (e.options && e.options.optional) || []
-
-    return req
-      .map((r: any) => ('string' === typeof r ? { name: r } : r) as Required)
-      .filter((r) => !r.optional && -1 === optional.indexOf(r.name))
+    return requirements(e.options)
+      .filter(gatesactivation)
       .filter((r) => 0 === providersof(r).length)
       .map((r) => r.name)
+  }
+
+  /** The instance currently SELECTED for each of this one's
+   * restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
+   * capability (§11.1), and that is what decides behaviour when the
+   * bound provider leaves while another match remains: the selected one
+   * going away restarts a `static` consumer even though a survivor is
+   * available. It is not silently re-pointed — `static` is the plugin
+   * saying in writing that it cannot survive a provider swap, and a
+   * survivor being available does not make the swap survivable. */
+  function boundproviders(e: Live): string[] {
+    const out: string[] = []
+    for (const r of requirements(e.options)) {
+      if (!restartsonloss(r)) continue
+      const cands = providersof(r)
+      if (0 < cands.length && -1 === out.indexOf(cands[0].ref)) {
+        out.push(cands[0].ref)
+      }
+    }
+    return out
+  }
+
+  /** Live instances whose selected provider is `ref` and which would be
+   * restarted by losing it. */
+  function consumersof(ref: string): string[] {
+    return Object.keys(inst).sort().filter((r) => {
+      const c = inst[r]
+      return r !== ref && 'live' === c.status &&
+        -1 !== boundproviders(c).indexOf(ref)
+    })
   }
 
   function providersof(req: Required): Candidate[] {
@@ -433,6 +502,55 @@ export function makehost(options?: HostOptions) {
       }
     }
     return resolvecapability(req, cands)
+  }
+
+  /** CONSUMERS GO DOWN FIRST, NOT AFTERWARDS (§11.3).
+   *
+   * The cascade is part of the provider's own deactivation and runs
+   * BEFORE the provider's `deactivate` callback and scope unwind, so a
+   * consumer's teardown can still call the thing it depends on —
+   * flushing a buffer to the store it is about to lose is exactly what
+   * a `deactivate` callback is for, and a cascade that fired after the
+   * provider was already gone would make that impossible.
+   *
+   * Order: consumers deepest-first, then the provider. `unload` and
+   * `close` inherit it, UNDER EITHER DEPENDENCY POLICY, which is what
+   * makes apply's reverse-load-order teardown safe even when a document
+   * happens to list a consumer before its provider. */
+  function cascade(provider: Live, seen?: { [ref: string]: true }): void {
+    const done = seen || {}
+    if (done[provider.ref]) return
+    done[provider.ref] = true
+
+    for (const r of consumersof(provider.ref)) {
+      const c = inst[r]
+      if ('live' !== c.status) continue
+      cascade(c, done)                     // deepest-first
+      try { run(c, 'deactivate', 'deactivate') } catch (err) { /* §12 */ }
+      unwind(c)
+      c.status = 'pending'
+      c.unmet = unmetof(c)
+    }
+  }
+
+  /** The hold check is A GUARD ON AD-HOC DEACTIVATION, NOT ON
+   * COORDINATED TEARDOWN. In a bulk operation that is removing the
+   * holders too — `close()`, or an `apply` plan whose own steps
+   * deactivate them — it is suspended for exactly those holders, and
+   * the teardown still runs consumers before providers.
+   *
+   * Otherwise `close()` under `hold` would raise on the first provider
+   * it reached whenever a document happened to list a consumer after
+   * it, which is the policy refusing to allow the one teardown it has
+   * no reason to object to. */
+  function held(e: Live): void {
+    if ('hold' !== dependency) return
+    if (coordinated) return
+    const holders = consumersof(e.ref)
+    if (0 === holders.length) return
+    fail('plugin_dependency_held',
+      'instance is required by live consumers: ' + e.ref,
+      { ref: e.ref, holders })
   }
 
   /** EAGER reconciliation: run to a fixed point rather than scheduling.
@@ -454,9 +572,17 @@ export function makehost(options?: HostOptions) {
       for (const r of Object.keys(inst).sort()) {
         const e = inst[r]
         if ('live' !== e.status) continue
-        if (0 === unmetof(e).length) continue
-        const policy = (e.options && e.options.policy) || 'static'
-        if ('dynamic' === policy) continue   // said in writing it can cope
+        const lost = requirements(e.options)
+          .filter(gatesactivation)
+          .filter((q) => 0 === providersof(q).length)
+        if (0 === lost.length) continue
+        // POLICY IS PER REQUIREMENT, not per instance (§11.3): only the
+        // definition that has the requirement knows what it can cope
+        // with, and one instance may hold both a `static` and a
+        // `dynamic` one. A `dynamic` requirement whose provider is gone
+        // leaves the consumer LIVE and notified; it is a statement
+        // about surviving a swap, so it does not restart here.
+        if (lost.every((q) => !restartsonloss(q))) continue
         try { run(e, 'deactivate', 'deactivate') } catch (err) { /* → failed below */ }
         unwind(e)
         e.status = 'pending'
@@ -662,7 +788,12 @@ export function makehost(options?: HostOptions) {
   }
 
   function close(): void {
-    for (const r of Object.keys(inst).sort().reverse()) unload(r)
+    // A bulk teardown removing the holders too, so `hold` is suspended
+    // for exactly those holders (§11.3) - while the consumers-first
+    // cascade still runs, which is the half that matters.
+    coordinated = true
+    try { for (const r of Object.keys(inst).sort().reverse()) unload(r) }
+    finally { coordinated = false }
   }
 
   /** The same record §6.6 gives a plugin about itself, reachable from

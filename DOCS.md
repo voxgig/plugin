@@ -135,6 +135,50 @@ Write `range: '2.1'` if you merely *call* the store. Write `~2.1` if you
 *implement* it for someone else to call — adding a method to an
 interface is a minor bump that breaks every provider and no consumer.
 
+**Say what you can cope with.** Two axes, both per requirement:
+
+```json
+{ "requires": [
+  { "name": "store" },
+  { "name": "metrics", "optional": true, "policy": "dynamic" }
+] }
+```
+
+| | `static` (default) | `dynamic` |
+|---|---|---|
+| **mandatory** (default) | unmet → `pending`; lost → back to `pending`, recursively | unmet → `pending`; lost → **stays `live`**, notified |
+| **`optional: true`** | never gates activation; a change deactivates and reactivates | never gates activation; a change is a notification |
+
+`dynamic` says **in writing** that you can survive your provider being
+swapped underneath you. It is not the default because most plugins
+cannot, and the cost of wrongly assuming they can is a live instance
+holding a dead reference. It is a statement about surviving a *swap*,
+not about starting with nothing — a mandatory `dynamic` requirement
+still waits in `pending` for its first provider.
+
+The axes are read at two levels and **the per-requirement one wins**;
+an instance-level `policy` or `optional` list is how a *document* sets a
+default for all of them. Only the per-requirement form can say "static
+on the store, dynamic on the metrics", which is the ordinary case.
+
+**When a provider goes away, its consumers go down first** — before the
+provider's own `deactivate` runs and before its scope unwinds — so your
+teardown can still call the thing you are about to lose. Flushing a
+buffer to the store is exactly what a `deactivate` callback is for.
+
+A cycle through restart-causing requirements is
+`plugin_dependency_cycle`, raised at **load**: A comes up, B restarts,
+which changes B's capability, which restarts A, indefinitely. Only
+`dynamic` *optional* edges are excluded — two plugins that optionally
+and dynamically consume each other both activate happily and neither
+restarts, so nothing oscillates.
+
+For the strict reading, `makeHost({ dependency: 'hold' })` makes
+deactivating a required instance `plugin_dependency_held`, naming the
+holders. It guards *ad-hoc* deactivation only: `close()` and an `apply`
+plan removing the holders too are coordinated teardowns and proceed,
+consumers first.
+
 ### Hold a resource
 
 Acquire in `activate` and forget about it:
@@ -318,7 +362,7 @@ needs it present, because the next section will.
 
 | `do` | keys | effect |
 |---|---|---|
-| `host` | `reserved?`, `keys?`, `defaults?`, `profile?`, `points?` | rebuild the host with these construction options, discarding the current one. `points` declares extension points and their `kind`/`pin` (§7). Only valid as the **first** command. |
+| `host` | `reserved?`, `keys?`, `defaults?`, `profile?`, `points?`, `dependency?` | rebuild the host with these construction options, discarding the current one. `points` declares extension points and their `kind`/`pin` (§7). `dependency` is `restart` (the default) or `hold` (§11.3). Only valid as the **first** command. |
 | `define` | `name`, `probe?`, `shape?` | register a definition in the catalog. `probe` names the catalog entry (§4.3); default is `probe`. |
 | `load` | `ref`, `options?`, `order?`, `definition?` | declare if absent, then load. `order` is the instance's ordering block (§4.4); `definition` names the catalog entry when it differs from the ref's name. |
 | `ready` | `ref` | run the whole forward path in one call (§5.1) |

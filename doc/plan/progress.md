@@ -57,7 +57,7 @@ The four cross-repo obligations have their own register in
 |---|---|---|
 | 3.1 Extraction against a working station | BLOCKED | On **C3** — station's Stages 2–3b. |
 | 3.2 The `FeatureHost` bridge | BLOCKED | On 3.1. |
-| 3.3 P3b — capabilities (§11) | NOT STARTED | Deliberately after the station proof; station uses none of §11. |
+| 3.3 P3b — capabilities (§11) | DONE | Brought forward while 3.1 waits on C3, since nothing blocks it. §11.1 ranking and §11.2 versions landed in P2; §11.4's `resolve()` already carried all four `Why` kinds. This item closed §11.3: the four-cell cardinality/policy matrix read PER REQUIREMENT, the consumers-first cascade, `plugin_dependency_cycle` over restart-causing edges, and `dependency: 'hold'` with its coordinated-teardown suspension. New `Depend.ts`; corpus `depend` grew 12 → 32 across four new groups. Nine mutations, nine caught. |
 
 ## Phase 4 — go and python
 
