@@ -44,9 +44,12 @@
 # graph, resolve. Nine sections, and every one runs against the canonical
 # with no driver where §15.3 marks it pure.
 #
+# P2's first driver sections are written too — point, export, depend.
+# Twelve sections now.
+#
 # The remaining sections (§15.3) are all DRIVER-based and land with the
-# phase that implements them: declare, nest, state, resource, point,
-# export, depend, apply, error, trace.
+# phase that implements them: declare, nest, state, resource, apply,
+# error, trace.
 #
 # Adding a section here is not enough on its own — §15.3's table records
 # whether it is pure data or driver-based, and a driver section without
@@ -2181,6 +2184,472 @@ primary: resolve: {
     {
       in: { name: '@acme/thing', sources: [ { kind: 'module', prefix: [''] } ] }
       out: ['@acme/thing']
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# point — the three kinds, the four hook modes, composition, shadowing
+# and exclusivity (§6).
+#
+# DRIVER. A PLUGIN NEVER MUTATES THE HOST — that inversion is what makes
+# deactivation possible, and every entry here is really a test of it:
+# sdkgen's `utility.fetcher = wrapped` is not undoable, but "this instance
+# holds slot 3 of the request chain" is undoable in O(1).
+# ---------------------------------------------------------------------------
+
+primary: point: {
+
+  # `hook` — fan-out. Every live binding runs, in resolved order (§7),
+  # and return values are ignored. The probe counts its calls, so the
+  # observable shows how many bindings actually ran.
+  hook: set: [
+    {
+      id: 'point/hook#fanout', doc: true
+      cmd: [
+        { do: 'host', points: { p: { kind: 'hook' } } }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'emit', point: 'p' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 1 } }
+    }
+    # A DEACTIVATED instance does not run. This is the whole point of
+    # the inversion: removing a binding is removing a slot, not undoing
+    # a mutation nobody recorded.
+    {
+      id: 'point/hook#deactivated'
+      cmd: [
+        { do: 'host', points: { p: { kind: 'hook' } } }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'emit', point: 'p' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 0 } }
+    }
+    # An unknown point is an error, not a silent no-op.
+    {
+      cmd: [ { do: 'host', points: {} }, { do: 'emit', point: 'nope' } ]
+      err: 'plugin_point_unknown'
+    }
+    # Emitting on a chain point is a KIND error — the two are not
+    # interchangeable and a host that confuses them gets told.
+    {
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain' } } }
+        { do: 'emit', point: 'c' }
+      ]
+      err: 'plugin_point_kind'
+    }
+  ]
+
+
+  # `bail` — stops at the first binding that RETURNS A VALUE. The
+  # "handled, stop" case. `undefined` is not a value: a binding that
+  # declines returns nothing, and the next one gets its turn.
+  bail: set: [
+    {
+      id: 'point/bail#stops', doc: true
+      cmd: [
+        { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
+        { do: 'emit', point: 'v' }
+      ]
+      match: { out: { result: 'A' } }
+    }
+    # With no bindings, nothing is returned — absent, not an error.
+    {
+      cmd: [
+        { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
+        { do: 'emit', point: 'v' }
+      ]
+      match: { out: { result: '__NULL__' } }
+    }
+  ]
+
+
+  # `chain` — composition. b1(b2(b3(base))), FIRST BINDING OUTERMOST
+  # (§6.2). The probe prepends its `wrap` string, so the result spells
+  # out the nesting order rather than merely asserting it.
+  chain: set: [
+    {
+      id: 'point/chain#outermost', doc: true
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain' } } }
+        { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'ABx' } }
+    }
+    # Band order decides nesting: lower band is OUTERMOST, the same
+    # direction §7 gives, so one rule covers hooks and chains.
+    {
+      id: 'point/chain#band'
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain' } } }
+        { do: 'ready', ref: 'probe$a', options: { wrap: 'A' }, order: { band: 10 } }
+        { do: 'ready', ref: 'probe$b', options: { wrap: 'B' }, order: { band: 1 } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'BAx' } }
+    }
+    # With no bindings the base is called directly.
+    {
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain' } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'x' } }
+    }
+    # Deactivating a link RECOMPOSES — the composition is recomputed on
+    # any change to the live set, not cached at startup (§6.2).
+    {
+      id: 'point/chain#recompose'
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain' } } }
+        { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'Bx' } }
+    }
+  ]
+
+
+  # `provider` — at most one live implementation, and THE LOSERS ARE
+  # VISIBLE rather than silently ignored (§6.3).
+  #
+  # The winner is the HIGHEST band, ties by ref sort — the opposite
+  # direction from hook and chain, which run lowest first. Two rules,
+  # kept visibly different rather than one derived from the other by a
+  # reader who then gets it backwards.
+  provider: set: [
+    {
+      id: 'point/provider#one', doc: true
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider' } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
+        { do: 'provider', point: 'v' }
+      ]
+      match: { out: { result: 'A' } }
+    }
+    # Highest band wins.
+    {
+      id: 'point/provider#highest'
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider' } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' }, order: { band: 1 } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' }, order: { band: 9 } }
+        { do: 'provider', point: 'v' }
+      ]
+      match: { out: { result: 'B' } }
+    }
+    # And the loser is LISTED, not dropped.
+    {
+      id: 'point/provider#shadowed'
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider' } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' }, order: { band: 1 } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' }, order: { band: 9 } }
+        { do: 'shadowed', point: 'v' }
+      ]
+      match: { out: { result: ['provider$a'] } }
+    }
+    # With no binding the host's default answers.
+    {
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider', default: 'D' } } }
+        { do: 'provider', point: 'v' }
+      ]
+      match: { out: { result: 'D' } }
+    }
+    # `exclusive: true` makes a SECOND binding an error instead of a
+    # shadow — for a host that would rather fail than pick.
+    {
+      id: 'point/provider#exclusive'
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
+        { do: 'provider', point: 'v' }
+      ]
+      err: 'plugin_point_exclusive'
+    }
+    # One binding is fine on an exclusive point.
+    {
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
+        { do: 'provider', point: 'v' }
+      ]
+      match: { out: { result: 'A' } }
+    }
+  ]
+
+
+  # BINDINGS GO LIVE ONLY WHEN ACTIVATION SUCCEEDS (§8.1). A `loaded`
+  # instance has DECLARED its bindings and the host has not inserted
+  # them, which is what makes `deactivate` a pure removal and `activate`
+  # a pure insertion, with no discovery in between.
+  insert: set: [
+    {
+      id: 'point/insert#loaded-not-bound', doc: true
+      cmd: [
+        { do: 'host', points: { p: { kind: 'hook' } } }
+        { do: 'load', ref: 'probe$a' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: [] } }
+    }
+    {
+      cmd: [
+        { do: 'host', points: { p: { kind: 'hook' } } }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a'] } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# export — keying, aliasing, ambiguity (§11).
+# ---------------------------------------------------------------------------
+
+primary: export: {
+
+  key: set: [
+    {
+      id: 'export/key#qualified', doc: true
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'export', key: 'probe$a/client' }
+      ]
+      match: { out: { result: 'probe$a' } }
+    }
+    # A key nothing exports is absent, not an error.
+    {
+      cmd: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe$a/nope' } ]
+      match: { out: { result: '__NULL__' } }
+    }
+    # EXPORTS OF A `loaded` (not live) INSTANCE ARE VISIBLE (§11). They
+    # are declared in `define`, they are data, and hiding them would
+    # make the loaded state useless for introspection.
+    {
+      id: 'export/key#loaded-visible'
+      cmd: [ { do: 'load', ref: 'probe$a' }, { do: 'export', key: 'probe$a/client' } ]
+      match: { out: { result: 'probe$a' } }
+    }
+  ]
+
+
+  # THE UNQUALIFIED ALIAS, and the case seneca gets wrong. `probe/client`
+  # resolves to the UNTAGGED instance if one exists; if not, and exactly
+  # one tagged instance exports the key, to that one; if two do, it is
+  # an ERROR rather than silent last-wins — with multi-instance as a
+  # headline feature, an ambiguous alias is a defect waiting for
+  # production.
+  alias: set: [
+    {
+      id: 'export/alias#untagged-wins', doc: true
+      cmd: [
+        { do: 'ready', ref: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'export', key: 'probe/client' }
+      ]
+      match: { out: { result: 'probe' } }
+    }
+    # No untagged one, exactly one tagged: that one.
+    {
+      cmd: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/client' } ]
+      match: { out: { result: 'probe$a' } }
+    }
+    # Two tagged and no untagged: ERROR, not last-wins.
+    {
+      id: 'export/alias#ambiguous'
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'export', key: 'probe/client' }
+      ]
+      err: 'plugin_export_ambiguous'
+    }
+    # The message names every candidate — one name leaves the reader
+    # guessing which pair collided.
+    {
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'export', key: 'probe/client' }
+      ]
+      err: true, match: { err: { message: '/probe\\$a/' } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# depend — requirements, pending, and the reactive half (§11.3).
+#
+# ACTIVATION IS A STANDING REQUEST, NOT A ONE-SHOT EVENT. That single
+# sentence is why `pending` is a state rather than a flag, and every
+# entry here is a consequence of it.
+# ---------------------------------------------------------------------------
+
+primary: depend: {
+
+  pending: set: [
+    {
+      id: 'depend/pending#unmet', doc: true
+      cmd: [
+        { do: 'load', ref: 'dep$a', options: { requires: ['clock'] } }
+        { do: 'activate', ref: 'dep$a' }
+      ]
+      match: { out: { status: { 'dep$a': 'pending' } } }
+    }
+    # THE REQUIREMENT IS ON A CAPABILITY, not on a ref: whichever
+    # instance provides `clock` satisfies it.
+    {
+      id: 'depend/pending#capability'
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
+        { do: 'activate', ref: 'dep$c' }
+      ]
+      match: { out: { status: { 'dep$c': 'live' } } }
+    }
+    # AN OPTIONAL REQUIREMENT NEVER BLOCKS.
+    {
+      cmd: [
+        { do: 'load', ref: 'dep$a', options: { requires: ['clock'], optional: ['clock'] } }
+        { do: 'activate', ref: 'dep$a' }
+      ]
+      match: { out: { status: { 'dep$a': 'live' } } }
+    }
+  ]
+
+
+  # THE HOST ACTIVATES IT THE MOMENT THE REQUIREMENT ARRIVES, WITHOUT
+  # BEING ASKED AGAIN. Reconciliation is EAGER — it settles by running
+  # to a fixed point, not by scheduling.
+  arrive: set: [
+    {
+      id: 'depend/arrive#auto', doc: true
+      cmd: [
+        { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
+        { do: 'activate', ref: 'dep$c' }
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+      ]
+      match: { out: { status: { 'dep$c': 'live', 'dep$p': 'live' } } }
+    }
+    # A CHAIN settles in one pass rather than needing N calls.
+    {
+      id: 'depend/arrive#chain'
+      cmd: [
+        { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: ['b'] } }
+        { do: 'activate', ref: 'dep$c' }
+        { do: 'load', ref: 'dep$b', definition: 'dep', options: { requires: ['a'], provides: [ { name: 'b' } ] } }
+        { do: 'activate', ref: 'dep$b' }
+        { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'a' } ] } }
+      ]
+      match: { out: { status: { 'dep$a': 'live', 'dep$b': 'live', 'dep$c': 'live' } } }
+    }
+  ]
+
+
+  # REACTIVE DEACTIVATION, and its recursion. A live instance whose
+  # requirement is LOST goes back to `pending` — and so do its own
+  # consumers, because the loss propagates.
+  lost: set: [
+    {
+      id: 'depend/lost#back-to-pending', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$c': 'pending', 'dep$p': 'loaded' } } }
+    }
+    # Recursively, through the consumer's own consumers.
+    {
+      id: 'depend/lost#recursive'
+      cmd: [
+        { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'a' } ] } }
+        { do: 'ready', ref: 'dep$b', definition: 'dep', options: { requires: ['a'], provides: [ { name: 'b' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['b'] } }
+        { do: 'deactivate', ref: 'dep$a' }
+      ]
+      match: { out: { status: { 'dep$b': 'pending', 'dep$c': 'pending' } } }
+    }
+    # AND IT RECOVERS. The standing request was never withdrawn, so the
+    # provider returning brings the whole chain back without anyone
+    # asking again.
+    {
+      id: 'depend/lost#recovers'
+      cmd: [
+        { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'a' } ] } }
+        { do: 'ready', ref: 'dep$b', definition: 'dep', options: { requires: ['a'], provides: [ { name: 'b' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['b'] } }
+        { do: 'deactivate', ref: 'dep$a' }
+        { do: 'activate', ref: 'dep$a' }
+      ]
+      match: { out: { status: { 'dep$a': 'live', 'dep$b': 'live', 'dep$c': 'live' } } }
+    }
+    # A `dynamic` consumer SAID IN WRITING that it can survive the
+    # provider going away, so it stays live (§11.3). Static is the
+    # default because most plugins cannot, and the cost of wrongly
+    # assuming they can is a live instance holding a dead reference.
+    {
+      id: 'depend/lost#dynamic-stays'
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], policy: 'dynamic' } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$c': 'live' } } }
+    }
+    # An OPTIONAL requirement never causes a loss either.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], optional: ['clock'] } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$c': 'live' } } }
+    }
+  ]
+
+
+  # `host.capability(name)` returns the live providers, best first — the
+  # same rank the `capability` section pins as pure data, now observed
+  # through a host so the two cannot drift.
+  select: set: [
+    {
+      id: 'depend/select#rank', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'capability', name: 's' }
+      ]
+      match: { out: { result: ['dep$hi', 'dep$lo'] } }
+    }
+    # Deactivating one of two providers moves nobody: ANY live instance
+    # providing it satisfies a requirement for it.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$p1', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$p2', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
+        { do: 'deactivate', ref: 'dep$p1' }
+      ]
+      match: { out: { status: { 'dep$c': 'live' } } }
     }
   ]
 }

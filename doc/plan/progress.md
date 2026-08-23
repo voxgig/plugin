@@ -46,7 +46,8 @@ The four cross-repo obligations have their own register in
 |---|---|---|
 | 2.1 Dynamic resolution, `apply()`, exports, position verification | NOT STARTED | |
 | 2.2a Remaining PURE corpus sections | DONE | `env` 30, `version` 29, `capability` 16, `graph` 10, `resolve` 8 — 93 entries, all running green against the canonical. Nine sections total, 330 entries. |
-| 2.2b Remaining DRIVER corpus sections | NOT STARTED | declare (with item 2.4), nest, state, resource, point, export, depend, apply, error, trace. |
+| 2.2b DRIVER sections: point, export, depend | DONE | 37 entries. Twelve sections, 367 total. Points (three kinds, four hook modes, composition, shadowing, exclusivity), export aliasing and ambiguity, and the reactive half of dependencies. |
+| 2.2c DRIVER sections: declare, state, resource, apply, nest, trace, error | NOT STARTED | Includes item 2.4's `seq` and auto-tag. |
 | 2.3 `DOCS.md` completed from P1's draft | NOT STARTED | |
 | 2.4 `declare` section: `seq` and auto-tag | NOT STARTED | Relocated here by 1.7. Both need a host, so neither could stay in `ref`. Until this lands they are pinned by nothing — the one gap 1.7 moved rather than closed. |
 

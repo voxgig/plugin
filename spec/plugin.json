@@ -2792,6 +2792,539 @@
         ]
       }
     },
+    "depend": {
+      "arrive": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/arrive#auto",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "b"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "b"
+                    }
+                  ],
+                  "requires": [
+                    "a"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "a"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              }
+            ],
+            "id": "depend/arrive#chain",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live",
+                  "dep$b": "live",
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "lost": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/lost#back-to-pending",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "a"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "b"
+                    }
+                  ],
+                  "requires": [
+                    "a"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "b"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              }
+            ],
+            "id": "depend/lost#recursive",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$b": "pending",
+                  "dep$c": "pending"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "a"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "b"
+                    }
+                  ],
+                  "requires": [
+                    "a"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "b"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "id": "depend/lost#recovers",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live",
+                  "dep$b": "live",
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "policy": "dynamic",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "id": "depend/lost#dynamic-stays",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "optional": [
+                    "clock"
+                  ],
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "pending": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "doc": true,
+            "id": "depend/pending#unmet",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "pending"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              }
+            ],
+            "id": "depend/pending#capability",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "optional": [
+                    "clock"
+                  ],
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "select": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "capability",
+                "name": "s"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#rank",
+            "match": {
+              "out": {
+                "result": [
+                  "dep$hi",
+                  "dep$lo"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p1"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p2"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p1"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
     "env": {
       "ambiguous": {
         "set": [
@@ -3324,6 +3857,150 @@
                     "n": "__NULL__"
                   }
                 }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "export": {
+      "alias": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "doc": true,
+            "id": "export/alias#untagged-wins",
+            "match": {
+              "out": {
+                "result": "probe"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$a"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "err": "plugin_export_ambiguous",
+            "id": "export/alias#ambiguous"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "err": true,
+            "match": {
+              "err": {
+                "message": "/probe\\$a/"
+              }
+            }
+          }
+        ]
+      },
+      "key": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/client"
+              }
+            ],
+            "doc": true,
+            "id": "export/key#qualified",
+            "match": {
+              "out": {
+                "result": "probe$a"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/nope"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/client"
+              }
+            ],
+            "id": "export/key#loaded-visible",
+            "match": {
+              "out": {
+                "result": "probe$a"
               }
             }
           }
@@ -5399,6 +6076,607 @@
                 "result": [
                   "probe$b"
                 ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "point": {
+      "bail": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "doc": true,
+            "id": "point/bail#stops",
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          }
+        ]
+      },
+      "chain": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "point/chain#outermost",
+            "match": {
+              "out": {
+                "result": "ABx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "order": {
+                  "band": 10
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "point/chain#band",
+            "match": {
+              "out": {
+                "result": "BAx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "x"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "point/chain#recompose",
+            "match": {
+              "out": {
+                "result": "Bx"
+              }
+            }
+          }
+        ]
+      },
+      "hook": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "emit",
+                "point": "p"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "point/hook#fanout",
+            "match": {
+              "out": {
+                "result": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "emit",
+                "point": "p"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "point/hook#deactivated",
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {}
+              },
+              {
+                "do": "emit",
+                "point": "nope"
+              }
+            ],
+            "err": "plugin_point_unknown"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "emit",
+                "point": "c"
+              }
+            ],
+            "err": "plugin_point_kind"
+          }
+        ]
+      },
+      "insert": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "point/insert#loaded-not-bound",
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "provider": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "doc": true,
+            "id": "point/provider#one",
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "order": {
+                  "band": 1
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "order": {
+                  "band": 9
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "id": "point/provider#highest",
+            "match": {
+              "out": {
+                "result": "B"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "order": {
+                  "band": 1
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "order": {
+                  "band": 9
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "shadowed",
+                "point": "v"
+              }
+            ],
+            "id": "point/provider#shadowed",
+            "match": {
+              "out": {
+                "result": [
+                  "provider$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "default": "D",
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "D"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "exclusive": true,
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "err": "plugin_point_exclusive",
+            "id": "point/provider#exclusive"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "exclusive": true,
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "A"
               }
             }
           }

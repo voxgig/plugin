@@ -18,9 +18,12 @@ import { Status, Instance, OrderBlock, fail } from './Types'
 import { canonref, parseref } from './Ref'
 import { Catalog, Definition, makecatalog } from './Catalog'
 import { resolveorder, Binding, Pin } from './Order'
+import { Spec, Bound, Mode, emit as fanout, compose, provider as pickone } from './Point'
+import { Exported, resolveexport } from './Export'
+import { Provided, Required, Candidate, resolvecapability } from './Capability'
 import { normalizeconfig, resolveoptions } from './Config'
 
-export type PointSpec = { kind?: 'hook' | 'chain' | 'provider', pin?: Pin }
+export type PointSpec = Spec
 
 export type HostOptions = {
   catalog?: Catalog
@@ -46,6 +49,15 @@ type Live = {
    * REVERSE, because that is the only order in which teardown mirrors
    * setup (§8.3). */
   scope: (() => void)[]
+  /** Declared in `define`, inserted only when activation SUCCEEDS
+   * (§8.1). Holding them until then is what makes a failed activate
+   * leave nothing behind. */
+  bindings: Bound[]
+  /** Declared in `define`, and VISIBLE while merely `loaded` (§11):
+   * they are data, and hiding them would make the loaded state useless
+   * for introspection. */
+  exports: { [key: string]: any }
+  provides: Provided[]
 }
 
 export type Host = ReturnType<typeof makehost>
@@ -151,6 +163,27 @@ export function makehost(options?: HostOptions) {
         return rel
       },
       host: () => self,
+
+      /** Bind into a host point. Declared in `define`; the host inserts
+       * it only after `activate` returns successfully (§8.1), which is
+       * why a failing activate leaves no live binding behind. */
+      bind: (point: string, fn: any, band?: number) => {
+        if (undefined === points[point]) {
+          fail('plugin_point_unknown', 'no such point: ' + point, { point })
+        }
+        e.bindings.push({ ref: e.ref, point, fn, band: band || 0 })
+      },
+
+      /** Published for other plugins and for the application (§11). */
+      export: (key: string, value: any) => { e.exports[key] = value },
+
+      /** What this instance can do for others (§11.1). */
+      provides: (p: Provided) => { e.provides.push(p) },
+
+      /** Where this binding landed — the plugin-side counterpart to a
+       * host pin (§6.6). Verification tells a plugin it was misplaced;
+       * a pin stops the misplacement from being expressible. */
+      position: (point: string) => order(point).indexOf(e.ref),
     }
   }
 
@@ -182,6 +215,7 @@ export function makehost(options?: HostOptions) {
       seq: seqn++,
       options: s.options || {},
       state: {}, order: s.order, unmet: [], scope: [],
+      bindings: [], exports: {}, provides: [],
     }
     inst[r] = e
     return e
@@ -304,23 +338,70 @@ export function makehost(options?: HostOptions) {
     e.scope = []
   }
 
+  /** A REQUIREMENT IS ON A CAPABILITY, not on a ref (§11.1) — it is a
+   * dependency on something that can do the job, and which instance is
+   * doing it is exactly the configuration detail a plugin must not care
+   * about. A bare string is shorthand for `{name}`.
+   *
+   * A ref satisfies too, because a host that genuinely needs a specific
+   * instance should not have to invent a capability for it. */
   function unmetof(e: Live): string[] {
-    const req: string[] = (e.options && e.options.requires) || []
-    return req.filter((r: string) => {
-      const t = inst[canonref(r)]
-      return !t || 'live' !== t.status
-    })
+    const req: any[] = (e.options && e.options.requires) || []
+    const optional: string[] = (e.options && e.options.optional) || []
+
+    return req
+      .map((r: any) => ('string' === typeof r ? { name: r } : r) as Required)
+      .filter((r) => !r.optional && -1 === optional.indexOf(r.name))
+      .filter((r) => 0 === providersof(r).length)
+      .map((r) => r.name)
+  }
+
+  function providersof(req: Required): Candidate[] {
+    const cands: Candidate[] = []
+    for (const ref of Object.keys(inst).sort()) {
+      const t = inst[ref]
+      if ('live' !== t.status) continue
+      // A ref satisfies directly.
+      if (ref === canonref(req.name)) {
+        cands.push({ ref, pos: t.pos, provides: { name: req.name } })
+        continue
+      }
+      for (const p of t.provides) {
+        if (p.name === req.name) cands.push({ ref, pos: t.pos, provides: p })
+      }
+    }
+    return resolvecapability(req, cands)
   }
 
   /** EAGER reconciliation: run to a fixed point rather than scheduling.
-   * A pending instance whose requirement arrives activates without
-   * being asked again. */
+   *
+   * Two directions, and both are the reason `pending` exists.
+   * Activation is a STANDING REQUEST, not a one-shot event: a pending
+   * instance whose requirement arrives activates without being asked
+   * again, and a LIVE instance whose requirement is lost goes back to
+   * pending — recursively, through its own consumers. */
   function reconcile(): void {
     let moved = true
     let rounds = 0
     while (moved) {
       moved = false
       if (1000 < ++rounds) break
+
+      // Losses first, so a cascade settles in one pass rather than
+      // alternating with re-activations.
+      for (const r of Object.keys(inst).sort()) {
+        const e = inst[r]
+        if ('live' !== e.status) continue
+        if (0 === unmetof(e).length) continue
+        const policy = (e.options && e.options.policy) || 'static'
+        if ('dynamic' === policy) continue   // said in writing it can cope
+        try { run(e, 'deactivate', 'deactivate') } catch (err) { /* → failed below */ }
+        unwind(e)
+        e.status = 'pending'
+        e.unmet = unmetof(e)
+        moved = true
+      }
+
       for (const r of Object.keys(inst).sort()) {
         const e = inst[r]
         if ('pending' !== e.status) continue
@@ -348,6 +429,88 @@ export function makehost(options?: HostOptions) {
       .map((r) => ({ ref: r, pos: inst[r].pos, order: inst[r].order }))
     const spec = point ? points[point] : undefined
     return resolveorder(bindings, spec && spec.pin)
+  }
+
+  // --- points ------------------------------------------------------
+
+  /** Live bindings on a point, in resolved order. Recomputed on any
+   * change to the live set (§7) rather than cached at startup — the bug
+   * a host discovers only when something deactivates in production. */
+  function bound(point: string): Bound[] {
+    const ranked = order(point)
+    const out: Bound[] = []
+    for (const ref of ranked) {
+      const e = inst[ref]
+      // The band is the INSTANCE's ordering block (§7), stamped by the
+      // host. A plugin passing its own would be ranking itself above
+      // the order its document declared.
+      const band = (e.order && 'number' === typeof e.order.band) ? e.order.band : 0
+      for (const b of e.bindings) {
+        if (b.point === point) out.push({ ...b, band })
+      }
+    }
+    return out
+  }
+
+  function emit(point: string, arg?: any): any {
+    const spec = points[point]
+    if (undefined === spec) fail('plugin_point_unknown', 'no such point: ' + point, { point })
+    if (spec.kind && 'hook' !== spec.kind) {
+      fail('plugin_point_kind', 'point is not a hook: ' + point, { point, kind: spec.kind })
+    }
+    return fanout(bound(point), (spec.mode || 'emit') as Mode, arg)
+  }
+
+  function call(point: string, ...args: any[]): any {
+    const spec = points[point]
+    if (undefined === spec) fail('plugin_point_unknown', 'no such point: ' + point, { point })
+    if ('chain' !== spec.kind) {
+      fail('plugin_point_kind', 'point is not a chain: ' + point, { point, kind: spec.kind })
+    }
+    const base = spec.base || ((x: any) => x)
+    return compose(bound(point), base)(...args)
+  }
+
+  function provide(point: string, ...args: any[]): any {
+    const spec = points[point]
+    if (undefined === spec) fail('plugin_point_unknown', 'no such point: ' + point, { point })
+    if ('provider' !== spec.kind) {
+      fail('plugin_point_kind', 'point is not a provider: ' + point, { point, kind: spec.kind })
+    }
+    const pick = pickone(bound(point), spec)
+    if (!pick.winner) return spec.default
+    return pick.winner.fn(...args)
+  }
+
+  /** The losers are VISIBLE rather than silently ignored (§6.3). */
+  function shadowed(point: string): string[] {
+    const spec = points[point]
+    if (undefined === spec) return []
+    return pickone(bound(point), spec).shadowed
+  }
+
+  function exports(spec: string): any {
+    const all: Exported[] = []
+    for (const ref of Object.keys(inst).sort()) {
+      const e = inst[ref]
+      // Exports of a `loaded` (not live) instance are VISIBLE (§11).
+      if ('declared' === e.status || 'failed' === e.status) continue
+      for (const k of Object.keys(e.exports)) all.push({ ref, key: k, value: e.exports[k] })
+    }
+    return resolveexport(spec, all)
+  }
+
+  /** The live providers of a capability, best-first (§11.1). */
+  function capability(name: string): string[] {
+    const cands: Candidate[] = []
+    for (const ref of Object.keys(inst).sort()) {
+      const e = inst[ref]
+      if ('live' !== e.status) continue
+      for (const p of e.provides) {
+        if (p.name === name) cands.push({ ref, pos: e.pos, provides: p })
+      }
+    }
+    return resolvecapability({ name }, cands).map((c) => c.ref)
   }
 
   // --- documents ---------------------------------------------------
@@ -426,6 +589,7 @@ export function makehost(options?: HostOptions) {
 
   const self = {
     catalog, list, instance, order, observable,
+    emit, call, provider: provide, shadowed, exports, capability,
     declare, load, activate, deactivate, unload, ready, apply, close,
     options: setoptions,
     define: (def: Definition) => catalog.add(def),
