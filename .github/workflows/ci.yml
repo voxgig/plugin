@@ -62,8 +62,6 @@ jobs:
         run: cd tools && npm run --silent check-spec-shape
 
   # The property that makes N ports one library rather than N lookalikes.
-  # Green over zero ports today; wired now so the first port is checked
-  # from its first commit rather than after there is drift to find.
   parity:
     name: api parity
     runs-on: ubuntu-latest
@@ -73,3 +71,25 @@ jobs:
         with:
           python-version: '3.12'
       - run: make parity
+      # The probe catalog is a contract, not a fixture: a driver
+      # section's expected `log` is written against what `noisy` does.
+      - run: make probes
+
+  # One job per port, modelled on omni's ci.yml. `fail-fast: false` so a
+  # single failing language is named in the UI rather than buried in a
+  # multi-language log — the whole point of a conformance suite is
+  # saying WHICH port disagrees.
+  port:
+    name: ${{ matrix.port }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # P4 adds go and python; P5 and P6 the rest.
+        port: [typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+      - run: make test-${{ matrix.port }}

@@ -1,0 +1,19 @@
+/* The canonical surface `make parity` checks (AGENTS.md §4). Small on
+ * purpose (§19): everything else is methods on the host and instance
+ * types, because a library that grows a second public entry point per
+ * feature is a library twenty ports pay for twice. */
+
+export { makehost } from './Host'
+export { makecatalog } from './Catalog'
+export { parseref, formatref, checkname, checktag, canonref } from './Ref'
+export { normalizeconfig, resolveoptions, checkshape } from './Config'
+export { resolveorder } from './Order'
+export { resolvecandidates } from './Resolve'
+export { applyenv } from './Env'
+
+export { PluginError } from './Types'
+export type { Ref, Status, Instance, OrderBlock, Normalized } from './Types'
+export type { Definition, Catalog } from './Catalog'
+export type { Binding, Pin } from './Order'
+export type { Host, HostOptions, PointSpec } from './Host'
+export type { Source } from './Resolve'

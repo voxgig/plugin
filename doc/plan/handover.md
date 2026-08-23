@@ -277,7 +277,47 @@ normalize-then-resolve equivalent to resolve-on-raw, and the corpus
 header now states it.
 
 
-## 10. Open, and deliberately so
+## 10. What writing the canonical found
+
+The corpus caught four defects in the implementation and two in itself.
+That ratio is the argument for writing the contract first.
+
+**In the implementation:**
+
+- **The array form lost its positional order.** I built the load order
+  from the profile overlay and then re-sorted the remainder, which is
+  right for a map-form base and destroys the one thing an array
+  document exists to express. Caught by `normarray#order` on the first
+  run.
+- **A pin rejected instead of placing.** §7 says a pin *fixes* where a
+  binding sits and an ordering that would move it is the error. I had
+  implemented "raise if it is not already there", which makes every pin
+  either redundant or fatal.
+- **The driver dropped the ordering block.** `ready` took only a ref, so
+  every `order` entry ran against unordered bindings and four groups
+  failed at once. The fix is that `ready` walks the staircase and does
+  not carry configuration — the declaration does.
+- **`acquire` could not be released early.** `greedy` exists to acquire
+  N and release some, and the difference is what the scope must unwind;
+  with no handle to release, the difference was always zero.
+
+**In the corpus:**
+
+- **A `normdefaults` entry asserted one option layer where there are
+  two.** When `optionlayers` replaced the merged view I converted that
+  entry mechanically and kept the base layer only. What it should
+  assert — and now does — is that BOTH survive in ladder order, which
+  is precisely the information a nested host needs to apply the
+  defaults-after-merge rule one level down.
+- **The `fail` group was unwritable as specified.** §5.2's claim is that
+  a failed instance *remains registered and inspectable*, and a driver
+  that stops at the first raise can never observe it. The contract
+  gained `catch: true` (DOCS.md §4.1): the corpus could pin that
+  activation raises, or that the instance survives, but not both — and
+  it is the pair that matters.
+
+
+## 11. Open, and deliberately so
 
 | | |
 |---|---|

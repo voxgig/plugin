@@ -31,8 +31,8 @@
 # Requiring the targets costs a two-line no-op per port and removes the
 # error-swallowing branch entirely. It is free to decide now, with no
 # ports written, and expensive to retrofit across twenty.
-# P1 adds typescript (canonical). P4 adds go and python. P5, P6 the rest.
-LANGS =
+# P4 adds go and python. P5, P6 the rest.
+LANGS = typescript
 
 .PHONY: all test build inspect clean parity probes check spec spec-check
 
@@ -59,7 +59,7 @@ clean-%:
 
 test:
 	@if [ -z "$(LANGS)" ]; then \
-	  echo "plugin: no ports yet - P1 adds typescript (canonical)"; \
+	  echo "plugin: no ports"; \
 	else \
 	  for lang in $(LANGS); do $(MAKE) test-$$lang || exit 1; done; \
 	fi
@@ -99,16 +99,12 @@ spec-check:
 parity:
 	@python3 tools/check_parity.py
 
-# The probe catalog is driver-based, so its checker needs the driver
-# contract in DOCS.md (§15.2) to check against. That contract is a P1
-# deliverable - owed to station before P1's exit, alongside the lifecycle
-# and order corpus sections it makes runnable. Until then this target
-# reports the gap rather than passing silently over it.
+# The probe catalog is a contract (DOCS.md §4.3), not a fixture: a
+# driver section's expected `log` is written against what `noisy` does,
+# so a port whose `noisy` fails at a different callback passes its own
+# suite and disagrees with every other port. This checks presence;
+# behaviour is what the corpus is for.
 probes:
-	@if [ -f tools/check_probes.py ]; then \
-	  python3 tools/check_probes.py; \
-	else \
-	  echo "plugin: no probe checker yet - arrives with P1's driver contract (design 15.2)"; \
-	fi
+	@python3 tools/check_probes.py
 
 check: spec-check parity probes test

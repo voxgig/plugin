@@ -371,6 +371,15 @@
                             "active": false
                           }
                         }
+                      },
+                      {
+                        "instance": {
+                          "inner": {
+                            "options": {
+                              "x": 1
+                            }
+                          }
+                        }
                       }
                     ]
                   }
@@ -2433,6 +2442,7 @@
                 "ref": "noisy$a"
               },
               {
+                "catch": true,
                 "do": "activate",
                 "ref": "noisy$a"
               }
@@ -2457,11 +2467,34 @@
               {
                 "do": "load",
                 "options": {
+                  "code": "probe_boom",
                   "fail": "activate"
                 },
                 "ref": "noisy$a"
               },
               {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "probe_boom"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
                 "do": "activate",
                 "ref": "noisy$a"
               },
@@ -2492,6 +2525,7 @@
                 "ref": "noisy$a"
               },
               {
+                "catch": true,
                 "do": "activate",
                 "ref": "noisy$a"
               },
@@ -2517,6 +2551,7 @@
                 "ref": "noisy$a"
               },
               {
+                "catch": true,
                 "do": "activate",
                 "ref": "noisy$a"
               },
@@ -2546,6 +2581,7 @@
                 "ref": "noisy$a"
               },
               {
+                "catch": true,
                 "do": "activate",
                 "ref": "noisy$a"
               },
@@ -2575,6 +2611,7 @@
                 "ref": "noisy$a"
               },
               {
+                "catch": true,
                 "do": "activate",
                 "ref": "noisy$a"
               }
