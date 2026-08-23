@@ -3,6 +3,462 @@
     "version": 1
   },
   "primary": {
+    "capability": {
+      "match": {
+        "set": [
+          {
+            "doc": true,
+            "id": "capability/match#name",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "clock"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "name": "clock"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "name": "clock"
+              }
+            },
+            "out": []
+          },
+          {
+            "id": "capability/match#attrs",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "transactional": true
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "durable": true
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "transactional": false
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "a": 1,
+                      "b": 3
+                    },
+                    "name": "store"
+                  },
+                  "ref": "x"
+                }
+              ],
+              "req": {
+                "match": {
+                  "a": 1,
+                  "b": 2
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "store",
+                    "version": "2.3"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "name": "store",
+                "range": "2.1"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "store",
+                    "version": "3.0"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "name": "store",
+                "range": "2.1"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "name": "store",
+                "range": "2.1"
+              }
+            },
+            "out": []
+          }
+        ]
+      },
+      "rank": {
+        "set": [
+          {
+            "doc": true,
+            "id": "capability/rank#version",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "s",
+                    "version": "2.1"
+                  },
+                  "ref": "lo"
+                },
+                {
+                  "pos": 1,
+                  "provides": {
+                    "name": "s",
+                    "version": "2.9"
+                  },
+                  "ref": "hi"
+                }
+              ],
+              "req": {
+                "name": "s"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "hi"
+                },
+                {
+                  "ref": "lo"
+                }
+              ]
+            }
+          },
+          {
+            "id": "capability/rank#priority",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "s",
+                    "priority": 5,
+                    "version": "2.1"
+                  },
+                  "ref": "b"
+                },
+                {
+                  "pos": 1,
+                  "provides": {
+                    "name": "s",
+                    "priority": 1,
+                    "version": "2.1"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "name": "s"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                },
+                {
+                  "ref": "b"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "s",
+                    "priority": 1,
+                    "version": "2.1"
+                  },
+                  "ref": "set"
+                },
+                {
+                  "pos": 1,
+                  "provides": {
+                    "name": "s",
+                    "version": "2.1"
+                  },
+                  "ref": "unset"
+                }
+              ],
+              "req": {
+                "name": "s"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "unset"
+                },
+                {
+                  "ref": "set"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 1,
+                  "provides": {
+                    "name": "s",
+                    "version": "2.1"
+                  },
+                  "ref": "second"
+                },
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "s",
+                    "version": "2.1"
+                  },
+                  "ref": "first"
+                }
+              ],
+              "req": {
+                "name": "s"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "first"
+                },
+                {
+                  "ref": "second"
+                }
+              ]
+            }
+          },
+          {
+            "id": "capability/rank#version-beats-priority",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "s",
+                    "priority": 9,
+                    "version": "3.0"
+                  },
+                  "ref": "newer"
+                },
+                {
+                  "pos": 1,
+                  "provides": {
+                    "name": "s",
+                    "priority": 0,
+                    "version": "2.0"
+                  },
+                  "ref": "older"
+                }
+              ],
+              "req": {
+                "name": "s"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "newer"
+                },
+                {
+                  "ref": "older"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 9,
+                  "provides": {
+                    "name": "s",
+                    "priority": 0,
+                    "version": "2.0"
+                  },
+                  "ref": "late"
+                },
+                {
+                  "pos": 0,
+                  "provides": {
+                    "name": "s",
+                    "priority": 5,
+                    "version": "2.0"
+                  },
+                  "ref": "early"
+                }
+              ],
+              "req": {
+                "name": "s"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "late"
+                },
+                {
+                  "ref": "early"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
     "config": {
       "normarray": {
         "set": [
@@ -2336,6 +2792,907 @@
         ]
       }
     },
+    "env": {
+      "ambiguous": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_env_ambiguous",
+            "id": "env/ambiguous#tag-vs-underscore",
+            "in": {
+              "env": {},
+              "refs": [
+                "retry$fast",
+                "retry__fast"
+              ]
+            }
+          },
+          {
+            "err": "plugin_env_ambiguous",
+            "in": {
+              "env": {},
+              "refs": [
+                "retry$fast",
+                "Retry$fast"
+              ]
+            }
+          },
+          {
+            "err": "plugin_env_ambiguous",
+            "in": {
+              "env": {},
+              "refs": [
+                "retry$fast",
+                "retry$Fast"
+              ]
+            }
+          },
+          {
+            "err": true,
+            "in": {
+              "env": {},
+              "refs": [
+                "retry$fast",
+                "retry__fast"
+              ]
+            },
+            "match": {
+              "err": {
+                "message": "/retry\\$fast/"
+              }
+            }
+          },
+          {
+            "err": true,
+            "in": {
+              "env": {},
+              "refs": [
+                "retry$fast",
+                "retry__fast"
+              ]
+            },
+            "match": {
+              "err": {
+                "message": "/retry__fast/"
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {},
+              "refs": [
+                "retry",
+                "retry$fast",
+                "other"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {}
+              }
+            }
+          }
+        ]
+      },
+      "option": {
+        "set": [
+          {
+            "doc": true,
+            "id": "env/option#simple",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_RETRY_RETRIES": "3"
+              },
+              "refs": [
+                "retry"
+              ]
+            },
+            "out": {
+              "active": [],
+              "inactive": [],
+              "options": {
+                "retry": {
+                  "retries": 3
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_RETRY__FAST_RETRIES": "3"
+              },
+              "refs": [
+                "retry$fast"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "retry$fast": {
+                    "retries": 3
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_RETRY_MIN_DELAY": "500"
+              },
+              "refs": [
+                "retry"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "retry": {
+                    "min": {
+                      "delay": 500
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "env/option#longest",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_RETRY__FAST_MIN": "1"
+              },
+              "refs": [
+                "retry",
+                "retry$fast"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "retry$fast": {
+                    "min": 1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_OTHER_X": "1"
+              },
+              "refs": [
+                "retry"
+              ]
+            },
+            "out": {
+              "active": [],
+              "inactive": [],
+              "options": {}
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "HOME": "/root",
+                "PATH": "/usr/bin"
+              },
+              "refs": [
+                "retry"
+              ]
+            },
+            "out": {
+              "active": [],
+              "inactive": [],
+              "options": {}
+            }
+          }
+        ]
+      },
+      "profile": {
+        "set": [
+          {
+            "doc": true,
+            "id": "env/profile#set",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_PROFILE": "prod"
+              },
+              "refs": []
+            },
+            "match": {
+              "out": {
+                "profile": "prod"
+              }
+            }
+          }
+        ]
+      },
+      "reserved": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_ref_reserved",
+            "id": "env/reserved#inactive",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_INACTIVE": "station"
+              },
+              "refs": [
+                "station"
+              ],
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_ACTIVE": "station"
+              },
+              "refs": [
+                "station"
+              ],
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_INACTIVE": "station$eu"
+              },
+              "refs": [
+                "station$eu"
+              ],
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_STATION_X": "1"
+              },
+              "refs": [
+                "station"
+              ],
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_INACTIVE": "stationary"
+              },
+              "refs": [
+                "stationary"
+              ],
+              "reserved": [
+                "station"
+              ]
+            },
+            "match": {
+              "out": {
+                "inactive": [
+                  "stationary"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "toggle": {
+        "set": [
+          {
+            "doc": true,
+            "id": "env/toggle#active",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_ACTIVE": "a,b"
+              },
+              "refs": [
+                "a",
+                "b"
+              ]
+            },
+            "match": {
+              "out": {
+                "active": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_INACTIVE": "a"
+              },
+              "refs": [
+                "a"
+              ]
+            },
+            "match": {
+              "out": {
+                "inactive": [
+                  "a"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_ACTIVE": " a , b "
+              },
+              "refs": [
+                "a",
+                "b"
+              ]
+            },
+            "match": {
+              "out": {
+                "active": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_INACTIVE": "a$"
+              },
+              "refs": [
+                "a"
+              ]
+            },
+            "match": {
+              "out": {
+                "inactive": [
+                  "a"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_ACTIVE": ""
+              },
+              "refs": [
+                "a"
+              ]
+            },
+            "match": {
+              "out": {
+                "active": []
+              }
+            }
+          }
+        ]
+      },
+      "value": {
+        "set": [
+          {
+            "doc": true,
+            "id": "env/value#number",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "8080"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": 8080
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_B": "true"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "b": true
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_B": "false"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "b": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_S": "hello"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "s": "hello"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_M": "{\"a\":1}"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "m": {
+                      "a": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_L": "[1,2]"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "l": [
+                      1,
+                      2
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "null"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "__NULL__"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "graph": {
+      "blocked": {
+        "set": [
+          {
+            "doc": true,
+            "id": "graph/blocked#absent",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "clock"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "clock",
+                  "why": {
+                    "kind": "absent"
+                  }
+                }
+              ],
+              "resolved": []
+            }
+          },
+          {
+            "id": "graph/blocked#version",
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "name": "s",
+                    "version": "1.0"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "s",
+                    "range": "2.1"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "s",
+                  "why": {
+                    "found": [
+                      "1.0"
+                    ],
+                    "kind": "version",
+                    "range": "2.1"
+                  }
+                }
+              ],
+              "resolved": [
+                "p"
+              ]
+            }
+          },
+          {
+            "id": "graph/blocked#match",
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "attrs": {
+                      "transactional": false
+                    },
+                    "name": "s"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "match": {
+                      "transactional": true
+                    },
+                    "name": "s"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "s",
+                  "why": {
+                    "failing": "transactional",
+                    "found": false,
+                    "kind": "match",
+                    "want": true
+                  }
+                }
+              ],
+              "resolved": [
+                "p"
+              ]
+            }
+          },
+          {
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "name": "s"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "match": {
+                      "transactional": true
+                    },
+                    "name": "s"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "s",
+                  "why": {
+                    "failing": "transactional",
+                    "found": null,
+                    "kind": "match",
+                    "want": true
+                  }
+                }
+              ],
+              "resolved": [
+                "p"
+              ]
+            }
+          },
+          {
+            "id": "graph/blocked#chain",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "b"
+                  }
+                ]
+              },
+              {
+                "pos": 1,
+                "provides": [
+                  {
+                    "name": "b"
+                  }
+                ],
+                "ref": "b",
+                "requires": [
+                  {
+                    "name": "missing"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "b",
+                  "unmet": "missing",
+                  "why": {
+                    "kind": "absent"
+                  }
+                },
+                {
+                  "ref": "c",
+                  "unmet": "b",
+                  "why": {
+                    "chain": [
+                      "b"
+                    ],
+                    "kind": "blocked"
+                  }
+                }
+              ],
+              "resolved": []
+            }
+          },
+          {
+            "id": "graph/blocked#isolated",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "missing"
+                  }
+                ]
+              },
+              {
+                "pos": 1,
+                "ref": "x"
+              },
+              {
+                "pos": 2,
+                "ref": "y"
+              }
+            ],
+            "match": {
+              "out": {
+                "resolved": [
+                  "x",
+                  "y"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "resolve": {
+        "set": [
+          {
+            "doc": true,
+            "id": "graph/resolve#trivial",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "a"
+              },
+              {
+                "pos": 1,
+                "ref": "b"
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "a",
+                "b"
+              ]
+            }
+          },
+          {
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "name": "clock"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "clock"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "c",
+                "p"
+              ]
+            }
+          },
+          {
+            "in": [
+              {
+                "pos": 0,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "clock",
+                    "optional": true
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "c"
+              ]
+            }
+          },
+          {
+            "id": "graph/resolve#chain",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "b"
+                  }
+                ]
+              },
+              {
+                "pos": 1,
+                "provides": [
+                  {
+                    "name": "b"
+                  }
+                ],
+                "ref": "b",
+                "requires": [
+                  {
+                    "name": "a"
+                  }
+                ]
+              },
+              {
+                "pos": 2,
+                "provides": [
+                  {
+                    "name": "a"
+                  }
+                ],
+                "ref": "a"
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "a",
+                "b",
+                "c"
+              ]
+            }
+          }
+        ]
+      }
+    },
     "lifecycle": {
       "back": {
         "set": [
@@ -4584,6 +5941,397 @@
           },
           {
             "in": "a!b",
+            "out": false
+          }
+        ]
+      }
+    },
+    "resolve": {
+      "candidates": {
+        "set": [
+          {
+            "doc": true,
+            "id": "resolve/candidates#default",
+            "in": {
+              "name": "retry"
+            },
+            "out": [
+              "@voxgig/plugin-retry",
+              "voxgig-plugin-retry",
+              "plugin-retry",
+              "retry"
+            ]
+          },
+          {
+            "in": {
+              "name": "retry",
+              "sources": [
+                {
+                  "kind": "module",
+                  "prefix": [
+                    "x-"
+                  ]
+                }
+              ]
+            },
+            "out": [
+              "x-retry"
+            ]
+          },
+          {
+            "in": {
+              "name": "r",
+              "sources": [
+                {
+                  "kind": "module",
+                  "prefix": [
+                    "a-",
+                    "b-"
+                  ]
+                }
+              ]
+            },
+            "out": [
+              "a-r",
+              "b-r"
+            ]
+          },
+          {
+            "in": {
+              "name": "r",
+              "sources": [
+                {
+                  "dir": "./plugin",
+                  "kind": "path"
+                }
+              ]
+            },
+            "out": [
+              "./plugin/r"
+            ]
+          },
+          {
+            "in": {
+              "name": "r",
+              "sources": [
+                {
+                  "dir": "./plugin/",
+                  "kind": "path"
+                }
+              ]
+            },
+            "out": [
+              "./plugin/r"
+            ]
+          },
+          {
+            "in": {
+              "name": "r",
+              "sources": [
+                {
+                  "dir": "./p",
+                  "kind": "path"
+                },
+                {
+                  "kind": "module",
+                  "prefix": [
+                    "m-"
+                  ]
+                }
+              ]
+            },
+            "out": [
+              "./p/r",
+              "m-r"
+            ]
+          },
+          {
+            "in": {
+              "name": "r",
+              "sources": [
+                {
+                  "kind": "module",
+                  "prefix": [
+                    "a-",
+                    "a-"
+                  ]
+                }
+              ]
+            },
+            "out": [
+              "a-r"
+            ]
+          },
+          {
+            "in": {
+              "name": "@acme/thing",
+              "sources": [
+                {
+                  "kind": "module",
+                  "prefix": [
+                    ""
+                  ]
+                }
+              ]
+            },
+            "out": [
+              "@acme/thing"
+            ]
+          }
+        ]
+      }
+    },
+    "version": {
+      "range": {
+        "set": [
+          {
+            "doc": true,
+            "id": "version/range#caret",
+            "in": "2.1",
+            "out": {
+              "hi": [
+                3,
+                0,
+                0
+              ],
+              "lo": [
+                2,
+                1,
+                0
+              ]
+            }
+          },
+          {
+            "in": "2",
+            "out": {
+              "hi": [
+                3,
+                0,
+                0
+              ],
+              "lo": [
+                2,
+                0,
+                0
+              ]
+            }
+          },
+          {
+            "in": "2.1.3",
+            "out": {
+              "hi": [
+                3,
+                0,
+                0
+              ],
+              "lo": [
+                2,
+                1,
+                3
+              ]
+            }
+          },
+          {
+            "in": "~2.1",
+            "out": {
+              "hi": [
+                2,
+                2,
+                0
+              ],
+              "lo": [
+                2,
+                1,
+                0
+              ]
+            }
+          },
+          {
+            "in": "~2",
+            "out": {
+              "hi": [
+                2,
+                1,
+                0
+              ],
+              "lo": [
+                2,
+                0,
+                0
+              ]
+            }
+          },
+          {
+            "in": "~2.1.3",
+            "out": {
+              "hi": [
+                2,
+                2,
+                0
+              ],
+              "lo": [
+                2,
+                1,
+                3
+              ]
+            }
+          },
+          {
+            "in": "0.1",
+            "out": {
+              "hi": [
+                1,
+                0,
+                0
+              ],
+              "lo": [
+                0,
+                1,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "rangebad": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_bad_range",
+            "id": "version/rangebad#empty",
+            "in": ""
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "x"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "2.x"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": ">=2.1"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "^2.1"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "2.1.3.4"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "~"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "-1"
+          }
+        ]
+      },
+      "satisfies": {
+        "set": [
+          {
+            "doc": true,
+            "id": "version/satisfies#in",
+            "in": {
+              "range": "2.1",
+              "version": "2.3"
+            },
+            "out": true
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "2.1"
+            },
+            "out": true
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "2.1.0"
+            },
+            "out": true
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "2.99.99"
+            },
+            "out": true
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "3.0"
+            },
+            "out": false
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "2.0"
+            },
+            "out": false
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "2.0.9"
+            },
+            "out": false
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "1.9"
+            },
+            "out": false
+          },
+          {
+            "in": {
+              "range": "~2.1",
+              "version": "2.1.9"
+            },
+            "out": true
+          },
+          {
+            "in": {
+              "range": "~2.1",
+              "version": "2.2.0"
+            },
+            "out": false
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "2.2"
+            },
+            "out": true
+          },
+          {
+            "id": "version/satisfies#lo-inclusive",
+            "in": {
+              "range": "~2.1",
+              "version": "2.1.0"
+            },
+            "out": true
+          },
+          {
+            "in": {
+              "range": "~2.1",
+              "version": "2.0.99"
+            },
+            "out": false
+          },
+          {
+            "in": {
+              "range": "2.1",
+              "version": "3.0.0"
+            },
             "out": false
           }
         ]
