@@ -740,6 +740,80 @@ corpus entry of mine that used an unreserved name to test a reservation
 bypass — and both were fixed rather than counted.
 
 
+## 17. Review round two, part two: what the corpus cannot see
+
+Round two's other half was eight PORT-LOCAL fixes — not the canonical
+being wrong, but one port disagreeing with a canonical that was right.
+Five landed as ordinary corpus work. **Three could not, and those are
+the ones worth reading.**
+
+### The corpus cannot see a rule about a language it has no word for
+
+Two Go fixes have no expressible corpus entry, in any port:
+
+- **Numbers.** The model has one number type; Go has twelve. Corpus JSON
+  decodes every number to `float64`, so both sides of every comparison
+  arrive the same and the corpus cannot ask what happens when a Go
+  EMBEDDING HOST writes `Attrs{"max": 5}` — an `int`, which
+  `any(5) == any(5.0)` says is not `5.0`. The capability silently missed.
+- **Goroutines.** §5.2 makes transitions sequential; `intransition` is
+  set inside `run`, so two goroutines both passed the guard and
+  `Declare` handed out a shared `Seq` and `Pos`. The corpus is
+  single-threaded and always will be.
+
+Both now live in `go/test/golocal_test.go`, and the file's header says
+what it is for, because "the corpus is the contract" makes a port-local
+test look like cheating. The rule that keeps it honest: **a port-local
+test may pin a model rule in a dimension the port has and the corpus
+does not; it may never state a rule of its own.**
+
+`make test` in `go/` now runs `-race`, since a data race is exactly the
+failure the concurrency test exists to catch and is silent without it.
+
+### Two entries that only bite where maps have no order
+
+`order/pinorder` and `order/seqtie` are real entries that catch a real
+bug — in go. They cannot catch it anywhere else, and this took a
+mutation run to notice rather than reasoning:
+
+- `make spec` emits `spec/plugin.json` with **sorted keys**. Every
+  decoder that preserves file order therefore hands JavaScript, Python
+  and Ruby a pin map that is already sorted, so "sorted" and "insertion
+  order" coincide and no entry can separate them.
+- A delete-then-insert moves a key to the END of an insertion-ordered
+  map, which is also where its new `seq` puts it — so registry order and
+  `seq` order coincide there too.
+
+The fixes are still right in all five ports: **an embedding host builds
+its pin map in code, in whatever order it likes**, and the corpus only
+ever sees the generator's normalised form. What is wrong is reading the
+green as coverage, which is why both entries now say so in
+`spec/plugin.aontu` and why the surviving mutations were investigated
+instead of being patched away.
+
+### The bridge lost a failed feature
+
+`featureof` read the feature back through `host.exports(...)`. §11 hides
+a `failed` instance's exports; §5.2 says `unload` is the only exit from
+`failed` and still runs `close`. So the one case where a feature holding
+a connection most needs its `close` was the exact case where the bridge
+handed the callback `undefined`. It reads from the instance's own
+`state` now, which survives every status.
+
+Its test asserts on the FEATURE'S OWN LOG rather than on the host's
+status map — the earlier draft asserted the instance was gone, which
+stayed green with the bug still in.
+
+### The tally
+
+Fourteen mutations this round, fourteen caught. Three came back as
+NON-mutations first (a `componentMax` guard rewritten against text that
+no longer existed, a removed sort that Go's map randomisation hid, an
+`if false` that fell through to the same lock) and were re-run rather
+than counted — and two SURVIVORS were the finding above, not a gap to
+paper over.
+
+
 ## 12. Open, and deliberately so
 
 | | |

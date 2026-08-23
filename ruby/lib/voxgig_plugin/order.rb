@@ -101,7 +101,14 @@ module VoxgigPlugin
 
     out = order.dup
 
-    pin.each_key do |name|
+    # SORTED, not insertion order. A pin map is data - it can arrive from
+    # a host's own construction options in any order, and two names
+    # pinned to the same end are order-sensitive (`{b:'first',
+    # a:'first'}` and `{a:'first', b:'first'}` give different results).
+    # Ruby hashes are insertion-ordered and a Go map has no order at all,
+    # so leaving it unstated made the same declaration mean different
+    # things in different ports.
+    pin.keys.sort.each do |name|
       want = pin[name]
       idx = out.index { |r| refname(r) == name }
       next if idx.nil?

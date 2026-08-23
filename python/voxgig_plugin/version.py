@@ -22,6 +22,22 @@ from .types import fail
 # range. Pinned by `version/rangebad#trailing-newline`.
 VERSION_RE = re.compile(r'^(\d+)(?:\.(\d+))?(?:\.(\d+))?\Z')
 
+# A COMPONENT IS BOUNDED, and the bound is the model's, not the host
+# language's. Python integers are unbounded and JavaScript's stop being
+# exact past 2^53, so `4294967296.0.0` compared as an ordinary number in
+# one port and lost precision in another. 2^31-1 is the smallest bound
+# every target language holds exactly, which makes it the model's.
+COMPONENT_MAX = 2147483647
+
+
+def component(digits, whole, field):
+    value = int(digits)
+    if COMPONENT_MAX < value:
+        fail('plugin_bad_range',
+             'version component out of range in ' + whole + ': ' + digits,
+             {field: whole})
+    return value
+
 
 def parse_range(text):
     """Two forms and no more (section 11.2):
@@ -39,9 +55,11 @@ def parse_range(text):
     if None is found:
         fail('plugin_bad_range', 'invalid range: ' + text, {'range': text})
 
-    major = int(found.group(1))
-    minor = 0 if None is found.group(2) else int(found.group(2))
-    patch = 0 if None is found.group(3) else int(found.group(3))
+    major = component(found.group(1), text, 'range')
+    minor = (0 if None is found.group(2)
+             else component(found.group(2), text, 'range'))
+    patch = (0 if None is found.group(3)
+             else component(found.group(3), text, 'range'))
 
     lo = [major, minor, patch]
     hi = [major, minor + 1, 0] if tilde else [major + 1, 0, 0]
@@ -57,9 +75,11 @@ def parse_version(text):
         fail('plugin_bad_range', 'invalid version: ' + text,
              {'version': text})
     return [
-        int(found.group(1)),
-        0 if None is found.group(2) else int(found.group(2)),
-        0 if None is found.group(3) else int(found.group(3)),
+        component(found.group(1), text, 'version'),
+        (0 if None is found.group(2)
+         else component(found.group(2), text, 'version')),
+        (0 if None is found.group(3)
+         else component(found.group(3), text, 'version')),
     ]
 
 

@@ -27,6 +27,17 @@ type Range struct {
 
 var versionRe = regexp.MustCompile(`^(\d+)(?:\.(\d+))?(?:\.(\d+))?$`)
 
+// componentMax bounds a version component, like §4's 1024 bounds a ref.
+//
+// The grammar admits an unbounded digit sequence and every language then
+// disagrees past its integer range: JavaScript silently loses precision,
+// Go's Atoi errors (and this port was ignoring that, yielding 0), C
+// overflows. `Satisfies("0", "9223372036854775808")` was false in the
+// canonical and TRUE here, from the same corpus.
+//
+// 2^31-1, because every port has a signed 32-bit integer.
+const componentMax = 2147483647
+
 // ParseRange accepts two forms and no more (§11.2):
 //
 //	'2.1'    >= 2.1.0 and < 3.0.0
@@ -50,9 +61,18 @@ func ParseRange(rng string) (Range, error) {
 		return bad()
 	}
 
-	major := atoi(m[1])
-	minor := atoi(m[2])
-	patch := atoi(m[3])
+	major, ok := component(m[1])
+	if !ok {
+		return bad()
+	}
+	minor, ok := component(m[2])
+	if !ok {
+		return bad()
+	}
+	patch, ok := component(m[3])
+	if !ok {
+		return bad()
+	}
 
 	lo := []int{major, minor, patch}
 	hi := []int{major + 1, 0, 0}
@@ -68,7 +88,30 @@ func ParseVersion(version string) ([]int, error) {
 		return nil, Fail("plugin_bad_range", "invalid version: "+version,
 			map[string]any{"version": version})
 	}
-	return []int{atoi(m[1]), atoi(m[2]), atoi(m[3])}, nil
+	out := []int{}
+	for _, g := range []string{m[1], m[2], m[3]} {
+		n, ok := component(g)
+		if !ok {
+			return nil, Fail("plugin_bad_range",
+				"version component out of range in "+version+": "+g,
+				map[string]any{"version": version})
+		}
+		out = append(out, n)
+	}
+	return out, nil
+}
+
+// component parses one bounded component. An absent optional group is
+// "", which is a missing minor or patch and therefore 0.
+func component(s string) (int, bool) {
+	if "" == s {
+		return 0, true
+	}
+	n, err := strconv.Atoi(s)
+	if nil != err || componentMax < n {
+		return 0, false
+	}
+	return n, true
 }
 
 // Satisfies is the one satisfaction predicate: lo <= version < hi.
@@ -112,15 +155,4 @@ func at(l []int, i int) int {
 	return 0
 }
 
-// atoi is the regex-group reader: an absent optional group is "", which
-// is a missing minor or patch and therefore 0.
-func atoi(s string) int {
-	if "" == s {
-		return 0
-	}
-	n, err := strconv.Atoi(s)
-	if nil != err {
-		return 0
-	}
-	return n
-}
+

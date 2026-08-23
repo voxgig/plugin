@@ -7,8 +7,11 @@
 
 .PHONY: test build inspect clean
 
+# -race, because `golocal_test.go` asserts §5.2's sequential transitions
+# across goroutines and a data race there is the failure it exists to
+# catch — silent without the detector.
 test:
-	go test ./...
+	go test -race ./...
 
 build:
 	go build ./...

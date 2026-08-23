@@ -1634,6 +1634,38 @@ primary: order: {
   # order — not by the order instances happened to load, and not by the
   # incarnation counter `seq` (§4 rule 4). Both distinctions are
   # load-bearing.
+  # §7 breaks a tie by `pos` - and TWO INSTANCES CAN SHARE ONE. `declare`
+  # defaults `pos` to the registry size, so unloading one and declaring
+  # another reuses a surviving instance's position. Past that the
+  # canonical fell through to its map's insertion order, which a language
+  # whose maps have none cannot reproduce: go ordered by ref and got the
+  # opposite answer from the same corpus.
+  #
+  # DECLARATION SEQUENCE is that order made explicit. Found by review of
+  # the go port.
+  seqtie: set: [
+    {
+      id: 'order/seqtie#shared-pos', doc: true
+      cmd: [
+        { do: 'ready', ref: 'probe$z' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'unload', ref: 'probe$z' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'order', point: 'p' }
+      ]
+      # `probe$b` has pos 1 and `probe$a` re-used pos 1; `b` was declared
+      # first, so it runs first. A port breaking the tie by REF would
+      # answer ['probe$a', 'probe$b'].
+      #
+      # Like `pinorder`, this bites only where maps have no order. A
+      # delete-then-insert moves a key to the END of an insertion-ordered
+      # map, which is also where its new `seq` puts it, so registry order
+      # and `seq` order coincide there and cannot be told apart. go is
+      # what this entry is for.
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+  ]
+
   tie: set: [
     {
       id: 'order/tie#pos', doc: true
@@ -1790,6 +1822,39 @@ primary: order: {
   # b1(b2(b3(base))) with the FIRST binding outermost, so `first` and
   # `innermost` are opposites. A pin spelled in sort terms would be read
   # backwards by exactly the people it exists to protect.
+  # A PIN MAP IS DATA, AND ITS ITERATION ORDER IS PART OF THE ANSWER.
+  # Two names pinned to the same end are order-sensitive:
+  # `{b:'first', a:'first'}` and `{a:'first', b:'first'}` give different
+  # results. JavaScript's `Object.keys` is insertion order and a go map
+  # has none at all, so leaving it unstated made the same declaration
+  # mean different things per port. SORTED is the one order every
+  # language agrees on. Found by review of the go port.
+  pinorder: set: [
+    {
+      id: 'order/pinorder#two-names', doc: true
+      cmd: [
+        { do: 'host', points: { p: { kind: 'hook', pin: { noisy: 'first', probe: 'first' } } } }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'noisy$b' }
+        { do: 'order', point: 'p' }
+      ]
+      # Each pinned name is moved to the front in turn, so the one
+      # applied LAST ends up outermost: sorted order applies `noisy` then
+      # `probe`, leaving `probe` outermost.
+      #
+      # THIS ENTRY CAN ONLY FAIL IN A PORT WHOSE MAPS HAVE NO ORDER -
+      # go, and every port whose map type is a hash. `make spec` emits
+      # the JSON with SORTED KEYS, so a decoder that preserves file order
+      # (JavaScript, Python, Ruby) hands the implementation a sorted map
+      # whatever it then does, and the two readings coincide. That is a
+      # limit of the corpus, not of the rule: an embedding host builds
+      # its pin map in code, in any order it likes, which is why every
+      # port sorts explicitly. Recorded in doc/plan/handover.md so the
+      # next port does not read the green as coverage.
+      match: { out: { result: ['probe$a', 'noisy$b'] } }
+    }
+  ]
+
   pin: set: [
     {
       id: 'order/pin#innermost', doc: true
@@ -1910,6 +1975,19 @@ primary: env: {
       match: { out: { options: { r: { l: [1, 2] } } } } }
     { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: 'null' } }
       match: { out: { options: { r: { n: '__NULL__' } } } } }
+
+    # `NaN` and `Infinity` ARE NOT JSON. `JSON.parse` rejects them and
+    # the documented fallback keeps the string - but python's
+    # `json.loads` accepts them as floats, silently changing the option's
+    # type to a value strict JSON serializers cannot represent. Found by
+    # review of the python port.
+    { id: 'env/value#not-json-constants'
+      in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: 'NaN' } }
+      match: { out: { options: { r: { n: 'NaN' } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: 'Infinity' } }
+      match: { out: { options: { r: { n: 'Infinity' } } } } }
+    { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: '-Infinity' } }
+      match: { out: { options: { r: { n: '-Infinity' } } } } }
   ]
 
 
@@ -2003,6 +2081,9 @@ primary: version: {
   #   '2.1'   >= 2.1.0 and < 3.0.0
   #   '~2.1'  >= 2.1.0 and < 2.2.0
   range: set: [
+    # ...and the boundary itself is admitted, in both directions.
+    { id: 'version/range#component-max'
+      in: '2147483647', out: { lo: [2147483647, 0, 0], hi: [2147483648, 0, 0] } }
     { id: 'version/range#caret', doc: true, in: '2.1', out: { lo: [2, 1, 0], hi: [3, 0, 0] } }
     { in: '2', out: { lo: [2, 0, 0], hi: [3, 0, 0] } }
     { in: '2.1.3', out: { lo: [2, 1, 3], hi: [3, 0, 0] } }
@@ -2029,6 +2110,19 @@ primary: version: {
     # that fixed the ref grammar and left the version grammar alone
     # would pass the whole `ref` section.
     { id: 'version/rangebad#trailing-newline', in: "2.1\n", err: 'plugin_bad_range' }
+    # A COMPONENT IS BOUNDED, like a ref is (§4's 1024). The grammar
+    # admits an unbounded digit sequence and every language then
+    # disagrees past its integer range: JS silently loses precision,
+    # go's Atoi errors (and a port ignoring that gets 0), C overflows,
+    # python is exact. `satisfies('0', '9223372036854775808')` was false
+    # in the canonical and TRUE in go, from this same corpus.
+    #
+    # 2^31-1, because every port has a signed 32-bit integer and no real
+    # version has ever needed more. Found by review of the go port.
+    { id: 'version/rangebad#component-bound', in: '9223372036854775808', err: 'plugin_bad_range' }
+    { in: '2147483648', err: 'plugin_bad_range' }
+    { in: '1.2147483648', err: 'plugin_bad_range' }
+    { in: '1.2.2147483648', err: 'plugin_bad_range' }
   ]
 
 
@@ -3385,6 +3479,58 @@ primary: declare: {
   # `declared` COSTS NOTHING: twenty lazy instances are twenty map
   # entries and no executed code, which is the property station needs
   # and the reason the state exists at all.
+  # `options: {}` CLEARS, rather than being read as "no options given".
+  # `load` replaces the declared options when the spec carries them, and
+  # a port testing TRUTHINESS rather than PRESENCE cannot express
+  # "clear them all" - python's `if spec.get('options')` is false for an
+  # empty dict. Found by review of the python port.
+  clear: set: [
+    {
+      id: 'declare/clear#empty-options', doc: true
+      cmd: [
+        { do: 'declare', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'load', ref: 'probe$a', options: {} }
+        { do: 'activate', ref: 'probe$a' }
+        { arg: 'x', do: 'chain', point: 'c' }
+      ]
+      # The wrap default is ':' - so the cleared options are in force.
+      match: { out: { result: ':x' } }
+    }
+    # ...while OMITTING options leaves the declared ones alone, which is
+    # the distinction truthiness cannot draw.
+    {
+      cmd: [
+        { do: 'declare', ref: 'probe$a', options: { wrap: 'A' } }
+        { do: 'load', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { arg: 'x', do: 'chain', point: 'c' }
+      ]
+      match: { out: { result: 'Ax' } }
+    }
+  ]
+
+
+  # A MALFORMED REF IS `plugin_bad_name` EVERYWHERE, including on the
+  # introspection path. `host.instance()` canonicalizes, so it raises -
+  # and a port whose lookup swallowed the parse failure reported an
+  # ordinary "no such instance" instead, which is a different answer to a
+  # different question. Found by review of the go port.
+  lookup: set: [
+    {
+      id: 'declare/lookup#malformed', doc: true
+      cmd: [ { do: 'seq', ref: 'bad name' } ]
+      err: 'plugin_bad_name'
+    }
+    # A WELL-FORMED ref that is simply absent is not an error - it is the
+    # ordinary "nothing here" answer, and the pair is what keeps the two
+    # distinguishable.
+    {
+      cmd: [ { do: 'seq', ref: 'probe$nope' } ]
+      match: { out: { result: '__NULL__' } }
+    }
+  ]
+
+
   free: set: [
     {
       id: 'declare/free#nothing-runs', doc: true

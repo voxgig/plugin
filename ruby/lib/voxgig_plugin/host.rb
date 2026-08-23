@@ -708,7 +708,15 @@ module VoxgigPlugin
     # --- ordering ---------------------------------------------------
 
     def order(point = nil)
+      # Sorted by declaration SEQUENCE, which is what makes the section 7
+      # sort's fall-through deterministic in a language whose maps have
+      # no insertion order. Section 7 breaks ties by `pos`; two instances
+      # CAN share one - `declare` defaults `pos` to the registry size, so
+      # an unload followed by a fresh declare reuses a surviving
+      # instance's - and past that this was falling through to hash
+      # order. `seq` is that order, made explicit.
       bindings = @inst.keys.select { |r| @inst[r]['status'] == 'live' }
+                      .sort_by { |r| @inst[r]['seq'] }
                       .map do |r|
         { 'ref' => r, 'pos' => @inst[r]['pos'], 'order' => @inst[r]['order'] }
       end

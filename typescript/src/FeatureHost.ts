@@ -293,6 +293,15 @@ export function featuredefinition(
       if (null != feature.version) {
         inst.export('version', feature.version)
       }
+
+      // ...and the instance's OWN state, which is where the three later
+      // callbacks read it from. The export is the public handle; it is
+      // not a channel back to the definition, because §11 hides the
+      // exports of a `failed` instance — and `unload` on a failed
+      // instance still runs `close` (§5.2). Reading the feature back
+      // through `exports` therefore lost it in exactly the case where a
+      // feature holding a connection most needs its `close` to run.
+      inst.state.feature = feature
     },
 
     // §17.2's `activate` (capture) half, for a feature that has one.
@@ -323,10 +332,15 @@ export function featuredefinition(
   }
 }
 
-/** The feature object this instance exported in `define`. Read back
- * rather than closed over, so the three later callbacks do not each
- * need their own capture. */
+/** The feature object `define` built, read back from the instance's own
+ * state rather than closed over, so the three later callbacks do not
+ * each need their own capture.
+ *
+ * NOT from `exports`. §11 hides a `failed` instance's exports, and
+ * `unload` on a failed instance still runs `close` — so an exports read
+ * returned undefined precisely when a feature holding a connection
+ * needed its `close` to run. `state` is the instance's own and survives
+ * every status. */
 function featureof(inst: any): any {
-  try { return inst.host().exports(inst.ref + '/feature') }
-  catch (err) { return undefined }
+  return inst.state && inst.state.feature
 }

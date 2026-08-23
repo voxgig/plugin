@@ -294,7 +294,7 @@ class Host:
             'ref': r, 'def': definition, 'status': 'declared',
             'pos': len(self._inst) if None is spec.get('pos') else spec['pos'],
             'seq': self._seqn,
-            'options': spec.get('options') or {},
+            'options': {} if None is spec.get('options') else spec['options'],
             'state': {}, 'order': spec.get('order'), 'unmet': [], 'scope': [],
             'bindings': [], 'exports': {}, 'provides': [], 'inner': None,
         }
@@ -325,7 +325,11 @@ class Host:
         entry = self.declare(ref, spec)
         if 'declared' != entry['status']:
             return entry            # idempotent in the trivial direction
-        if spec.get('options'):
+        # PRESENCE, NOT TRUTHINESS. An empty map is falsy in Python and
+        # truthy in JavaScript, so `if spec.get('options')` refused to
+        # apply `options: {}` - which is how a caller CLEARS what
+        # `declare` set, and which every other port did.
+        if None is not spec.get('options'):
             entry['options'] = spec['options']
         try:
             self._run(entry, 'define', 'define')
@@ -691,10 +695,19 @@ class Host:
     # --- ordering -----------------------------------------------------
 
     def order(self, point=None):
+        # Sorted by declaration SEQUENCE, which is what makes the
+        # section 7 sort's fall-through deterministic in a language whose
+        # maps have no insertion order. Section 7 breaks ties by `pos`;
+        # two instances CAN share one - `declare` defaults `pos` to the
+        # registry size, so an unload followed by a fresh declare reuses
+        # a surviving instance's - and past that this was falling through
+        # to dict order. `seq` is that order, made explicit.
+        live = [r for r in self._inst if 'live' == self._inst[r]['status']]
+        live.sort(key=lambda r: self._inst[r]['seq'])
         bindings = [
             {'ref': r, 'pos': self._inst[r]['pos'],
              'order': self._inst[r]['order']}
-            for r in self._inst if 'live' == self._inst[r]['status']
+            for r in live
         ]
         spec = self._points.get(point) if point else None
         return resolve_order(bindings, spec.get('pin') if spec else None)

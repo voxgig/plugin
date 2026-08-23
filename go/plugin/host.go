@@ -19,6 +19,7 @@ package plugin
 import (
 	"fmt"
 	"sort"
+	"sync"
 )
 
 type PointSpec = Spec
@@ -100,6 +101,21 @@ type Host struct {
 	// deactivation.
 	coordinated bool
 
+	// §18: "a port uses its idiom (a mutex in Go/Rust/Java, the GIL
+	// where that is enough)". §5.2 makes transitions SEQUENTIAL — one at
+	// a time, in call order, never interleaved — and `intransition`
+	// cannot deliver that: it is set inside `run`, so two goroutines
+	// both pass `guard` and both run a callback. This holds for the
+	// WHOLE public transition, reconciliation included, which is the
+	// unit §5.2 names.
+	//
+	// It is NOT reentrant, and must not be: a transition attempted from
+	// inside a lifecycle callback is `plugin_reentrant`, and `enter`
+	// answers that without ever blocking. Below the door the unlocked
+	// bodies (`declare`, `load`, `activate`, …) call each other, so the
+	// lock is taken exactly once per public call.
+	mu sync.Mutex
+
 	inst map[string]*Live
 	log  []string
 	// events is §14: the lifecycle event record. `seq` distinguishes ONE
@@ -152,7 +168,18 @@ func (h *Host) List() map[string]Status {
 	return out
 }
 
-func (h *Host) Instance(ref string) *Live { return h.inst[canon(ref)] }
+// Instance is the introspection lookup. A MALFORMED REF IS
+// `plugin_bad_name` HERE TOO: the canonical calls `canonref`, which
+// raises, and a port that swallowed the parse failure answered the
+// ordinary "no such instance" instead — a different answer to a
+// different question. `nil, nil` is the well-formed-but-absent case.
+func (h *Host) Instance(ref string) (*Live, error) {
+	r, err := CanonRef(ref)
+	if nil != err {
+		return nil, err
+	}
+	return h.inst[r], nil
+}
 
 func (h *Host) Trace() []Event { return append([]Event{}, h.events...) }
 
@@ -173,6 +200,40 @@ func (h *Host) guard() error {
 			"transition attempted from inside a lifecycle callback", nil)
 	}
 	return nil
+}
+
+// enter is the door every PUBLIC transition goes through, and the only
+// place `h.mu` is taken. It returns the matching release.
+//
+// The two rules it has to serve pull in opposite directions. §5.2 wants
+// transitions SEQUENTIAL, which is a lock; and §5.2 also wants a
+// transition attempted from INSIDE a lifecycle callback to answer
+// `plugin_reentrant`, which is the one caller that must not block —
+// it is the goroutine already holding the lock, so blocking is a
+// deadlock.
+//
+// TryLock separates them as far as Go allows. Taking the lock proves
+// nothing else is in flight, so the call cannot be reentrant. Failing to
+// take it means SOMEONE holds it, and `intransition` says whether that
+// someone is running a callback — the only state from which a reentrant
+// call can arise.
+//
+// THE RESIDUAL WINDOW IS REAL AND IS NOT PAPERED OVER: a genuinely
+// concurrent caller that arrives while a callback is running gets
+// `plugin_reentrant` instead of waiting, because Go exposes no goroutine
+// identity to tell the two apart. It is a refusal with a code, not a
+// corruption, and it is strictly better than the interleaving an
+// unlocked host allowed; a host that needs the other answer should
+// serialise its own calls. See AGENTS.md.
+func (h *Host) enter() (func(), error) {
+	if h.mu.TryLock() {
+		return h.mu.Unlock, nil
+	}
+	if err := h.guard(); nil != err {
+		return nil, err
+	}
+	h.mu.Lock()
+	return h.mu.Unlock, nil
 }
 
 func (h *Host) need(ref string) (*Live, error) {
@@ -373,6 +434,19 @@ type DeclareSpec struct {
 }
 
 func (h *Host) Declare(ref string, spec DeclareSpec) (*Live, error) {
+	leave, err := h.enter()
+	if nil != err {
+		return nil, err
+	}
+	defer leave()
+	return h.declare(ref, spec)
+}
+
+// declare and its siblings are the UNLOCKED bodies. The public
+// transitions call each other — `ready` walks declare/load/activate,
+// `apply` walks all four — and a Go mutex is not reentrant, so the lock
+// is taken once at the door and never again below it.
+func (h *Host) declare(ref string, spec DeclareSpec) (*Live, error) {
 	if "?" == spec.Tag {
 		r, err := CanonRef(ref)
 		if nil != err {
@@ -441,18 +515,26 @@ func (h *Host) Declare(ref string, spec DeclareSpec) (*Live, error) {
 // documents, overlays, `VOXGIG_PLUGIN_*`, construction options and
 // ordinary Declare/Load/Options — and all of that still checks.
 func (h *Host) HostDeclare(ref string, spec DeclareSpec) (*Live, error) {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return nil, err
 	}
+	defer leave()
 	spec.HostOwned = true
-	return h.Declare(ref, spec)
+	return h.declare(ref, spec)
 }
 
 func (h *Host) Load(ref string, spec DeclareSpec) (*Live, error) {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return nil, err
 	}
-	e, err := h.Declare(ref, spec)
+	defer leave()
+	return h.load(ref, spec)
+}
+
+func (h *Host) load(ref string, spec DeclareSpec) (*Live, error) {
+	e, err := h.declare(ref, spec)
 	if nil != err {
 		return nil, err
 	}
@@ -496,9 +578,15 @@ func (h *Host) graphnodes() []DependNode {
 }
 
 func (h *Host) Activate(ref string) (*Live, error) {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return nil, err
 	}
+	defer leave()
+	return h.activate(ref)
+}
+
+func (h *Host) activate(ref string) (*Live, error) {
 	e, err := h.need(ref)
 	if nil != err {
 		return nil, err
@@ -511,7 +599,7 @@ func (h *Host) Activate(ref string) (*Live, error) {
 			map[string]any{"ref": e.Ref})
 	}
 	if StatusDeclared == e.Status {
-		if _, err := h.Load(e.Ref, DeclareSpec{}); nil != err {
+		if _, err := h.load(e.Ref, DeclareSpec{}); nil != err {
 			return nil, err
 		}
 	}
@@ -536,9 +624,15 @@ func (h *Host) Activate(ref string) (*Live, error) {
 }
 
 func (h *Host) Deactivate(ref string) (*Live, error) {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return nil, err
 	}
+	defer leave()
+	return h.deactivate(ref)
+}
+
+func (h *Host) deactivate(ref string) (*Live, error) {
 	e, err := h.need(ref)
 	if nil != err {
 		return nil, err
@@ -584,9 +678,15 @@ func (h *Host) Deactivate(ref string) (*Live, error) {
 }
 
 func (h *Host) Unload(ref string) error {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return err
 	}
+	defer leave()
+	return h.unload(ref)
+}
+
+func (h *Host) unload(ref string) error {
 	e, err := h.need(ref)
 	if nil != err {
 		return err
@@ -626,24 +726,30 @@ func (h *Host) Unload(ref string) error {
 // the corpus to pin it, so the list was incomplete rather than excluding
 // it (DOCS.md §4.2).
 func (h *Host) Ready(ref string) (*Live, error) {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return nil, err
 	}
+	defer leave()
+	return h.ready(ref)
+}
+
+func (h *Host) ready(ref string) (*Live, error) {
 	r, err := CanonRef(ref)
 	if nil != err {
 		return nil, err
 	}
 	if _, has := h.inst[r]; !has {
-		if _, err := h.Declare(r, DeclareSpec{}); nil != err {
+		if _, err := h.declare(r, DeclareSpec{}); nil != err {
 			return nil, err
 		}
 	}
 	if StatusDeclared == h.inst[r].Status {
-		if _, err := h.Load(r, DeclareSpec{}); nil != err {
+		if _, err := h.load(r, DeclareSpec{}); nil != err {
 			return nil, err
 		}
 	}
-	return h.Activate(r)
+	return h.activate(r)
 }
 
 // unwind: bindings go live only when activation succeeds (§8.1), so the
@@ -917,19 +1023,24 @@ func (h *Host) reconcile() {
 // --- ordering --------------------------------------------------------
 
 func (h *Host) Order(point string) ([]string, error) {
+	// Sorted by declaration SEQUENCE, which is what makes §7's sort
+	// deterministic here. §7 breaks ties by `pos`, and two instances CAN
+	// share one — `Declare` defaults `Pos` to the registry size, so an
+	// unload followed by a fresh declare reuses a surviving instance's.
+	// Past that the canonical fell through to its map's insertion order;
+	// a Go map has none, and sorting by REF gave the opposite answer.
+	// `Seq` IS that order, made explicit — in the canonical too.
+	refs := sortedkeys(h.inst)
+	sort.SliceStable(refs, func(i, j int) bool {
+		return h.inst[refs[i]].Seq < h.inst[refs[j]].Seq
+	})
 	bindings := []Binding{}
-	for _, r := range sortedkeys(h.inst) {
+	for _, r := range refs {
 		if StatusLive != h.inst[r].Status {
 			continue
 		}
 		bindings = append(bindings, Binding{Ref: r, Pos: h.inst[r].Pos, Order: h.inst[r].order})
 	}
-	// The canonical builds this list from `Object.keys(inst)` —
-	// INSERTION ORDER — and then sorts by (band, pos). Go maps have no
-	// insertion order, so the list is built sorted by ref; the sort is
-	// stable and total on (band, pos), and no two instances share a pos
-	// unless a document set one explicitly.
-	sort.SliceStable(bindings, func(i, j int) bool { return bindings[i].Pos < bindings[j].Pos })
 	var pin Pin
 	if "" != point {
 		if spec, ok := h.points[point]; ok {
@@ -1115,9 +1226,15 @@ func (h *Host) Capability(name string) []string {
 // DROPPED — so an integration removed from a config reload stayed live
 // with its bindings and resources.
 func (h *Host) Apply(doc any, profile string) error {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return err
 	}
+	defer leave()
+	return h.apply(doc, profile)
+}
+
+func (h *Host) apply(doc any, profile string) error {
 	profile = or(profile, h.opts.Profile)
 	norm, err := NormalizeConfig(NormalizeInput{
 		Doc: doc, Profile: profile, Keys: h.opts.Keys, Reserved: h.reserved,
@@ -1168,7 +1285,7 @@ func (h *Host) Apply(doc any, profile string) error {
 		return drop[i] > drop[j]
 	})
 	for _, ref := range drop {
-		if err := h.Unload(ref); nil != err {
+		if err := h.unload(ref); nil != err {
 			return err
 		}
 	}
@@ -1177,7 +1294,7 @@ func (h *Host) Apply(doc any, profile string) error {
 	for _, ref := range want {
 		ent := norm.Instance[ref]
 		pos := ent.Pos
-		if _, err := h.Declare(ref, DeclareSpec{
+		if _, err := h.declare(ref, DeclareSpec{
 			Options: optionsof[ref], Order: ent.Order, Pos: &pos}); nil != err {
 			return err
 		}
@@ -1195,7 +1312,7 @@ func (h *Host) Apply(doc any, profile string) error {
 	// is twenty map entries and no executed code" (§9.6).
 	for _, ref := range want {
 		if wantlive(ref) {
-			if _, err := h.Load(ref, DeclareSpec{}); nil != err {
+			if _, err := h.load(ref, DeclareSpec{}); nil != err {
 				return err
 			}
 		}
@@ -1204,7 +1321,7 @@ func (h *Host) Apply(doc any, profile string) error {
 	// --- phase 4: activations, in load order -------------------------
 	for _, ref := range want {
 		if wantlive(ref) {
-			if _, err := h.Activate(ref); nil != err {
+			if _, err := h.activate(ref); nil != err {
 				return err
 			}
 		}
@@ -1221,9 +1338,15 @@ func (h *Host) shapeof(ref string) any {
 }
 
 func (h *Host) SetOptions(ref string, patch map[string]any) error {
-	if err := h.guard(); nil != err {
+	leave, err := h.enter()
+	if nil != err {
 		return err
 	}
+	defer leave()
+	return h.setoptions(ref, patch)
+}
+
+func (h *Host) setoptions(ref string, patch map[string]any) error {
 	e, err := h.need(ref)
 	if nil != err {
 		return err
@@ -1248,10 +1371,10 @@ func (h *Host) SetOptions(ref string, patch map[string]any) error {
 		}
 		// Always correct and sometimes expensive; `reconfigure` exists
 		// to make the common case cheap (§9.4).
-		if _, err := h.Deactivate(e.Ref); nil != err {
+		if _, err := h.deactivate(e.Ref); nil != err {
 			return err
 		}
-		if _, err := h.Activate(e.Ref); nil != err {
+		if _, err := h.activate(e.Ref); nil != err {
 			return err
 		}
 	}
@@ -1281,6 +1404,15 @@ func shallowmerge(a map[string]any, b map[string]any) map[string]any {
 }
 
 func (h *Host) Close() error {
+	leave, err := h.enter()
+	if nil != err {
+		return err
+	}
+	defer leave()
+	return h.closeall()
+}
+
+func (h *Host) closeall() error {
 	// A bulk teardown removing the holders too, so `hold` is suspended
 	// for exactly those holders (§11.3) - while the consumers-first
 	// cascade still runs, which is the half that matters.
@@ -1288,7 +1420,7 @@ func (h *Host) Close() error {
 	defer func() { h.coordinated = false }()
 	refs := sortedkeys(h.inst)
 	for i := len(refs) - 1; 0 <= i; i-- {
-		if err := h.Unload(refs[i]); nil != err {
+		if err := h.unload(refs[i]); nil != err {
 			return err
 		}
 	}

@@ -59,6 +59,31 @@ corpus is `float64`, never `int`. `tonumber` accepts both.
 breaks §12 message parity against every other port. Use `marshal` /
 `compactjson` from `util.go`, which turn it off.
 
+**Numbers compare across their Go spellings, never across kinds.** The
+model has one number type; Go has twelve. `matchvalue` normalises them
+through `numval` so a host declaring `Attrs{"max": 5}` (an `int`) still
+matches a corpus `match: {"max": 5}` (a `float64`). `bool` is
+deliberately not numeric there, because canonical is type-strict between
+KINDS: `true` never matches `1`.
+
+**The mutex is at the door, and only there.** `Host.enter` is the single
+place `h.mu` is taken; below it the unlocked bodies (`declare`, `load`,
+`activate`, `deactivate`, `unload`, `ready`, `apply`, `setoptions`,
+`closeall`) call each other freely, because a Go mutex is not reentrant
+and `ready` walks three of them. A new public transition adds a
+four-line wrapper and puts its body in a lowercase twin; calling a
+PUBLIC method from inside another one self-deadlocks.
+
+Its stated limit: §5.2 wants a transition from inside a lifecycle
+callback to answer `plugin_reentrant` without blocking, and that caller
+is the goroutine already holding the lock. `TryLock` plus
+`intransition` separates the two as far as Go allows, and the residual
+window is real — a genuinely concurrent caller arriving while a callback
+runs gets `plugin_reentrant` rather than waiting, because Go exposes no
+goroutine identity to tell it from the reentrant one. The corpus is
+single-threaded and cannot see this either way; it is written down
+because a host that needs the other answer must serialise its own calls.
+
 **Struct tags are the contract.** The corpus runner decodes entries into
 typed inputs, so a field spelled differently from the corpus arrives
 zero and the entry fails — which is the check a dynamic port gets for

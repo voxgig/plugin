@@ -207,6 +207,52 @@ func matchvalue(want any, got any) bool {
 		return true
 
 	default:
+		// GO HAS MANY NUMBER TYPES AND THE MODEL HAS ONE. Corpus JSON
+		// decodes every number as float64, but a Go host declaring
+		// `Attrs: map[string]any{"max": 5}` writes an int, and `any(5)
+		// == any(5.0)` is false — so an attribute that matched in every
+		// other port silently missed here. Canonical is type-strict
+		// between KINDS (`true` never matches `1`), not between Go's
+		// spellings of one kind.
+		if wn, wok := numval(want); wok {
+			if gn, gok := numval(got); gok {
+				return wn == gn
+			}
+			return false
+		}
 		return want == got
 	}
+}
+
+// numval reports a value's numeric value, and whether it had one. `bool`
+// is deliberately absent: Go does not make it numeric and neither does
+// the model.
+func numval(v any) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case int8:
+		return float64(n), true
+	case int16:
+		return float64(n), true
+	case int32:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case uint:
+		return float64(n), true
+	case uint8:
+		return float64(n), true
+	case uint16:
+		return float64(n), true
+	case uint32:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	case float32:
+		return float64(n), true
+	case float64:
+		return n, true
+	}
+	return 0, false
 }

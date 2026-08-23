@@ -117,7 +117,15 @@ function applypin(order: string[], edges: { [from: string]: string[] }, pin?: Pi
   if (null == pin) return order
   let out = order.slice()
 
-  for (const name of Object.keys(pin)) {
+  // SORTED, not insertion order. A pin map is data — it can arrive from
+  // a host's own construction options in any order, and two names pinned
+  // to the same end are order-sensitive (`{b:'first', a:'first'}` and
+  // `{a:'first', b:'first'}` give different results). JavaScript's
+  // `Object.keys` is insertion order and a Go map has none at all, so
+  // leaving it unstated made the same declaration mean different things
+  // in different ports. Sorted is the one order every language agrees
+  // on, and `order/pin#two-names` pins it.
+  for (const name of Object.keys(pin).sort()) {
     const want = pin[name]
     const idx = out.findIndex((r) => parseref(r).name === name)
     if (-1 === idx) continue

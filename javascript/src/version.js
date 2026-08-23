@@ -18,6 +18,23 @@ const { fail } = require('./types')
 
 const VERSION_RE = /^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/
 
+// A COMPONENT IS BOUNDED, and the bound is the model's, not the host
+// language's. `Number` stops being exact past 2^53 and other ports carry
+// unbounded integers, so `9223372036854775808.0.0` parsed to a value
+// that compared wrong here and fine elsewhere. 2^31-1 is the smallest
+// bound every target language holds exactly, which makes it the model's.
+const COMPONENT_MAX = 2147483647
+
+function component(digits, whole, field) {
+  const n = Number(digits)
+  if (!Number.isInteger(n) || COMPONENT_MAX < n) {
+    fail('plugin_bad_range',
+      'version component out of range in ' + whole + ': ' + digits,
+      { [field]: whole })
+  }
+  return n
+}
+
 /** Two forms and no more (§11.2):
  *
  *   '2.1'    >= 2.1.0 and < 3.0.0
@@ -33,9 +50,9 @@ function parserange(range) {
   const m = VERSION_RE.exec(body)
   if (!m) fail('plugin_bad_range', 'invalid range: ' + range, { range })
 
-  const major = Number(m[1])
-  const minor = undefined === m[2] ? 0 : Number(m[2])
-  const patch = undefined === m[3] ? 0 : Number(m[3])
+  const major = component(m[1], range, 'range')
+  const minor = undefined === m[2] ? 0 : component(m[2], range, 'range')
+  const patch = undefined === m[3] ? 0 : component(m[3], range, 'range')
 
   const lo = [major, minor, patch]
   const hi = tilde ? [major, minor + 1, 0] : [major + 1, 0, 0]
@@ -49,9 +66,9 @@ function parseversion(version) {
   const m = VERSION_RE.exec(version)
   if (!m) fail('plugin_bad_range', 'invalid version: ' + version, { version })
   return [
-    Number(m[1]),
-    undefined === m[2] ? 0 : Number(m[2]),
-    undefined === m[3] ? 0 : Number(m[3]),
+    component(m[1], version, 'version'),
+    undefined === m[2] ? 0 : component(m[2], version, 'version'),
+    undefined === m[3] ? 0 : component(m[3], version, 'version'),
   ]
 }
 

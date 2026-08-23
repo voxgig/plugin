@@ -97,6 +97,18 @@ class PhasedFeature {
   close() { this.log.push('close') }
 }
 
+// ...and one whose `activate` raises, so the instance lands in `failed`
+// while still holding whatever `init` opened.
+const BROKEN: BrokenFeature[] = []
+class BrokenFeature {
+  name = 'broken'
+  log: string[] = []
+  constructor() { BROKEN.push(this) }
+  init() { this.log.push('init') }
+  activate() { this.log.push('activate'); throw new Error('activate failed') }
+  close() { this.log.push('close') }
+}
+
 function bridge(defs: { name: string, cls: any }[], opts?: any) {
   const base = (n: number) => 'base:' + n
   const catalog = makecatalog(
@@ -289,6 +301,31 @@ describe('featurehost-bridge', () => {
     host.unload('phased$a')
     deepStrictEqual(feature.log,
       ['init', 'activate', 'deactivate', 'activate', 'deactivate', 'close'])
+  })
+
+  test('a FAILED instance still gets its feature s close on unload', () => {
+    // §5.2: `unload` is the only exit from `failed`, and it runs
+    // `close`. The bridge read the feature back through `exports`,
+    // which §11 hides for a failed instance — so `close` saw undefined
+    // and did nothing, in exactly the case where a feature holding a
+    // connection most needs it. The feature lives in the instance's own
+    // state, which survives every status.
+    const host = bridge([{ name: 'broken', cls: BrokenFeature }])
+    throws(() => host.ready('broken$a'), /activate failed/)
+    equal('failed', host.list()['broken$a'])
+
+    // The export is gone, as §11 says it must be...
+    equal(undefined, host.exports('broken$a/feature'))
+
+    // ...and `close` still reaches the feature. THE FEATURE'S OWN LOG
+    // IS THE ASSERTION: reading it back through `exports` leaves
+    // `close` absent here while every other expectation in this file
+    // stays green.
+    const feature = BROKEN[BROKEN.length - 1]
+    deepStrictEqual(feature.log, ['init', 'activate'])
+    host.unload('broken$a')
+    deepStrictEqual(feature.log, ['init', 'activate', 'close'])
+    deepStrictEqual(host.list(), {})
   })
 
   test('sequential and nested calls each reach their own next', () => {

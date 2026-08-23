@@ -589,8 +589,16 @@ function makehost(options) {
   // --- ordering ----------------------------------------------------
 
   function order(point) {
+    // Sorted by declaration SEQUENCE, which is what makes the §7 sort's
+    // fall-through deterministic in a language whose maps have no
+    // insertion order. §7 breaks ties by `pos`; two instances CAN share
+    // one — `declare` defaults `pos` to the registry size, so an unload
+    // followed by a fresh declare reuses a surviving instance's — and
+    // past that this was falling through to `Object.keys`. `seq` is that
+    // order, made explicit.
     const bindings = Object.keys(inst)
       .filter((r) => 'live' === inst[r].status)
+      .sort((a, b) => inst[a].seq - inst[b].seq)
       .map((r) => ({ ref: r, pos: inst[r].pos, order: inst[r].order }))
     const spec = point ? points[point] : undefined
     return resolveorder(bindings, spec && spec.pin)

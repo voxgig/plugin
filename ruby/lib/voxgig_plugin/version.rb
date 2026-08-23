@@ -19,6 +19,23 @@ require_relative 'types'
 module VoxgigPlugin
   VERSION_RE = /\A(\d+)(?:\.(\d+))?(?:\.(\d+))?\z/.freeze
 
+  # A COMPONENT IS BOUNDED, and the bound is the model's, not the host
+  # language's. Ruby integers are unbounded and JavaScript's stop being
+  # exact past 2**53, so `9223372036854775808.0.0` parsed to an exact
+  # value here and a rounded one there. 2**31-1 is the smallest bound
+  # every target language holds exactly, which makes it the model's.
+  COMPONENT_MAX = 2_147_483_647
+
+  def self.component(digits, whole, field)
+    value = digits.to_i
+    if COMPONENT_MAX < value
+      fail_with('plugin_bad_range',
+                "version component out of range in #{whole}: #{digits}",
+                { field => whole })
+    end
+    value
+  end
+
   # Two forms and no more (section 11.2):
   #
   #   '2.1'    >= 2.1.0 and < 3.0.0
@@ -35,9 +52,9 @@ module VoxgigPlugin
       fail_with('plugin_bad_range', "invalid range: #{range}", { 'range' => range })
     end
 
-    major = m[1].to_i
-    minor = m[2].nil? ? 0 : m[2].to_i
-    patch = m[3].nil? ? 0 : m[3].to_i
+    major = component(m[1], range, 'range')
+    minor = m[2].nil? ? 0 : component(m[2], range, 'range')
+    patch = m[3].nil? ? 0 : component(m[3], range, 'range')
 
     lo = [major, minor, patch]
     hi = tilde ? [major, minor + 1, 0] : [major + 1, 0, 0]
@@ -54,7 +71,9 @@ module VoxgigPlugin
       fail_with('plugin_bad_range', "invalid version: #{version}",
                 { 'version' => version })
     end
-    [m[1].to_i, m[2].nil? ? 0 : m[2].to_i, m[3].nil? ? 0 : m[3].to_i]
+    [component(m[1], version, 'version'),
+     m[2].nil? ? 0 : component(m[2], version, 'version'),
+     m[3].nil? ? 0 : component(m[3], version, 'version')]
   end
 
   # The one satisfaction predicate: lo <= version < hi.

@@ -126,8 +126,19 @@ def checkreserved(ref, reserved):
 def parsevalue(value):
     """Values parse as JSON, FALLING BACK TO STRING - so `8080` is a
     number, `true` is a boolean, `{"a":1}` is a map, and `hello` is the
-    string it looks like rather than a parse error."""
+    string it looks like rather than a parse error.
+
+    `parse_constant` REFUSES PYTHON'S JSON EXTENSIONS. `json.loads`
+    accepts `NaN`, `Infinity` and `-Infinity`, which are not JSON and
+    which `JSON.parse` rejects - so an environment variable spelled
+    `NaN` became a float here and stayed the string `'NaN'` in every
+    other port. The model has one answer per input; this is not the
+    place Python gets to be more generous."""
     try:
-        return json.loads(value)
+        return json.loads(value, parse_constant=_notjson)
     except Exception:
         return value
+
+
+def _notjson(name):
+    raise ValueError('not JSON: ' + name)

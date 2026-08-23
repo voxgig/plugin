@@ -3770,6 +3770,71 @@
           }
         ]
       },
+      "clear": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "load",
+                "options": {},
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "declare/clear#empty-options",
+            "match": {
+              "out": {
+                "result": ":x"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "Ax"
+              }
+            }
+          }
+        ]
+      },
       "free": {
         "set": [
           {
@@ -3842,6 +3907,34 @@
                 "status": {
                   "probe$a": "declared"
                 }
+              }
+            }
+          }
+        ]
+      },
+      "lookup": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "seq",
+                "ref": "bad name"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_bad_name",
+            "id": "declare/lookup#malformed"
+          },
+          {
+            "cmd": [
+              {
+                "do": "seq",
+                "ref": "probe$nope"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
               }
             }
           }
@@ -6055,6 +6148,64 @@
                 "options": {
                   "r": {
                     "n": "__NULL__"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "env/value#not-json-constants",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "NaN"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "NaN"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "Infinity"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "Infinity"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "-Infinity"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "-Infinity"
                   }
                 }
               }
@@ -8615,6 +8766,48 @@
           }
         ]
       },
+      "pinorder": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook",
+                    "pin": {
+                      "noisy": "first",
+                      "probe": "first"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "noisy$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/pinorder#two-names",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "noisy$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "precedence": {
         "set": [
           {
@@ -8713,6 +8906,44 @@
             "match": {
               "out": {
                 "result": []
+              }
+            }
+          }
+        ]
+      },
+      "seqtie": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$z"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$z"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/seqtie#shared-pos",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
               }
             }
           }
@@ -11090,6 +11321,22 @@
       "range": {
         "set": [
           {
+            "id": "version/range#component-max",
+            "in": "2147483647",
+            "out": {
+              "hi": [
+                2147483648,
+                0,
+                0
+              ],
+              "lo": [
+                2147483647,
+                0,
+                0
+              ]
+            }
+          },
+          {
             "doc": true,
             "id": "version/range#caret",
             "in": "2.1",
@@ -11238,6 +11485,23 @@
             "err": "plugin_bad_range",
             "id": "version/rangebad#trailing-newline",
             "in": "2.1\n"
+          },
+          {
+            "err": "plugin_bad_range",
+            "id": "version/rangebad#component-bound",
+            "in": "9223372036854775808"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "2147483648"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "1.2147483648"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "1.2.2147483648"
           }
         ]
       },

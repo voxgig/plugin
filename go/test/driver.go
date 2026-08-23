@@ -500,19 +500,34 @@ func docmd(host *plugin.Host, c map[string]any) (*plugin.Host, *produced, error)
 		return nil, &produced{e.Ref}, nil
 
 	case "seq":
-		if e := host.Instance(ref); nil != e {
+		// A malformed ref is a NAME error, not an absent instance —
+		// `Instance` propagates it and the driver must not swallow it,
+		// or `declare/lookup#malformed` reads as a plain miss.
+		e, err := host.Instance(ref)
+		if nil != err {
+			return nil, nil, err
+		}
+		if nil != e {
 			return nil, &produced{e.Seq}, nil
 		}
 		return nil, &produced{nil}, nil
 
 	case "pos":
-		if e := host.Instance(ref); nil != e {
+		e, err := host.Instance(ref)
+		if nil != err {
+			return nil, nil, err
+		}
+		if nil != e {
 			return nil, &produced{e.Pos}, nil
 		}
 		return nil, &produced{nil}, nil
 
 	case "inner":
-		if e := host.Instance(ref); nil != e && nil != e.Inner {
+		e, err := host.Instance(ref)
+		if nil != err {
+			return nil, nil, err
+		}
+		if nil != e && nil != e.Inner {
 			return nil, &produced{e.Inner.List()}, nil
 		}
 		return nil, &produced{nil}, nil
@@ -529,7 +544,10 @@ func docmd(host *plugin.Host, c map[string]any) (*plugin.Host, *produced, error)
 }
 
 func docall(host *plugin.Host, c map[string]any, ref string, point string) (*plugin.Host, *produced, error) {
-	e := host.Instance(ref)
+	e, err := host.Instance(ref)
+	if nil != err {
+		return nil, nil, err
+	}
 	if nil == e {
 		return nil, nil, plugin.Fail("plugin_not_loaded", "no such instance: "+ref, nil)
 	}
