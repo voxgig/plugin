@@ -18,10 +18,12 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 - Build and check with `make spec`, `make spec-check`, `make parity`,
   `make check`.
 
-**Status: P0.** The skeleton turns over on an empty corpus; there is no
-code in any language yet. `AGENTS.md` §6 says what P1 does first, and
-why two of its deliverables are owed to voxgig/station earlier than they
-appear.
+**Status: P5, two of fourteen.** P0–P4 are done and P5 is under way:
+the corpus is 527 entries across 19 sections, and **five
+implementations pass every one of them** — `typescript/` (canonical),
+`go/`, `python/`, `javascript/` and `ruby/`. `AGENTS.md` §6 says what to
+pick up; the live per-item state is
+[`doc/plan/status.md`](./doc/plan/status.md).
 
 The design is [`docs/design/plugin.md`](./docs/design/plugin.md). The
 agreement with its first host, and the cross-repo sequencing, live in

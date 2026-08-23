@@ -81,13 +81,57 @@ export function matches(req: Required, prov: Provided): boolean {
   // requirement asking for `transactional: true` must not be satisfied
   // by a provider that never said.
   if (undefined !== req.match) {
-    const attrs = prov.attrs || {}
+    const attrs: any = prov.attrs || {}
     for (const k of Object.keys(req.match)) {
-      if (attrs[k] !== req.match[k]) return false
+      if (!(k in attrs)) return false
+      if (!matchvalue((req.match as any)[k], attrs[k])) return false
     }
   }
 
   return true
+}
+
+/** PARTIAL MATCH, RECURSING INTO MAPS (§11.1).
+ *
+ * §11.1 defines `match` as "a partial match against `attrs`, with
+ * exactly the semantics voxgig/struct and the omni corpus already
+ * define for `match` — every leaf in the requirement must be present
+ * and equal in the capability, keys not mentioned are not checked."
+ *
+ * THIS FUNCTION IS WHAT "EVERY LEAF" MEANS, and an earlier draft did
+ * not have it: the check was `attrs[k] !== req.match[k]`, which for any
+ * compound value is JavaScript REFERENCE IDENTITY. A requirement and a
+ * capability are declared in different places and are never the same
+ * object, so `match: {limits: {max: 5}}` could not be satisfied by any
+ * provider at all — including one declaring exactly that. The flat
+ * reading is invisible while every corpus entry is scalar, which is why
+ * the go port found it and P2 did not.
+ *
+ * A LIST IS COMPARED LEAF-WISE AT THE SAME LENGTH, not as a subset.
+ * "the first two of your three regions" is not something `match` can
+ * say, and inventing a spelling for it would be inventing the filter
+ * language §11.1 explicitly declines to add. */
+export function matchvalue(want: any, got: any): boolean {
+  if (isMap(want)) {
+    if (!isMap(got)) return false
+    for (const k of Object.keys(want)) {
+      if (!(k in got)) return false
+      if (!matchvalue(want[k], got[k])) return false
+    }
+    return true
+  }
+  if (Array.isArray(want)) {
+    if (!Array.isArray(got) || want.length !== got.length) return false
+    for (let i = 0; i < want.length; i++) {
+      if (!matchvalue(want[i], got[i])) return false
+    }
+    return true
+  }
+  return want === got
+}
+
+function isMap(v: any): boolean {
+  return null != v && 'object' === typeof v && !Array.isArray(v)
 }
 
 function compare(a: string, b: string): number {

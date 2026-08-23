@@ -17,7 +17,9 @@
  * rather than solved it, so `why` is part of the contract and the
  * corpus pins its shape. */
 
-import { Provided, Required, Candidate, resolvecapability, matches } from './Capability'
+import {
+  Provided, Required, Candidate, resolvecapability, matchvalue,
+} from './Capability'
 import { satisfies } from './Version'
 
 export type Node = {
@@ -122,7 +124,10 @@ function firstunmet(
       for (const c of all) {
         const attrs = c.provides.attrs || {}
         for (const k of Object.keys(req.match).sort()) {
-          if (attrs[k] !== req.match[k]) {
+          // The same recursive partial match `matches` applies, so a
+          // nested requirement that FAILED the selection is also the
+          // one the diagnosis names (§11.4).
+          if (!(k in attrs) || !matchvalue(req.match[k], attrs[k])) {
             return {
               ref: n.ref, unmet: req.name,
               why: {

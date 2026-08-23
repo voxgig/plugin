@@ -366,6 +366,7 @@ needs it present, because the next section will.
 | `define` | `name`, `probe?`, `shape?` | register a definition in the catalog. `probe` names the catalog entry (§4.3); default is `probe`. |
 | `load` | `ref`, `options?`, `order?`, `definition?` | declare if absent, then load. `order` is the instance's ordering block (§4.4); `definition` names the catalog entry when it differs from the ref's name. |
 | `ready` | `ref` | run the whole forward path in one call (§5.1) |
+| `hostdeclare` | `ref`, `options?`, `order?`, `definition?` | §9.1's **host-owned** declaration: the embedding host installing the instance whose name it reserved. Bypasses the reservation check that every other input layer goes through. |
 | `activate` | `ref` | `loaded` → `live`, or `pending` |
 | `deactivate` | `ref` | → `loaded` |
 | `unload` | `ref` | → absent |
@@ -399,15 +400,37 @@ in the same way.
 
 | probe | behaviour |
 |---|---|
-| `probe` | The workhorse. Records every callback it receives into the log, binds one hook point (`p`), wraps one chain point (`c`), holds an integer counter in its state, and **acquires exactly one synthetic resource per activation**. |
-| `noisy` | Fails on demand. `options.fail` names the callback that raises — `define`, `activate`, `deactivate` or `close` — and `options.code` the error code. Everything else is `probe`. |
-| `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). |
+| `probe` | The workhorse. Records every callback it receives into the log, binds one hook point (`p`), wraps one chain point (`c`), holds an integer counter in its state, and **acquires exactly one synthetic resource per activation**. It also exports its own instance api as `inst`, which is how the `stray` command reaches `release` from *outside* a lifecycle callback. |
+| `noisy` | Fails on demand. `options.fail` names the callback that raises — `define`, `activate`, `deactivate` or `close` — and `options.code` the error code. `options.bare` raises with **no code at all**, which is the ordinary library error §12's `plugin_<phase>_failed` codes exist to wrap. Everything else is `probe`. |
+| `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). `options.early` acquires in **`define`** instead, where §8.1 says capture does not belong. `options.bind` names the callback — `activate` or `deactivate` — that declares a **binding** outside `define`, which is §8.1's other half and §12's `plugin_bind_scope`. `options.mark` additionally registers that many **foreign** releases through `release`, each recording its own index into `state.unwound` as it runs — which is the only way the *direction* of the unwind is observable, since an acquired handle is an idempotent counter decrement that reads the same either way. `options.markfail` makes each of those releases **raise**, which is the only way §8.3's `plugin_release_failed` and its `failed` status are reachable. |
 | `dep` | Declares requirements. `options.requires` is a list of refs or capability names, `options.optional` those that are optional rather than mandatory. |
 | `provider` | Binds a provider point named by `options.point`, returning `options.value`. `options.version` and `options.priority` feed the selection rank. |
-| `slow` | Where the language has async, every callback yields once before completing; where it does not, it is `probe`. Exists to prove the lifecycle settles **eagerly** — a transition runs the state machine to a fixed point rather than suspending on a promise (§18's portability budget). |
+| `slow` | Behaviourally `probe`, and **it does not yield.** It is here because §18 settles transitions eagerly — the host calls a callback and does not await it — and a callback that yields therefore does not "complete later", it silently abandons everything after its first suspension point. So the probe cannot demonstrate eager settling by yielding; it would only demonstrate that half a callback vanished. The name is kept, and the catalog keeps six definitions, because the question it was invented for is still open (see below). |
 
 Every probe records its callbacks into the shared log, so a `lifecycle`
 entry asserts the *sequence* of callbacks and not merely the end state.
+
+**`slow` and the open async question.** The first draft of this table
+said `slow` yields once per callback in every language that has async,
+to prove the lifecycle settles eagerly. It was never implemented that
+way in any port, and no corpus entry ever instantiated it — a documented
+contract element that asserted nothing, which is the same failure as the
+`stray` command that claimed to call `release` and did not.
+
+Implemented literally it does not work, and the reason is the interesting
+part. §18 makes the host synchronous: it calls a callback and moves on.
+An `async` callback in typescript or javascript therefore hands back a
+promise the host drops, so everything after the first `await` never runs
+— not "runs later harmlessly". In python the mismatch is louder still: a
+coroutine function called from a synchronous host executes **nothing**.
+Yielding cannot demonstrate eager settling; it can only demonstrate that
+a plugin author's callback was truncated.
+
+What the design has not settled is whether a host should ever await a
+callback, and what a plugin in an async language is supposed to do
+instead. Until it does, `slow` stays a plain `probe` — and
+`lifecycle/slow` instantiates it, so its presence in every catalog is
+exercised rather than merely asserted by `check_probes.py`.
 
 ### 4.4 The ordering block
 
@@ -465,8 +488,8 @@ would otherwise fail a test about something else.
 
 ### 4.6 What a port must NOT do
 
-- **No clock.** No entry may depend on elapsed time; `slow` yields, it
-  does not sleep.
+- **No clock.** No entry may depend on elapsed time, and no probe may
+  sleep.
 - **No parallelism inside a run.** Commands are sequential, so a port
   may not reorder them for speed.
 - **No error text matching.** Errors compare by `code` (§12). Message

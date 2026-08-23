@@ -24,30 +24,49 @@ programmatic API over the same normalized model.
 
 ## Status
 
-**P1 — the contract, in progress.** The design is complete and agreed
-with its first host, the build machinery turns over, and **four corpus
-sections are written**. There is still no code in any language.
+**P5 — two of fourteen.** The design is complete and agreed with its
+first host, the contract is complete (all 19 corpus sections, 527
+entries), and there are five implementations: `typescript/` the
+canonical, plus `go/`, `python/`, `javascript/` and `ruby/`. **All five
+pass every section.**
 
-P0's empty corpus was deliberate rather than a gap: `make spec` and
-`make spec-check` were proven *before* there was anything to compile, so
-that when the first sections landed, a failure was about the data rather
-than about the pipeline.
+The pair went before the other fourteen ports on purpose — go for
+static-only registration, typed extension points and explicit errors;
+python as the closest dynamic analogue that is not JavaScript — because
+a model change costs two ports now and sixteen later.
+
+Between them they found **six defects in the canonical**, every one of
+them the canonical failing to implement its own design rather than the
+design being wrong: a `match` that could not match a nested requirement,
+an unwind direction the design mandated and no entry could distinguish,
+a resource counter `release` leaked, an `unload` that leaked when
+`deactivate` failed, a `match` a loose-equality language would satisfy
+with `1` for `true`, and a provider tie nothing pinned.
+
+P5's ruby port then found the sharpest example yet: **`^` and `$` are
+not string anchors in every language**, and the python port had shipped
+accepting `"abc\n"` as a plugin name. Three ports rejected it, one
+accepted it, and no corpus entry distinguished them. All of it is fixed
+in the canonical and pinned by new entries — see
+[`doc/plan/handover.md`](./doc/plan/handover.md) §13 and §15.
 
 | | |
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | **204 entries** — `ref`, `config`, `lifecycle`, `order`. The rest land per phase. |
-| driver contract | draft — [`DOCS.md`](./DOCS.md) §4 |
-| ports | none — `typescript/` is canonical and is next |
+| corpus | **527 entries across all 19 sections** — the contract is complete |
+| driver contract | [`DOCS.md`](./DOCS.md) §4 |
+| ports | `typescript/` (canonical), `go/` and `python/` — **all three pass every section**. P5's fourteen are next. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is
 [`doc/plan/contracts.md`](./doc/plan/contracts.md).
 
-Next is P1, the TypeScript tracer bullet. Its first deliverables are the
-two corpus sections owed to station, not its last — see
-[`AGENTS.md`](./AGENTS.md) §6.
+Next is the rest of P5 — see
+[`AGENTS.md`](./AGENTS.md) §6. Read
+[`doc/plan/handover.md`](./doc/plan/handover.md) §13 before writing one:
+the six defects the proving pair found were all of two kinds, and both
+are found by making another implementation decide from the same text.
 
 The initial use case is [station](https://github.com/voxgig/station)
 loading generated SDKs as plugins: twenty-plus SDK instances declared in

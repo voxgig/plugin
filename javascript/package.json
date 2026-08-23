@@ -1,0 +1,11 @@
+{
+  "name": "@voxgig/plugin-js",
+  "version": "0.1.0",
+  "description": "plugin: a multi-language plugin system — the javascript port",
+  "main": "src/index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test-some": "node --test --test-concurrency=1 --test-name-pattern=$npm_config_pattern test/*.test.js"
+  }
+}

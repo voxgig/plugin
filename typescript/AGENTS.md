@@ -21,6 +21,31 @@ Every one of those is cheap to obey now and expensive to remove at P4,
 when Go and Python arrive and cannot follow. If you find yourself
 wanting one, the design is wrong, not the budget.
 
+### What the budget governs, and the one file outside it
+
+The budget governs **the portable library** — everything twenty
+languages implement from one corpus. It is not negotiable there, and
+`Config.ts` cites it as the reason `apply` refills an options map rather
+than installing a getter.
+
+`src/FeatureHost.ts` is outside it, deliberately and alone. It is a
+bridge to **sdkgen**, and it intercepts assignment to
+`ctx.utility.fetcher` with a getter/setter pair — dynamic property
+interception, exactly what the list above forbids.
+
+The reason it is admissible is that **a bridge to sdkgen cannot be
+ported and is not meant to be.** sdkgen generates SDKs in 23 languages,
+each feature written in that language's idiom; a Go SDK's feature does
+not assign `ctx.utility.fetcher`, so a Go translation of that file would
+have nothing to intercept. Each language that wants the bridge writes
+its own against its own generated code, and what they share is the
+plugin model underneath, not the mechanism.
+
+That reasoning does not extend to anything else. A second file wanting
+an exemption is a design problem, not a precedent — and this one is
+named here so the exception cannot be claimed silently. Review found it
+unstated, which is how an exception becomes a precedent.
+
 ## Local shape
 
 - `src/` is plain CommonJS-target TypeScript, `strict: true`, no runtime

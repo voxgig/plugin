@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-08-22**. The register in
+Live snapshot, **2026-08-23**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -13,16 +13,38 @@ a wrong status file is worse than none.**
 
 ## In flight
 
+**voxgig/plugin#15** — P3.2 (the sdkgen bridge), **P4 complete** (the go
+and python ports) and **P5's first two** (javascript, ruby). Five
+implementations pass all 19 corpus sections; seven canonical defects
+found and fixed along the way.
+
 **voxgig/station#9** — Stages 2, 3 and 3b, 11/11 CI ports green, awaiting
 review. **It discharges C3.**
 
-plugin `main` is `8804f82` (P3b merged); station `main` is `600fdfe`
-(Stage 1 merged). C1 and C2 were discharged by voxgig/plugin#7.
+plugin `main` is `090529c`; station `main` is `600fdfe` (Stage 1
+merged). C1 and C2 were discharged by voxgig/plugin#7.
 
 
 ## Pick this up first
 
-**P3, as soon as station#9 merges.** Its acceptance bar is station's own
+**The rest of P5.** javascript and ruby are in; **only four of the
+remaining twelve have a toolchain in the usual environment** — php,
+java, rust and perl. lua, csharp, swift, kotlin, scala, clojure, dart
+and elixir do not, and porting a language nobody can execute ships an
+implementation nobody has run. Say which are gated rather than shipping
+unverifiable work — the same call station's Stage 5 made.
+
+**Read [`handover.md`](handover.md) §13 first if you are porting.** All
+six defects the pair found were of two kinds — a rule the design states
+that no entry can distinguish, and a code path no entry enters. Expect
+more, and fix them in the canonical: §18's P4 exit says so in those
+words and does not stop applying at P5.
+
+Copy `go/`'s or `python/`'s layout: library and driver split, all four
+Makefile targets real, and a coverage test asserting every corpus
+section is dispatched.
+
+**P3.1, as soon as station#9 merges.** Its acceptance bar is station's own
 integration test, and the three stages that bar needs are now
 implemented: twenty-plus declared instances with none constructed at
 `open()` (Stage 3), two instances of one api with distinct placeholders

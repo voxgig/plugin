@@ -28,13 +28,17 @@ PROBES = [
     'greedy',    # acquires N, releases some — the difference is the scope's job
     'dep',       # declares requirements
     'provider',  # binds a provider point
-    'slow',      # yields where the language has async, to prove eager settling
+    'slow',      # behaviourally `probe`; the async question is open (DOCS.md §4.3)
 ]
 
 # Where each port's DRIVER lives. Test code, unlike check_parity.py,
 # because the probes are the driver's and not the library's.
 PORTS = {
     'typescript': ['typescript/test'],
+    'go': ['go/test'],
+    'python': ['python/test'],
+    'javascript': ['javascript/test'],
+    'ruby': ['ruby/test'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj'}

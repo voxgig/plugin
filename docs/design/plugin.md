@@ -569,6 +569,8 @@ part of the point declaration:
 | `serial` | every binding, awaited one at a time in resolved order | the collected errors |
 | `bail` | in resolved order, **stops at the first binding that returns a value** | that value, or absent |
 
+**Null declines.** "Returns a value" means a value, and a null — `nil`, `None`, `null`, `undefined`, whatever the port spells it — is the absence of one. JavaScript can tell `null` from `undefined` and almost nothing else in the target set can: Go, Python, Ruby, PHP, Lua, Java and C# each have exactly one way to say nothing. Making the distinction load-bearing would cost every one of them a wrapper type carried through the whole dispatch path, to express a difference a plugin author in those languages cannot even write. §18's budget settles it: a binding that returns null has declined, and the next one gets its turn.
+
 `bail` is the "handled — stop" case, and it earns its place: it is how a
 plugin overrides a default without replacing the whole implementation
 the way a `provider` point does. Cordis ships the same four (plus
@@ -1069,7 +1071,13 @@ the same question:
 
 - **`active`** (default `true`) — *may* this instance run at all?
   `false` declares it and bars it: it appears in `host.list()`, and
-  `activate` and `ready` on it fail rather than quietly doing nothing.
+  `activate` and `ready` on it fail with `plugin_inactive` rather than
+  quietly doing nothing. **The bar lives on the instance, not on the
+  apply that set it** — a host that only skipped the barred ref while
+  `apply` ran would let the next direct `ready` bring it live, which is
+  the config switch being silently ignored. Every apply reasserts it in
+  both directions, so a document that turns the instance back on clears
+  it.
   That is how a profile switches an integration off without deleting
   its configuration (§17.1's `stripe$test` in prod).
 - **`start`** (default `"eager"`) — *when* does it run? `eager` means
@@ -1771,6 +1779,18 @@ because only it knows what it can cope with:
   twenty ports; two are the ones that change what a plugin must be
   written to survive.
 
+  **Reluctance is a REMEMBERED choice, not a re-computation.** The
+  selection is made once, when the consumer activates, and recorded per
+  requirement; every later question — the cascade, `hold`, `unmet` —
+  reads it back. A host that instead re-ranks the candidates each time
+  it is asked has implemented *greedy* while appearing to implement
+  neither: a better-ranked provider arriving later silently becomes
+  "the bound one", so deactivating the provider the consumer was
+  actually activated against restarts nothing, and the consumer keeps
+  using a reference it was never told to stop using. The selection
+  belongs to one activation and is dropped when the instance leaves
+  `live`, so the next activation ranks afresh.
+
 **Requirements are live, not checked once.** A check at the activation
 instant guarantees nothing about the moment that matters, which is the
 arbitrary later moment the consumer actually calls the thing.
@@ -1824,6 +1844,20 @@ For a host that wants the strict reading, `makeHost({dependency:
 `plugin_dependency_held`, naming the holders. Not the default, because
 a station that cannot swap a provider without a restart has lost the
 argument for having a plugin system.
+
+**A holder is a MANDATORY consumer, and that is a different set from
+the one the cascade walks.** The cascade follows the edges that
+*restart* — mandatory-static and optional-static — because a restart is
+what it has to perform. `hold` asks whether the instance is *required*,
+and required is cardinality: a mandatory-**dynamic** consumer holds,
+because `dynamic` promises it survives a *swap* and under `hold` there
+is no swap — the provider goes and the consumer falls back to
+`pending`, which is what the policy exists to prevent. An **optional**
+consumer does not hold whatever its policy, because it has said in
+writing that it does not need the thing, and a policy that refuses a
+deactivation on its behalf is speaking for a plugin against that
+plugin's own declaration. Reading the holders off the cascade's set gets
+both of these wrong, in opposite directions.
 
 **The hold check is a guard on ad-hoc deactivation, not on coordinated
 teardown.** In a bulk operation that is removing the holders too —
@@ -1932,6 +1966,7 @@ in a handful of places is both cheap and sufficient.
 | `plugin_dynamic_unsupported` | dynamic load attempted in a static-only port |
 | `plugin_not_loaded` | transition or query on an absent ref |
 | `plugin_bad_state` | transition illegal from the current status |
+| `plugin_inactive` | `activate` or `ready` on an instance a document barred with `active: false` (§9.6) |
 | `plugin_reentrant` | transition attempted from inside a lifecycle callback |
 | `plugin_option_invalid` | options failed the definition's shape |
 | `plugin_point_unknown` | binding to an undeclared point |

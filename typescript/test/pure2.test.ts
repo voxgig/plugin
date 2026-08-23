@@ -25,6 +25,7 @@ const SUBJECT: { [sec: string]: { [group: string]: (e: Entry) => any } } = {
   },
   capability: {
     match: (e) => resolvecapability(e.in.req, e.in.candidates),
+    nested: (e) => resolvecapability(e.in.req, e.in.candidates),
     rank: (e) => resolvecapability(e.in.req, e.in.candidates),
   },
   graph: {

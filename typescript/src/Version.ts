@@ -18,6 +18,20 @@ export type Range = { lo: number[], hi: number[] }
 
 const VERSION_RE = /^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/
 
+/** A COMPONENT IS BOUNDED, like a ref is (§4's 1024).
+ *
+ * The grammar admits an unbounded digit sequence, and every language
+ * then disagrees about what happens past its integer range: JavaScript
+ * silently loses precision, Go's `Atoi` errors (and a port ignoring that
+ * gets 0), C overflows, Python is exact. `satisfies("0",
+ * "9223372036854775808")` was false in the canonical and true in go —
+ * from the same corpus.
+ *
+ * 2^31-1 because every port has a signed 32-bit integer, and no real
+ * version has ever needed more. Stated rather than left to arithmetic
+ * nobody agrees on. Found by review of the go port. */
+const COMPONENT_MAX = 2147483647
+
 /** Two forms and no more (§11.2):
  *
  *   '2.1'    >= 2.1.0 and < 3.0.0
@@ -33,9 +47,9 @@ export function parserange(range: string): Range {
   const m = VERSION_RE.exec(body)
   if (!m) fail('plugin_bad_range', 'invalid range: ' + range, { range })
 
-  const major = Number(m[1])
-  const minor = undefined === m[2] ? 0 : Number(m[2])
-  const patch = undefined === m[3] ? 0 : Number(m[3])
+  const major = component(m[1], range, 'range')
+  const minor = undefined === m[2] ? 0 : component(m[2], range, 'range')
+  const patch = undefined === m[3] ? 0 : component(m[3], range, 'range')
 
   const lo = [major, minor, patch]
   const hi = tilde ? [major, minor + 1, 0] : [major + 1, 0, 0]
@@ -49,10 +63,23 @@ export function parseversion(version: string): number[] {
   const m = VERSION_RE.exec(version)
   if (!m) fail('plugin_bad_range', 'invalid version: ' + version, { version })
   return [
-    Number(m[1]),
-    undefined === m[2] ? 0 : Number(m[2]),
-    undefined === m[3] ? 0 : Number(m[3]),
+    component(m[1], version, 'version'),
+    undefined === m[2] ? 0 : component(m[2], version, 'version'),
+    undefined === m[3] ? 0 : component(m[3], version, 'version'),
   ]
+}
+
+/** One component, bounded. `plugin_bad_range` either way — the same code
+ * the rest of the grammar's failures use, because "this is not a version
+ * I can compare" is one fact however it went wrong. */
+function component(digits: string, whole: string, field: string): number {
+  const n = Number(digits)
+  if (!Number.isInteger(n) || COMPONENT_MAX < n) {
+    fail('plugin_bad_range',
+      'version component out of range in ' + whole + ': ' + digits,
+      { [field]: whole })
+  }
+  return n
 }
 
 /** The one satisfaction predicate: lo <= version < hi. */

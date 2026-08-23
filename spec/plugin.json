@@ -221,6 +221,139 @@
           }
         ]
       },
+      "gone": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/gone#dropped",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1,
+                "result": {
+                  "probe$b": "__UNDEF__"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {},
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$a:activate",
+                  "probe$a:deactivate",
+                  "probe$a:close"
+                ],
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {},
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/gone#declared-untouched",
+            "match": {
+              "out": {
+                "log": [],
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          }
+        ]
+      },
       "idempotent": {
         "set": [
           {
@@ -286,6 +419,86 @@
             "match": {
               "out": {
                 "log": []
+              }
+            }
+          }
+        ]
+      },
+      "phases": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/phases#declare-all-then-activate",
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$b:define",
+                  "probe$a:activate",
+                  "probe$b:activate"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$c"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/phases#reverse-teardown",
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$b:define",
+                  "probe$a:activate",
+                  "probe$b:activate",
+                  "probe$b:deactivate",
+                  "probe$b:close",
+                  "probe$a:deactivate",
+                  "probe$a:close",
+                  "probe$c:define",
+                  "probe$c:activate"
+                ]
               }
             }
           }
@@ -504,6 +717,152 @@
                 {
                   "pos": 0,
                   "provides": {
+                    "attrs": {
+                      "transactional": 1
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": true
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": 1
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "transactional": 0
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": false
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": "1"
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": 1
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": 1
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": "1"
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": 1,
+                      "transactional": true
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": 1,
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
                     "name": "store",
                     "version": "2.3"
                   },
@@ -556,6 +915,215 @@
               "req": {
                 "name": "store",
                 "range": "2.1"
+              }
+            },
+            "out": []
+          }
+        ]
+      },
+      "nested": {
+        "set": [
+          {
+            "doc": true,
+            "id": "capability/nested#leaf",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": {
+                        "max": 5,
+                        "min": 1
+                      }
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": {
+                        "max": 9
+                      }
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": {}
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": 5
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "regions": [
+                        "eu",
+                        "us"
+                      ]
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "regions": [
+                    "eu",
+                    "us"
+                  ]
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "regions": [
+                        "eu",
+                        "us"
+                      ]
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "regions": [
+                    "eu"
+                  ]
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "regions": [
+                        "eu",
+                        "us"
+                      ]
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "regions": [
+                    "us",
+                    "eu"
+                  ]
+                },
+                "name": "store"
               }
             },
             "out": []
@@ -3202,6 +3770,71 @@
           }
         ]
       },
+      "clear": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "load",
+                "options": {},
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "declare/clear#empty-options",
+            "match": {
+              "out": {
+                "result": ":x"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "Ax"
+              }
+            }
+          }
+        ]
+      },
       "free": {
         "set": [
           {
@@ -3274,6 +3907,107 @@
                 "status": {
                   "probe$a": "declared"
                 }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_inactive",
+            "id": "declare/free#barred-stays-barred"
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_inactive"
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "lookup": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "seq",
+                "ref": "bad name"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_bad_name",
+            "id": "declare/lookup#malformed"
+          },
+          {
+            "cmd": [
+              {
+                "do": "seq",
+                "ref": "probe$nope"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
               }
             }
           }
@@ -3670,6 +4404,95 @@
           }
         ]
       },
+      "cascadefail": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate",
+                  "requires": [
+                    "s"
+                  ]
+                },
+                "ref": "noisy$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cascadefail#consumer",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$p": "loaded",
+                  "noisy$c": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate",
+                  "requires": [
+                    "s"
+                  ]
+                },
+                "ref": "noisy$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "dep$p": "live",
+                  "noisy$c": "failed"
+                }
+              }
+            }
+          }
+        ]
+      },
       "cycle": {
         "set": [
           {
@@ -4029,6 +4852,91 @@
             "match": {
               "err": {
                 "message": "/holders=\\[\"dep\\$c\"\\]/"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "policy": "dynamic",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_dependency_held",
+            "id": "depend/hold#mandatory-dynamic-holds"
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "optional": [
+                    "clock"
+                  ],
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/hold#optional-does-not-hold",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "loaded"
+                }
               }
             }
           },
@@ -4864,6 +5772,192 @@
                 }
               }
             }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$lo"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#reluctant",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$lo:define",
+                  "dep$lo:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$hi:define",
+                  "dep$hi:activate",
+                  "dep$c:deactivate",
+                  "dep$lo:deactivate",
+                  "dep$c:activate"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$hi"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#reluctant-holds",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$hi": "loaded",
+                  "dep$lo": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$hi"
+              }
+            ],
+            "err": "plugin_dependency_held"
           }
         ]
       }
@@ -5402,6 +6496,64 @@
                 }
               }
             }
+          },
+          {
+            "id": "env/value#not-json-constants",
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "NaN"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "NaN"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "Infinity"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "Infinity"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "VOXGIG_PLUGIN_R_N": "-Infinity"
+              },
+              "refs": [
+                "r"
+              ]
+            },
+            "match": {
+              "out": {
+                "options": {
+                  "r": {
+                    "n": "-Infinity"
+                  }
+                }
+              }
+            }
           }
         ]
       }
@@ -5576,6 +6728,44 @@
               {
                 "do": "declare",
                 "ref": "station$a"
+              }
+            ],
+            "err": "plugin_ref_reserved"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "reserved": [
+                  "probe"
+                ]
+              },
+              {
+                "do": "hostdeclare",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "error/codes#reserved-host-path",
+            "match": {
+              "out": {
+                "result": "probe$a",
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "reserved": [
+                  "probe"
+                ]
+              },
+              {
+                "do": "declare",
+                "ref": "probe$a"
               }
             ],
             "err": "plugin_ref_reserved"
@@ -5967,6 +7157,60 @@
             }
           },
           {
+            "id": "graph/blocked#match-nested",
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "attrs": {
+                      "limits": {
+                        "max": 9
+                      }
+                    },
+                    "name": "s"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "match": {
+                      "limits": {
+                        "max": 5
+                      }
+                    },
+                    "name": "s"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "s",
+                  "why": {
+                    "failing": "limits",
+                    "found": {
+                      "max": 9
+                    },
+                    "kind": "match",
+                    "want": {
+                      "max": 5
+                    }
+                  }
+                }
+              ],
+              "resolved": [
+                "p"
+              ]
+            }
+          },
+          {
             "id": "graph/blocked#chain",
             "in": [
               {
@@ -6256,6 +7500,68 @@
           }
         ]
       },
+      "bindscope": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bind": "activate"
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "greedy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_bind_scope",
+            "id": "lifecycle/bindscope#activate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "bind": "deactivate"
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_bind_scope"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bind": "activate"
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "greedy$a": "failed"
+                }
+              }
+            }
+          }
+        ]
+      },
       "fail": {
         "set": [
           {
@@ -6451,6 +7757,188 @@
             "match": {
               "out": {
                 "open": 0
+              }
+            }
+          }
+        ]
+      },
+      "faildown": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/faildown#deactivate",
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "code": "probe_boom",
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "probe_boom"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "unload",
+                "ref": "noisy$a"
+              }
+            ],
+            "id": "lifecycle/faildown#unload",
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "unload",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "unload",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "close"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "unload",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "id": "lifecycle/faildown#close-drops",
+            "match": {
+              "out": {
+                "open": 0,
+                "result": {}
+              }
+            }
+          }
+        ]
+      },
+      "failedexit": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_bad_state",
+            "id": "lifecycle/failedexit#deactivate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "deactivate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "noisy$a": "failed"
+                }
               }
             }
           }
@@ -7027,6 +8515,151 @@
             }
           }
         ]
+      },
+      "slow": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "slow$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "slow$a"
+              },
+              {
+                "do": "unload",
+                "ref": "slow$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/slow#is-a-probe",
+            "out": {
+              "log": [
+                "slow$a:define",
+                "slow$a:activate",
+                "slow$a:deactivate",
+                "slow$a:close"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {}
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "slow$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1,
+                "status": {
+                  "slow$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "wrap": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bare": true,
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_activate_failed",
+            "id": "lifecycle/wrap#bare-activate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bare": true,
+                  "fail": "define"
+                },
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_define_failed"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "bare": true,
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_deactivate_failed"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bare": true,
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "code": "store_unreachable",
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "store_unreachable",
+            "id": "lifecycle/wrap#own-code-kept"
+          }
+        ]
       }
     },
     "nest": {
@@ -7588,6 +9221,48 @@
           }
         ]
       },
+      "pinorder": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook",
+                    "pin": {
+                      "noisy": "first",
+                      "probe": "first"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "noisy$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/pinorder#two-names",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "noisy$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "precedence": {
         "set": [
           {
@@ -7686,6 +9361,44 @@
             "match": {
               "out": {
                 "result": []
+              }
+            }
+          }
+        ]
+      },
+      "seqtie": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$z"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$z"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/seqtie#shared-pos",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
               }
             }
           }
@@ -8024,6 +9737,88 @@
             "match": {
               "out": {
                 "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": null
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "doc": true,
+            "id": "point/bail#null-declines",
+            "match": {
+              "out": {
+                "result": "B"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": false
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": false
               }
             }
           }
@@ -8602,6 +10397,87 @@
                 "do": "host",
                 "points": {
                   "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "id": "point/provider#tie-by-ref",
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "shadowed",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "provider$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
                     "default": "D",
                     "kind": "provider"
                   }
@@ -8952,6 +10828,11 @@
             "out": false
           },
           {
+            "id": "ref/name#trailing-newline",
+            "in": "abc\n",
+            "out": false
+          },
+          {
             "in": "a!b",
             "out": false
           },
@@ -9132,6 +11013,15 @@
             "in": "a#b"
           },
           {
+            "err": "plugin_bad_name",
+            "id": "ref/parsebad#trailing-newline",
+            "in": "abc\n"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$b\n"
+          },
+          {
             "err": "plugin_bad_tag",
             "in": "a$b$c"
           },
@@ -9225,6 +11115,11 @@
           },
           {
             "in": "a!b",
+            "out": false
+          },
+          {
+            "id": "ref/tag#trailing-newline",
+            "in": "abc\n",
             "out": false
           }
         ]
@@ -9530,6 +11425,98 @@
           {
             "cmd": [
               {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 3
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              },
+              {
+                "do": "call",
+                "method": "unwound",
+                "ref": "greedy$a"
+              }
+            ],
+            "id": "resource/scope#reverse",
+            "match": {
+              "out": {
+                "result": [
+                  2,
+                  1,
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 3
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "id": "resource/scope#release-counts",
+            "match": {
+              "out": {
+                "open": 3
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 3
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 2,
+                  "mark": 2
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "close"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
                 "do": "ready",
                 "ref": "probe$a"
               },
@@ -9539,9 +11526,97 @@
                 "ref": "probe$a"
               }
             ],
+            "err": "plugin_release_scope",
+            "id": "resource/scope#stray"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "catch": true,
+                "do": "call",
+                "method": "stray",
+                "ref": "probe$a"
+              }
+            ],
             "match": {
               "out": {
                 "open": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "load",
+                "options": {
+                  "early": "acquire"
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_release_scope",
+            "id": "resource/scope#capture-phase"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "load",
+                "options": {
+                  "early": "release"
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_release_scope"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 2,
+                  "markfail": true
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_release_failed",
+            "id": "resource/scope#release-failed"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 2,
+                  "markfail": true
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "catch": true,
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "greedy$a": "failed"
+                }
               }
             }
           }
@@ -9783,6 +11858,22 @@
       "range": {
         "set": [
           {
+            "id": "version/range#component-max",
+            "in": "2147483647",
+            "out": {
+              "hi": [
+                2147483648,
+                0,
+                0
+              ],
+              "lo": [
+                2147483647,
+                0,
+                0
+              ]
+            }
+          },
+          {
             "doc": true,
             "id": "version/range#caret",
             "in": "2.1",
@@ -9926,6 +12017,28 @@
           {
             "err": "plugin_bad_range",
             "in": "-1"
+          },
+          {
+            "err": "plugin_bad_range",
+            "id": "version/rangebad#trailing-newline",
+            "in": "2.1\n"
+          },
+          {
+            "err": "plugin_bad_range",
+            "id": "version/rangebad#component-bound",
+            "in": "9223372036854775808"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "2147483648"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "1.2147483648"
+          },
+          {
+            "err": "plugin_bad_range",
+            "in": "1.2.2147483648"
           }
         ]
       },

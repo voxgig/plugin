@@ -15,6 +15,10 @@ export { resolvecapability, matches } from './Capability'
 export { resolvegraph } from './Graph'
 export { emit, compose, provider } from './Point'
 export { resolveexport } from './Export'
+export {
+  REQUEST_POINT, SDK_HOOKS, STATION_HOOKS, featuredefinition, featurepoints,
+} from './FeatureHost'
+export type { FeatureClass } from './FeatureHost'
 
 export { PluginError } from './Types'
 export type { Ref, Status, Instance, OrderBlock, Normalized } from './Types'

@@ -4,12 +4,13 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P1, in progress.** The skeleton turns over and **four corpus
-sections are written** — `ref` and `config` (C1), `lifecycle` and
-`order` (C2), 204 entries — alongside the draft driver contract in
-`DOCS.md` §4. There is still no code in any language. What that means
-for you is in "Where to start" at the bottom, and the live per-item
-state is [`doc/plan/status.md`](doc/plan/status.md).
+**Status: P5, two of fourteen.** All **19 corpus sections** exist — 527
+entries — with the driver contract in `DOCS.md` §4. **Five
+implementations pass every one of them**: `typescript/` (canonical),
+`go/`, `python/`, `javascript/` and `ruby/`, and `make check` is the
+whole gate. What that means for you is in "Where to start" at the
+bottom, and the live per-item state is
+[`doc/plan/status.md`](doc/plan/status.md).
 
 
 ## 1. Prime directives
@@ -68,8 +69,12 @@ plugin/
 │   ├── build-spec.js            aontu -> json
 │   ├── check-spec-shape.js      corpus sources against the spec-format shape
 │   ├── check_parity.py          every port defines the canonical API
-│   └── check_probes.py          every port implements every probe (arrives with P1)
-├── typescript/                  CANONICAL (arrives with P1)
+│   └── check_probes.py          every port implements every probe
+├── typescript/                  CANONICAL — src/ and test/
+├── go/                          port — plugin/ (library) and test/ (driver + runner)
+├── python/                      port — voxgig_plugin/ (library) and test/
+├── javascript/                  port — src/ and test/
+├── ruby/                        port — lib/ and test/
 └── <lang>/                      one per port: src, driver, test, Makefile, README, AGENTS
 ```
 
@@ -203,23 +208,34 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0 is done. **P1 is under way**, and its first deliverables — the two
-owed to station — are written:
+P0–P4 are done and P5 is under way: `typescript/` is the canonical,
+`go/` and `python/` are the proving pair, `javascript/` and `ruby/` are
+P5's first two, and all five pass all 19 corpus sections.
 
-1. ~~`spec/plugin.aontu` gains `ref` and `config`~~ — **done**, 151
-   entries, pure.
-2. ~~`DOCS.md` gains the draft driver contract (§15.2), then
-   `spec/plugin.aontu` gains `lifecycle` and `order`~~ — **done**, 53
-   entries, landed together because a driver section without its
-   contract is not shippable.
-3. `typescript/` — **next**. The tracer bullet of §18's P1, written to
-   the portability budget above.
-4. `tools/check_probes.py` — also unblocked now the probe catalog
-   exists; the cheaper of the two.
+**Next is the rest of P5.** Only six of its fourteen have a toolchain in
+the usual environment — javascript, ruby, php, java, rust and perl — and
+porting a language nobody can execute ships an implementation nobody has
+run, which is the thing the corpus exists to prevent. Say which are
+gated rather than shipping unverifiable work.
 
-Neither 1 nor 2 counts as discharged until it **merges** — see
-[`doc/plan/contracts.md`](doc/plan/contracts.md), which is the
-authority on what is owed and what has actually landed.
+**If you are writing a port, read
+[`doc/plan/handover.md`](doc/plan/handover.md) §13 before you start.**
+The pair found six defects in the canonical, and every one was of two
+kinds: *a rule the design states that no corpus entry can distinguish*,
+and *a code path no corpus entry enters*. Both are found by making
+another implementation decide from the same text, and neither is found
+by reading the canonical. Expect to find more, and **fix them in the
+canonical** — §18's exit for P4 says so in those words, and it does not
+stop applying at P5.
+
+The layout to copy is `go/` or `python/`: the library in one directory,
+the driver and corpus runner in `test/`, all four Makefile targets
+(`test`, `build`, `inspect`, `clean`) real rather than tolerant, and a
+coverage test asserting that every corpus section is actually
+dispatched. A section silently not run is worse than a failing one.
+
+What this repo owes station, and what has actually landed, is
+[`doc/plan/contracts.md`](doc/plan/contracts.md).
 
 Cross-repo sequencing, and what this repo owes station and when, is in
 [station-and-plugin-plan.md](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md).

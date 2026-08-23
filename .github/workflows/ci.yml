@@ -5,10 +5,12 @@
 # canonical API list is checked. Both are cheap and both are the things
 # that go quietly wrong.
 #
-# The per-port matrix arrives with the ports (P1 adds typescript; P4 go
-# and python; P5 and P6 the rest), modelled on omni's ci.yml — one job per
+# The per-port matrix grows with the ports (P1 added typescript, P4 go;
+# python next, then P5 and P6), modelled on omni's ci.yml — one job per
 # port with `fail-fast: false`, so a single failing language is named in
-# the UI rather than buried in a multi-language log.
+# the UI rather than buried in a multi-language log. Each port's toolchain
+# step is guarded by `if:` on the matrix value, because twenty ports
+# cannot share one setup step.
 #
 # Action SHAs are pinned rather than floating on a tag: a tag can move, and
 # a supply-chain change to a CI action is a change to everything it builds.
@@ -85,11 +87,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # P4 adds go and python; P5 and P6 the rest.
-        port: [typescript]
+        # P4 is complete; P5 is under way. P6 adds the rest.
+        port: [typescript, go, python, javascript, ruby]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        if: matrix.port == 'typescript' || matrix.port == 'javascript'
         with:
           node-version: '24'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        if: matrix.port == 'python'
+        with:
+          python-version: '3.12'
+      # NO setup-ruby STEP, for the same reason as go below: the
+      # ubuntu-latest image ships ruby 3.x, the port has no gems, and an
+      # unpinned action would be the worse trade.
+      # NO setup-go STEP, DELIBERATELY. Every action here is pinned to a
+      # SHA rather than a tag, and this workflow cannot resolve one for an
+      # action it does not already use; an unpinned action would be a
+      # worse trade than none. The ubuntu-latest image ships a Go
+      # toolchain, `go.mod` asks only for 1.21, and the port has no
+      # dependencies to fetch — so `make test-go` runs on the image's own
+      # Go. `make inspect` prints the version it got, which is what makes
+      # a surprise there visible rather than silent.
+      - run: make build-${{ matrix.port }}
       - run: make test-${{ matrix.port }}
+      - run: make inspect-${{ matrix.port }}
