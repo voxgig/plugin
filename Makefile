@@ -31,8 +31,8 @@
 # Requiring the targets costs a two-line no-op per port and removes the
 # error-swallowing branch entirely. It is free to decide now, with no
 # ports written, and expensive to retrofit across twenty.
-# P4 is complete. P5, P6 the rest.
-LANGS = typescript go python
+# P4 is complete; P5 is under way. P6 the rest.
+LANGS = typescript go python javascript
 
 .PHONY: all test build inspect clean parity probes check spec spec-check
 

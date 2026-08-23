@@ -74,7 +74,7 @@ It did: see 4.1's note and [`handover.md`](handover.md) §13.
 
 | Item | Status | Notes |
 |---|---|---|
-| 5.1 Fourteen tier-3 ports | NOT STARTED | A model change costs ~15 ports from here. |
+| 5.1 Fourteen tier-3 ports | IN PROGRESS (1/14) | **javascript** landed: the canonical with the types stripped, all 19 sections green, twelve mutations twelve caught. It found nothing, which is the expected and correct result for the one port that shares a language and every coercion rule with the thing it ports — recorded in its AGENTS.md as the reason a corpus failure THERE is a transcription error rather than a model question. **Only six of P5's fourteen have a toolchain in this environment** (javascript, ruby, php, java, rust, perl); lua, csharp, swift, kotlin, scala, clojure, dart and elixir are absent, and porting a language nobody can execute is the thing the corpus exists to prevent. |
 | 5.2 Does station take the library as a dependency? | DECISION NEEDED | Deferred here **by design**, and non-blocking for station's native rollout. Decides only whether station's ports later *replace* their native implementation, and the +800-lines-per-port trade. |
 | 5.3 Does station hold Stage 5 after ts/js until P4? | DECISION NEEDED | **station's call, not this repo's** — recorded here because P4 is what it waits on. P4 is scheduled early to make model changes cheap; station porting fourteen languages first makes them expensive again, in the other repo. The alternative is to accept divergence and budget a migration pass, said out loud rather than discovered. |
 | 6.1 Six tier-4 ports | NOT STARTED | |
