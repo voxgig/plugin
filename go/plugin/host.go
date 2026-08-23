@@ -16,7 +16,10 @@
 
 package plugin
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 type PointSpec = Spec
 
@@ -106,6 +109,12 @@ type Host struct {
 	seqn         int
 	open         int
 	intransition bool
+	// phase is WHICH callback is running, not merely that one is. §8.1
+	// puts resource capture in `activate` and §8.3 says `Release`
+	// outside `activate` is `plugin_release_scope` — and `intransition`
+	// alone cannot tell `activate` from `define`, so it admitted an
+	// Acquire in `define` whose scope `Unload` would never unwind.
+	phase string
 }
 
 func MakeHost(options HostOptions) *Host {
@@ -183,15 +192,31 @@ func (h *Host) checkreserved(ref string) error {
 	return checkreservedref(ref, h.reserved)
 }
 
-func (h *Host) run(e *Live, fn func(*Inst) error, phase string) error {
-	h.log = append(h.log, e.Ref+":"+phase)
-	h.events = append(h.events, Event{Ref: e.Ref, Event: phase, Seq: e.Seq, Status: e.Status})
+func (h *Host) run(e *Live, fn func(*Inst) error, at string) error {
+	h.log = append(h.log, e.Ref+":"+at)
+	h.events = append(h.events, Event{Ref: e.Ref, Event: at, Seq: e.Seq, Status: e.Status})
 	if nil == fn {
 		return nil
 	}
 	h.intransition = true
-	defer func() { h.intransition = false }()
-	return fn(h.api(e))
+	h.phase = at
+	defer func() { h.intransition = false; h.phase = "" }()
+	err := fn(h.api(e))
+	if nil == err {
+		return nil
+	}
+	// §12: `plugin_define_failed` and its three siblings are "a callback
+	// raised; wraps the cause". AN ERROR THAT ALREADY CARRIES A CODE
+	// KEEPS IT — the code is the error's identity, and a plugin
+	// returning `store_unreachable` must not have it rewritten. Only a
+	// code-less error is wrapped, which is the ordinary case for a
+	// callback that let a library error through.
+	if "" != CodeOf(err) {
+		return err
+	}
+	return Fail("plugin_"+at+"_failed",
+		e.Ref+" raised in "+at+": "+err.Error(),
+		map[string]any{"ref": e.Ref, "cause": err.Error()})
 }
 
 // Inst is what a definition's callbacks see. Deliberately not the
@@ -214,7 +239,10 @@ func (i *Inst) Host() *Host             { return i.h }
 // Release registers a foreign resource the host did not hand out (§8.3);
 // host calls are recorded automatically.
 func (i *Inst) Release(fn func()) error {
-	if !i.h.intransition {
+	// §8.3: "`inst.release` outside `activate` is
+	// `plugin_release_scope`". `intransition` is true in `define` too,
+	// and a scope entry registered there is never unwound.
+	if "activate" != i.h.phase {
 		return Fail("plugin_release_scope", "release called outside activate", nil)
 	}
 	// SYMMETRIC WITH Acquire, and it has to be: `open` counts the
@@ -240,7 +268,9 @@ func (i *Inst) Release(fn func()) error {
 // scope still holds the entry and unwinding it twice is a no-op —
 // releasing early must not make teardown wrong.
 func (i *Inst) Acquire() (func(), error) {
-	if !i.h.intransition {
+	// §8.1: resources are "acquired during `activate` — the scope's
+	// actual job". Same reason as `Release` above.
+	if "activate" != i.h.phase {
 		return nil, Fail("plugin_release_scope", "acquire called outside activate", nil)
 	}
 	done := false
@@ -337,6 +367,9 @@ type DeclareSpec struct {
 	Order      *OrderBlock
 	Pos        *int
 	Tag        string
+	// HostOwned is §9.1: "The host declares those instances itself,
+	// after the user merge, and always wins." Set ONLY by HostDeclare.
+	HostOwned bool
 }
 
 func (h *Host) Declare(ref string, spec DeclareSpec) (*Live, error) {
@@ -354,8 +387,10 @@ func (h *Host) Declare(ref string, spec DeclareSpec) (*Live, error) {
 	if nil != err {
 		return nil, err
 	}
-	if err := h.checkreserved(r); nil != err {
-		return nil, err
+	if !spec.HostOwned {
+		if err := h.checkreserved(r); nil != err {
+			return nil, err
+		}
 	}
 	defname := or(spec.Definition, refname(r))
 	def, ok := h.catalog.Get(defname)
@@ -395,6 +430,22 @@ func (h *Host) Declare(ref string, spec DeclareSpec) (*Live, error) {
 	h.seqn++
 	h.inst[r] = e
 	return e, nil
+}
+
+// HostDeclare is §9.1's host-owned path: a host that reserves a name
+// MUST still be able to declare the instance it reserved.
+//
+// THE BOUNDARY IS BY METHOD, NOT BY CALLER, and that is a real limit: no
+// language here can tell the embedding host from a plugin holding the
+// same host object. What reservation protects is CONFIGURATION —
+// documents, overlays, `VOXGIG_PLUGIN_*`, construction options and
+// ordinary Declare/Load/Options — and all of that still checks.
+func (h *Host) HostDeclare(ref string, spec DeclareSpec) (*Live, error) {
+	if err := h.guard(); nil != err {
+		return nil, err
+	}
+	spec.HostOwned = true
+	return h.Declare(ref, spec)
 }
 
 func (h *Host) Load(ref string, spec DeclareSpec) (*Live, error) {
@@ -496,6 +547,12 @@ func (h *Host) Deactivate(ref string) (*Live, error) {
 		return e, nil
 	}
 
+	// §5.2: `Unload` is THE ONLY TRANSITION OUT OF `failed`.
+	if StatusFailed == e.Status {
+		return nil, Fail("plugin_bad_state", "instance has failed: "+e.Ref,
+			map[string]any{"ref": e.Ref})
+	}
+
 	if StatusPending == e.Status {
 		// DEACTIVATING A PENDING INSTANCE RUNS NO CALLBACK (§5.2). It
 		// never reached activate, so it holds no scope and no live
@@ -518,7 +575,9 @@ func (h *Host) Deactivate(ref string) (*Live, error) {
 		e.Status = StatusFailed
 		return nil, err
 	}
-	h.unwind(e)
+	if err := h.releasecheck(e, h.unwind(e)); nil != err {
+		return nil, err
+	}
 	e.Status = StatusLoaded
 	h.reconcile()
 	return e, nil
@@ -547,7 +606,9 @@ func (h *Host) Unload(ref string) error {
 				e.Status = StatusFailed
 				return err
 			}
-			h.unwind(e)
+			if err := h.releasecheck(e, h.unwind(e)); nil != err {
+				return err
+			}
 		}
 		e.Status = StatusLoaded
 	}
@@ -587,14 +648,46 @@ func (h *Host) Ready(ref string) (*Live, error) {
 
 // unwind: bindings go live only when activation succeeds (§8.1), so the
 // teardown is the exact inverse: reverse order, always.
-func (h *Host) unwind(e *Live) {
+// unwind runs the scope in reverse and returns the errors it raised.
+// §8.3: "A failing release does not stop the rest. Every entry runs, in
+// reverse order, whatever any of them does; the errors are collected and
+// raised as one `plugin_release_failed`."
+//
+// A Go release is `func()` and cannot return an error, so it signals
+// failure by PANICKING — which is what a Go author's `defer f.Close()`
+// wrapper does when it has nowhere to put the error, and which is
+// recovered here rather than taking the host down.
+func (h *Host) unwind(e *Live) []string {
+	errors := []string{}
 	for i := len(e.scope) - 1; 0 <= i; i-- {
-		// A failing release is §12's problem, not a leak here; a Go
-		// release cannot raise at all, which is one fewer difference to
-		// hold than the canonical has.
-		e.scope[i]()
+		errors = append(errors, callrelease(e.scope[i])...)
 	}
 	e.scope = []func(){}
+	return errors
+}
+
+func callrelease(fn func()) (out []string) {
+	defer func() {
+		if r := recover(); nil != r {
+			out = []string{fmt.Sprint(r)}
+		}
+	}()
+	fn()
+	return nil
+}
+
+// releasecheck is §8.3: "A failed release ends the instance in `failed`,
+// exactly as a failed callback does (§5.2) — a release that raised may
+// have leaked, and an instance that may be holding resources it cannot
+// account for must not be reactivated."
+func (h *Host) releasecheck(e *Live, errors []string) error {
+	if 0 == len(errors) {
+		return nil
+	}
+	e.Status = StatusFailed
+	return Fail("plugin_release_failed",
+		"release failed for "+e.Ref+": "+join(errors, "; "),
+		map[string]any{"ref": e.Ref, "cause": errors})
 }
 
 /* unmetof: A REQUIREMENT IS ON A CAPABILITY, not on a ref (§11.1) — it
@@ -699,8 +792,16 @@ func (h *Host) cascade(provider *Live, seen map[string]bool) {
 			continue
 		}
 		h.cascade(c, seen) // deepest-first
-		_ = h.run(c, c.def.Deactivate, "deactivate")
-		h.unwind(c)
+		bad := nil != h.run(c, c.def.Deactivate, "deactivate")
+		errors := h.unwind(c)
+		if bad || 0 < len(errors) {
+			// §5.2: ANY failure during a transition lands the instance in
+			// `failed`. Marking it `pending` handed it straight back to
+			// `reconcile`, which would activate it again the moment the
+			// provider returned.
+			c.Status = StatusFailed
+			continue
+		}
 		c.Status = StatusPending
 		c.unmet = h.unmetof(c)
 	}
@@ -780,8 +881,13 @@ func (h *Host) reconcile() {
 			if !restarts {
 				continue
 			}
-			_ = h.run(e, e.def.Deactivate, "deactivate")
-			h.unwind(e)
+			bad := nil != h.run(e, e.def.Deactivate, "deactivate")
+			errors := h.unwind(e)
+			if bad || 0 < len(errors) {
+				e.Status = StatusFailed
+				moved = true
+				continue
+			}
 			e.Status = StatusPending
 			e.unmet = h.unmetof(e)
 			moved = true
@@ -999,6 +1105,15 @@ func (h *Host) Capability(name string) []string {
 
 // --- documents -------------------------------------------------------
 
+// Apply is §9.6: "load what is missing, UNLOAD WHAT IS GONE, patch what
+// changed, and move activation state to match", with the stated
+// ordering — "deactivations and unloads first (reverse load order), then
+// loads, then activations in load order".
+//
+// FOUR PHASES, NOT ONE INTERLEAVED LOOP. An earlier draft walked the
+// document once, which never looked at instances the new document had
+// DROPPED — so an integration removed from a config reload stayed live
+// with its bindings and resources.
 func (h *Host) Apply(doc any, profile string) error {
 	if err := h.guard(); nil != err {
 		return err
@@ -1011,8 +1126,9 @@ func (h *Host) Apply(doc any, profile string) error {
 		return err
 	}
 
-	for _, ref := range norm.Order {
-		ent := norm.Instance[ref]
+	want := norm.Order
+	optionsof := map[string]map[string]any{}
+	for _, ref := range want {
 		options, err := ResolveOptions(ResolveInput{
 			Ref: ref, Doc: doc, Profile: profile,
 			Shape: h.shapeof(ref), HostDefaults: h.opts.Defaults[refname(ref)],
@@ -1020,39 +1136,75 @@ func (h *Host) Apply(doc any, profile string) error {
 		if nil != err {
 			return err
 		}
+		optionsof[ref] = options
+	}
 
-		existing := h.inst[ref]
-		wantlive := ent.Active && "eager" == ent.Start
+	// wantlive: should this ref be LIVE after the apply? False for a ref
+	// the document declares lazy or inactive AND for one it does not
+	// name at all — which is what makes "unload what is gone" and
+	// "unload what was toggled off" one rule rather than two.
+	wantlive := func(ref string) bool {
+		ent, has := norm.Instance[ref]
+		return has && ent.Active && "eager" == ent.Start
+	}
 
-		// Toggling back to lazy or inactive returns it to `declared`, BY
-		// UNLOADING IT (§9.6). There is no loaded->declared transition
-		// and there should not be one: going back to `declared` means
-		// "as if never loaded", and an instance that has run `define`
-		// has state and bindings that only `close` can properly undo.
-		if nil != existing && !wantlive && StatusDeclared != existing.Status {
-			if err := h.Unload(ref); nil != err {
-				return err
-			}
+	// --- phase 1: deactivations and unloads, in REVERSE load order ---
+	drop := []string{}
+	for _, ref := range sortedkeys(h.inst) {
+		if StatusDeclared == h.inst[ref].Status {
+			continue
 		}
+		if !wantlive(ref) {
+			drop = append(drop, ref)
+		}
+	}
+	// Highest `pos` first, ref-descending for a tie, so a consumer
+	// declared after its provider goes down first.
+	sort.SliceStable(drop, func(i, j int) bool {
+		a, b := h.inst[drop[i]], h.inst[drop[j]]
+		if a.Pos != b.Pos {
+			return a.Pos > b.Pos
+		}
+		return drop[i] > drop[j]
+	})
+	for _, ref := range drop {
+		if err := h.Unload(ref); nil != err {
+			return err
+		}
+	}
 
+	// --- phase 2: declare and patch EVERYTHING, in load order --------
+	for _, ref := range want {
+		ent := norm.Instance[ref]
 		pos := ent.Pos
 		if _, err := h.Declare(ref, DeclareSpec{
-			Options: options, Order: ent.Order, Pos: &pos}); nil != err {
+			Options: optionsof[ref], Order: ent.Order, Pos: &pos}); nil != err {
 			return err
 		}
 		// REFILL rather than REBIND. A definition's callbacks close over
 		// the options map they were handed at `define`; replacing the
-		// reference here would leave every binding reading the values
-		// the first apply gave it, and a re-applied document would
-		// silently do nothing. Clearing and refilling the same map is
-		// portable to every language, unlike a getter or an interception
-		// hook — which the §18 portability budget forbids anyway.
-		refill(h.inst[ref].Options, options)
+		// reference here would leave every binding reading the values the
+		// first apply gave it.
+		refill(h.inst[ref].Options, optionsof[ref])
 		h.inst[ref].order = ent.Order
 		h.inst[ref].Pos = ent.Pos
+	}
 
-		if wantlive {
-			if _, err := h.Ready(ref); nil != err {
+	// --- phase 3: loads, in load order -------------------------------
+	// ONLY THE EAGER, ACTIVE ONES: "a document of twenty lazy instances
+	// is twenty map entries and no executed code" (§9.6).
+	for _, ref := range want {
+		if wantlive(ref) {
+			if _, err := h.Load(ref, DeclareSpec{}); nil != err {
+				return err
+			}
+		}
+	}
+
+	// --- phase 4: activations, in load order -------------------------
+	for _, ref := range want {
+		if wantlive(ref) {
+			if _, err := h.Activate(ref); nil != err {
 				return err
 			}
 		}

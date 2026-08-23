@@ -13,6 +13,7 @@
 package plugintest
 
 import (
+	"errors"
 	"fmt"
 
 	plugin "github.com/voxgig/plugin/go/plugin"
@@ -64,6 +65,9 @@ func Probes() []plugin.Definition {
 				return err
 			}
 			i.Export("client", i.Ref())
+			// The instance api itself, so the driver's `stray` command
+			// can call Release from OUTSIDE a lifecycle callback.
+			i.Export("inst", i)
 			return declareprovides(i)
 		},
 		Activate: func(i *plugin.Inst) error {
@@ -123,6 +127,19 @@ func Probes() []plugin.Definition {
 		Name: "greedy",
 		Define: func(i *plugin.Inst) error {
 			i.State()["count"] = 0
+			// §8.1 puts resource capture in `activate`. `early` NAMES the
+			// call that reaches for it in `define`, because Acquire and
+			// Release carry the guard separately.
+			if "acquire" == tostr(i.Options()["early"]) {
+				if _, err := i.Acquire(); nil != err {
+					return err
+				}
+			}
+			if "release" == tostr(i.Options()["early"]) {
+				if err := i.Release(func() {}); nil != err {
+					return err
+				}
+			}
 			return nil
 		},
 		Activate: func(i *plugin.Inst) error {
@@ -156,9 +173,18 @@ func Probes() []plugin.Definition {
 			mark := intopt(i, "mark")
 			unwound := []any{}
 			i.State()["unwound"] = unwound
+			markfail, _ := i.Options()["markfail"].(bool)
 			for k := 0; k < mark; k++ {
 				k := k
 				if err := i.Release(func() {
+					// `markfail` makes the release FAIL. A Go release is
+					// `func()` and cannot return an error, so it signals
+					// by panicking — which the host recovers, exactly as
+					// it must for a real `defer f.Close()` wrapper that
+					// has nowhere to put its error.
+					if markfail {
+						panic("release failed at " + itoa(k))
+					}
 					l, _ := i.State()["unwound"].([]any)
 					i.State()["unwound"] = append(l, k)
 				}); nil != err {
@@ -230,6 +256,11 @@ func declareprovides(i *plugin.Inst) error {
 
 func boom(i *plugin.Inst, cb string) error {
 	if s, ok := i.Options()["fail"].(string); ok && cb == s {
+		// `bare` returns an error with NO CODE — the ordinary library
+		// error §12's `plugin_<phase>_failed` codes exist to wrap.
+		if bare, _ := i.Options()["bare"].(bool); bare {
+			return errors.New("probe failed at " + cb)
+		}
 		code := "plugin_" + cb + "_failed"
 		if c, ok := i.Options()["code"].(string); ok {
 			code = c
@@ -452,6 +483,15 @@ func docmd(host *plugin.Host, c map[string]any) (*plugin.Host, *produced, error)
 	case "trace":
 		return nil, &produced{host.Trace()}, nil
 
+	case "hostdeclare":
+		// §9.1's host-owned path: the embedding host installing the
+		// instance whose name it reserved.
+		e, err := host.HostDeclare(ref, spec)
+		if nil != err {
+			return nil, nil, err
+		}
+		return nil, &produced{e.Ref}, nil
+
 	case "declare":
 		e, err := host.Declare(ref, spec)
 		if nil != err {
@@ -523,11 +563,18 @@ func docall(host *plugin.Host, c map[string]any, ref string, point string) (*plu
 		p, err := host.PositionOf(ref, point)
 		return nil, &produced{p}, err
 	case "stray":
-		// A release from outside a lifecycle callback. The scope belongs
-		// to the activation; a call from anywhere else has no scope to
-		// belong to, so it raises — and `catch` is not set, so this
-		// entry would fail loudly if it silently succeeded.
-		return nil, nil, nil
+		// A release from OUTSIDE a lifecycle callback. THIS BRANCH USED
+		// TO DO NOTHING, and its corpus row stayed green whatever
+		// Release did with its guard.
+		raw, err := host.Exports(ref + "/inst")
+		if nil != err {
+			return nil, nil, err
+		}
+		api, ok := raw.(*plugin.Inst)
+		if !ok {
+			return nil, nil, fmt.Errorf("no instance api exported by %s", ref)
+		}
+		return nil, nil, api.Release(func() {})
 	}
 	return nil, nil, nil
 }

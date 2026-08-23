@@ -32,6 +32,9 @@ function probes() {
       i.bind('c', (next, v) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
         i.options && i.options.band)
       i.export('client', i.ref)
+      // The instance api itself, so the driver's `stray` command can
+      // call `release` from OUTSIDE a lifecycle callback.
+      i.export('inst', i)
       if (i.options && i.options.provides) {
         for (const p of i.options.provides) i.provides(p)
       }
@@ -69,7 +72,14 @@ function probes() {
 
   const greedy = {
     name: 'greedy',
-    define: (i) => { i.state.count = 0 },
+    define: (i) => {
+      i.state.count = 0
+      // §8.1 puts resource capture in `activate`. `early` NAMES the call
+      // that reaches for it in `define`, because `acquire` and `release`
+      // carry the guard separately.
+      if (i.options && 'acquire' === i.options.early) i.acquire()
+      if (i.options && 'release' === i.options.early) i.release(() => undefined)
+    },
     activate: (i) => {
       const n = i.options.acquire || 0
       const rel = i.options.release || 0
@@ -87,7 +97,13 @@ function probes() {
       const mark = i.options.mark || 0
       i.state.unwound = []
       for (let k = 0; k < mark; k++) {
-        i.release(() => { i.state.unwound.push(k) })
+        i.release(() => {
+          // `markfail` makes the release RAISE — the only way §8.3's
+          // `plugin_release_failed` and its `failed` status are
+          // reachable.
+          if (i.options.markfail) throw new Error('release failed at ' + k)
+          i.state.unwound.push(k)
+        })
       }
     },
   }
@@ -126,6 +142,9 @@ function probes() {
 
 function boom(i, cb) {
   if (i.options && cb === i.options.fail) {
+    // `bare` raises WITHOUT a code — the ordinary library error §12's
+    // `plugin_<phase>_failed` codes exist to wrap.
+    if (i.options.bare) throw new Error('probe failed at ' + cb)
     const err = new Error('probe failed at ' + cb)
     err.code = i.options.code || 'plugin_' + cb + '_failed'
     throw err
@@ -217,6 +236,13 @@ function drive(cmds) {
         case 'export': last = host.exports(c.key); break
         case 'capability': last = host.capability(c.name); break
         case 'trace': last = host.trace(); break
+        case 'hostdeclare':
+          // §9.1's host-owned path: the embedding host installing the
+          // instance whose name it reserved.
+          last = host.hostdeclare(c.ref, {
+            tag: c.tag, options: c.options, order: c.order, definition: c.definition,
+          }).ref
+          break
         case 'declare':
           last = host.declare(c.ref, {
             tag: c.tag, options: c.options, order: c.order, definition: c.definition,
@@ -255,11 +281,10 @@ function drive(cmds) {
             break
           }
           if ('stray' === c.method) {
-            // A release from outside a lifecycle callback. The scope
-            // belongs to the activation; a call from anywhere else has
-            // no scope to belong to, so it raises — and `catch` is not
-            // set, so this entry would fail loudly if it silently
-            // succeeded.
+            // A release from OUTSIDE a lifecycle callback. THIS BRANCH
+            // USED TO DO NOTHING, and its corpus row stayed green
+            // whatever `release` did with its guard.
+            host.exports(c.ref + '/inst').release(() => undefined)
             break
           }
           break

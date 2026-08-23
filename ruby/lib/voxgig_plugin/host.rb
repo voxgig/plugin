@@ -59,7 +59,10 @@ module VoxgigPlugin
     # resources CURRENTLY HELD, so an entry that is registered and then
     # unwound must leave the count where it found it.
     def release(&fn)
-      unless @host.intransition?
+      # Section 8.3: "`inst.release` outside `activate` is
+      # `plugin_release_scope`". `intransition?` is true in `define` too,
+      # and a scope entry registered there is never unwound.
+      unless @host.phase == 'activate'
         VoxgigPlugin.fail_with('plugin_release_scope',
                                'release called outside activate')
       end
@@ -82,7 +85,9 @@ module VoxgigPlugin
     # scope still holds the entry and unwinding it twice is a no-op -
     # releasing early must not make teardown wrong.
     def acquire
-      unless @host.intransition?
+      # Section 8.1: resources are "acquired during `activate` - the
+      # scope's actual job". Same reason as `release` above.
+      unless @host.phase == 'activate'
         VoxgigPlugin.fail_with('plugin_release_scope',
                                'acquire called outside activate')
       end
@@ -168,10 +173,21 @@ module VoxgigPlugin
       @seqn = 0
       @open = 0
       @intransition = false
+      # WHICH callback is running, not merely that one is. Section 8.1
+      # puts resource capture in `activate` and 8.3 says `release`
+      # outside `activate` is `plugin_release_scope` - and
+      # `@intransition` alone cannot tell `activate` from `define`, so it
+      # admitted an acquire in `define` whose scope `unload` would never
+      # unwind.
+      @phase = nil
     end
 
     def intransition?
       @intransition
+    end
+
+    def phase
+      @phase
     end
 
     def point?(name)
@@ -237,18 +253,31 @@ module VoxgigPlugin
                              { 'ref' => ref })
     end
 
-    def run(entry, callback, phase)
+    def run(entry, callback, at)
       fn = entry['def'][callback]
-      @log << "#{entry['ref']}:#{phase}"
-      @events << { 'ref' => entry['ref'], 'event' => phase,
+      @log << "#{entry['ref']}:#{at}"
+      @events << { 'ref' => entry['ref'], 'event' => at,
                    'seq' => entry['seq'], 'status' => entry['status'] }
       return unless fn.respond_to?(:call)
 
       @intransition = true
+      @phase = at
       begin
         fn.call(Inst.new(self, entry))
+      rescue StandardError => e
+        # Section 12: `plugin_define_failed` and its three siblings are
+        # "a callback raised; wraps the cause". AN ERROR THAT ALREADY
+        # CARRIES A CODE KEEPS IT - the code is the error's identity, and
+        # a plugin raising `store_unreachable` must not have it
+        # rewritten. Only a code-less error is wrapped.
+        raise if e.respond_to?(:code) && e.code
+
+        VoxgigPlugin.fail_with("plugin_#{at}_failed",
+                               "#{entry['ref']} raised in #{at}: #{e.message}",
+                               { 'ref' => entry['ref'], 'cause' => e.message })
       ensure
         @intransition = false
+        @phase = nil
       end
     end
 
@@ -269,7 +298,7 @@ module VoxgigPlugin
       spec ||= {}
       ref = autotag(VoxgigPlugin.refname(VoxgigPlugin.canon_ref(ref))) if spec['tag'] == '?'
       r = VoxgigPlugin.canon_ref(ref)
-      checkreserved(r)
+      checkreserved(r) unless spec['hostowned']
       defname = spec['definition'] || VoxgigPlugin.refname(r)
       definition = @catalog.get(defname)
       if definition.nil?
@@ -301,6 +330,20 @@ module VoxgigPlugin
       @seqn += 1
       @inst[r] = entry
       entry
+    end
+
+    # Section 9.1: a host that reserves a name MUST still be able to
+    # declare the instance it reserved - "The host declares those
+    # instances itself, after the user merge, and always wins."
+    #
+    # THE BOUNDARY IS BY METHOD, NOT BY CALLER, and that is a real limit:
+    # no language here can tell the embedding host from a plugin holding
+    # the same host object. What reservation protects is CONFIGURATION -
+    # documents, overlays, `VOXGIG_PLUGIN_*`, construction options and
+    # ordinary declare/load/options - and all of that still checks.
+    def hostdeclare(ref, spec = nil)
+      guard
+      declare(ref, (spec || {}).merge('hostowned' => true))
     end
 
     def load(ref, spec = nil)
@@ -380,6 +423,13 @@ module VoxgigPlugin
       entry = need(ref)
       return entry if %w[loaded declared].include?(entry['status'])
 
+      # Section 5.2: `unload` is THE ONLY TRANSITION OUT OF `failed`.
+      if entry['status'] == 'failed'
+        VoxgigPlugin.fail_with('plugin_bad_state',
+                               "instance has failed: #{entry['ref']}",
+                               { 'ref' => entry['ref'] })
+      end
+
       if entry['status'] == 'pending'
         # DEACTIVATING A PENDING INSTANCE RUNS NO CALLBACK (section 5.2).
         # It never reached activate, so it holds no scope and no live
@@ -402,7 +452,7 @@ module VoxgigPlugin
         entry['status'] = 'failed'
         raise
       end
-      unwind(entry)
+      releasecheck(entry, unwind(entry))
       entry['status'] = 'loaded'
       reconcile
       entry
@@ -426,7 +476,7 @@ module VoxgigPlugin
             entry['status'] = 'failed'
             raise
           end
-          unwind(entry)
+          releasecheck(entry, unwind(entry))
         end
         entry['status'] = 'loaded'
       end
@@ -452,13 +502,33 @@ module VoxgigPlugin
 
     # Bindings go live only when activation succeeds (section 8.1), so
     # the teardown is the exact inverse: reverse order, always.
+    # Returns the errors the scope raised. Section 8.3: "A failing
+    # release does not stop the rest. Every entry runs, in reverse order,
+    # whatever any of them does; the errors are collected and raised as
+    # one `plugin_release_failed`."
     def unwind(entry)
+      errors = []
       entry['scope'].reverse_each do |fn|
         fn.call
-      rescue StandardError
-        nil # a failing release is section 12's problem, not a leak here
+      rescue StandardError => e
+        errors << e
       end
       entry['scope'] = []
+      errors
+    end
+
+    # Section 8.3: "A failed release ends the instance in `failed`,
+    # exactly as a failed callback does (5.2) - a release that raised may
+    # have leaked, and an instance that may be holding resources it
+    # cannot account for must not be reactivated."
+    def releasecheck(entry, errors)
+      return if errors.empty?
+
+      entry['status'] = 'failed'
+      causes = errors.map(&:message)
+      VoxgigPlugin.fail_with('plugin_release_failed',
+                             "release failed for #{entry['ref']}: #{causes.join('; ')}",
+                             { 'ref' => entry['ref'], 'cause' => causes })
     end
 
     # A REQUIREMENT IS ON A CAPABILITY, not on a ref (section 11.1). A
@@ -535,12 +605,21 @@ module VoxgigPlugin
         next unless consumer['status'] == 'live'
 
         cascade(consumer, seen) # deepest-first
+        bad = false
         begin
           run(consumer, 'deactivate', 'deactivate')
         rescue StandardError
-          nil # section 12
+          bad = true
         end
-        unwind(consumer)
+        errors = unwind(consumer)
+        if bad || !errors.empty?
+          # Section 5.2: ANY failure during a transition lands the
+          # instance in `failed`. Marking it `pending` handed it straight
+          # back to `reconcile`, which would activate it again the moment
+          # the provider returned.
+          consumer['status'] = 'failed'
+          next
+        end
         consumer['status'] = 'pending'
         consumer['unmet'] = unmetof(consumer)
       end
@@ -590,12 +669,18 @@ module VoxgigPlugin
           # consumer LIVE and notified.
           next unless lost.any? { |q| VoxgigPlugin.restartsonloss(q) }
 
+          bad = false
           begin
             run(entry, 'deactivate', 'deactivate')
           rescue StandardError
-            nil
+            bad = true
           end
-          unwind(entry)
+          errors = unwind(entry)
+          if bad || !errors.empty?
+            entry['status'] = 'failed'
+            moved = true
+            next
+          end
           entry['status'] = 'pending'
           entry['unmet'] = unmetof(entry)
           moved = true
@@ -735,6 +820,15 @@ module VoxgigPlugin
 
     # --- documents --------------------------------------------------
 
+    # Section 9.6: "load what is missing, UNLOAD WHAT IS GONE, patch
+    # what changed, and move activation state to match", with the stated
+    # ordering - "deactivations and unloads first (reverse load order),
+    # then loads, then activations in load order".
+    #
+    # FOUR PHASES, NOT ONE INTERLEAVED LOOP. An earlier draft walked the
+    # document once, which never looked at instances the new document had
+    # DROPPED - so an integration removed from a config reload stayed live
+    # with its bindings and resources.
     def apply(doc, profile = nil)
       guard
       profile ||= @opts['profile']
@@ -743,36 +837,56 @@ module VoxgigPlugin
           'keys' => @opts['keys'], 'reserved' => @reserved }
       )
 
-      norm['order'].each do |ref|
-        ent = norm['instance'][ref]
-        defaults = @opts['defaults'] || {}
-        options = VoxgigPlugin.resolve_options(
+      want = norm['order']
+      defaults = @opts['defaults'] || {}
+      optionsof = {}
+      want.each do |ref|
+        optionsof[ref] = VoxgigPlugin.resolve_options(
           { 'ref' => ref, 'doc' => doc, 'profile' => profile,
             'shape' => shapeof(ref),
             'hostdefaults' => defaults[VoxgigPlugin.refname(ref)] }
         )
+      end
 
-        existing = @inst[ref]
-        wantlive = ent['active'] && ent['start'] == 'eager'
+      # Should this ref be LIVE after the apply? False for a ref the
+      # document declares lazy or inactive AND for one it does not name
+      # at all - which is what makes "unload what is gone" and "unload
+      # what was toggled off" one rule rather than two.
+      wantlive = lambda do |ref|
+        ent = norm['instance'][ref]
+        !ent.nil? && ent['active'] && ent['start'] == 'eager'
+      end
 
-        # Toggling back to lazy or inactive returns it to `declared`, BY
-        # UNLOADING IT (section 9.6). There is no loaded->declared
-        # transition and there should not be one.
-        unload(ref) if existing && !wantlive && existing['status'] != 'declared'
+      # --- phase 1: deactivations and unloads, REVERSE load order ----
+      drop = @inst.keys.reject do |r|
+        @inst[r]['status'] == 'declared' || wantlive.call(r)
+      end
+      # Highest `pos` first, ref-descending for a tie, so a consumer
+      # declared after its provider goes down first.
+      drop = drop.sort_by { |r| [-@inst[r]['pos'], r] }
+                 .chunk_while { |a, b| @inst[a]['pos'] == @inst[b]['pos'] }
+                 .flat_map(&:reverse)
+      drop.each { |ref| unload(ref) }
 
-        declare(ref, { 'options' => options, 'order' => ent['order'],
+      # --- phase 2: declare and patch EVERYTHING, in load order ------
+      want.each do |ref|
+        ent = norm['instance'][ref]
+        declare(ref, { 'options' => optionsof[ref], 'order' => ent['order'],
                        'pos' => ent['pos'] })
         # REFILL rather than REBIND. A definition's callbacks close over
-        # the options map they were handed at `define`; replacing the
-        # reference here would leave every binding reading the values the
-        # first apply gave it, and a re-applied document would silently
-        # do nothing.
-        refill(@inst[ref]['options'], options)
+        # the options map they were handed at `define`.
+        refill(@inst[ref]['options'], optionsof[ref])
         @inst[ref]['order'] = ent['order']
         @inst[ref]['pos'] = ent['pos']
-
-        ready(ref) if wantlive
       end
+
+      # --- phase 3: loads, in load order -----------------------------
+      # ONLY THE EAGER, ACTIVE ONES: "a document of twenty lazy instances
+      # is twenty map entries and no executed code" (9.6).
+      want.each { |ref| load(ref) if wantlive.call(ref) }
+
+      # --- phase 4: activations, in load order -----------------------
+      want.each { |ref| activate(ref) if wantlive.call(ref) }
     end
 
     def shapeof(ref)

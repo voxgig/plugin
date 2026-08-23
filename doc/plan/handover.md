@@ -645,6 +645,101 @@ corpus exists to prevent — the same call station's Stage 5 made about
 its own five gated ports.
 
 
+## 16. Review round two: eight canonical defects the PORTS' review found
+
+Codex reviewed the go and python ports and raised twenty-four things.
+**Eight were canonical defects with explicit design backing** — the
+design said one thing and the canonical did another, in every port at
+once, since every port is a faithful translation of the canonical. All
+eight are fixed, pinned and propagated.
+
+The pattern is the one §13 named, at a larger scale: *a rule the design
+states that no corpus entry can distinguish*, and *a code path no corpus
+entry enters*. Reviewing a PORT surfaced them because a reviewer reading
+a second implementation of the same rules asks "why does this do X?"
+where a reviewer reading the original asks "does this do what it says?"
+
+**1. `apply` never unloaded what the document dropped.** §9.6's first
+sentence is "load what is missing, **unload what is gone**, patch what
+changed". `apply` walked only the document's own refs, so an integration
+REMOVED from a config reload stayed live, with its bindings in every
+chain and its resources held. That is the case the method exists for.
+
+**2. `apply` ran one interleaved loop, not §9.6's phases.** "Ordering:
+deactivations and unloads first (reverse load order), then loads, then
+activations in load order." It declared, loaded and activated each ref
+before touching the next, so a plugin's `define` could see a
+half-declared registry. Now four phases, and the log pins them.
+
+**3. `deactivate` fell through on a `failed` instance.** §5.2 makes
+`unload` the only transition out of `failed`. `deactivate` ran the
+definition's callback on an instance that never completed activation
+and, if that callback happened to succeed, returned it to `loaded` —
+from where it could be activated again.
+
+**4. The cascade discarded failures.** A consumer whose own `deactivate`
+raised during a provider cascade was marked `pending`, which handed it
+straight back to `reconcile`: the moment the provider returned, an
+instance whose teardown had failed was activated again.
+
+**5. Callback errors were not wrapped.** §12 defines
+`plugin_define_failed` and its three siblings as "a callback raised;
+wraps the cause", and nothing wrapped anything. An ordinary library
+error escaping a callback reached the caller with **no code at all**, so
+it took part in no cross-port error contract. Invisible because every
+probe raise carried a code of its own. An error that already has a code
+keeps it — the code is the error's identity.
+
+**6. `acquire` and `release` were admitted outside `activate`.** The
+guard tested "a callback is running", not "activate is running", while
+§8.1 puts capture in `activate` and §8.3 names the error. A scope entry
+registered in `define` is **never unwound** — `unload` on a merely
+`loaded` instance does not call `unwind` — so this was a permanent leak
+reachable from ordinary plugin code.
+
+**7. A failing release did nothing at all.** §8.3 promises that every
+entry still runs, that the errors are collected and raised as one
+`plugin_release_failed`, and that the instance ends in `failed`. None of
+it was implemented; `unwind` swallowed. The host reported a clean
+`loaded` for an instance that had failed to give back what it held.
+Invisible because **every release in the probe catalog was infallible**.
+
+**8. Reservation made its own purpose impossible.** §9.1: "The host
+declares those instances itself, after the user merge, and always wins."
+Every path to `declare` was barred, including the embedding host's — so
+`reserved: ['station']` meant station could never install the adapter it
+had reserved the name for. `hostdeclare` is the host-owned path, and its
+boundary is **by method, not by caller**: no language here can tell the
+embedding host from a plugin holding the same host object, and one that
+does can already call `close()`. What reservation protects is
+configuration, which is exactly what §9.1 lists.
+
+### And one row that had been asserting nothing
+
+`resource/scope`'s `stray` entry claimed to call `release` outside a
+lifecycle callback. **Every port's `stray` command was a no-op with a
+comment saying it did**, so the row stayed green whatever the guard did.
+The probe now exports its own instance api and `stray` calls through it.
+
+That is worth more than its size: a corpus row that tests nothing is
+worse than a missing one, because it reads as coverage.
+
+### What the round cost, and what it says about reviewing ports
+
+Three probe options (`greedy.early`, `greedy.markfail`, `noisy.bare`) and
+one export (`probe`'s `inst`) had to be added, because **five of the
+eight defects were unreachable from the probe catalog as it stood**. A
+probe catalog is not a fixture; it is the surface through which the
+corpus can see the library at all, and a rule it cannot reach is a rule
+nothing checks.
+
+Thirty-two mutations across the five ports, thirty-two caught. Two of
+the canonical's own mutations came back as NON-mutations first — a
+redundant `want.indexOf` clause that `wantlive` already covered, and a
+corpus entry of mine that used an unreserved name to test a reservation
+bypass — and both were fixed rather than counted.
+
+
 ## 12. Open, and deliberately so
 
 | | |

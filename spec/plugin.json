@@ -221,6 +221,139 @@
           }
         ]
       },
+      "gone": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/gone#dropped",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1,
+                "result": {
+                  "probe$b": "__UNDEF__"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {},
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$a:activate",
+                  "probe$a:deactivate",
+                  "probe$a:close"
+                ],
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {},
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/gone#declared-untouched",
+            "match": {
+              "out": {
+                "log": [],
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          }
+        ]
+      },
       "idempotent": {
         "set": [
           {
@@ -286,6 +419,86 @@
             "match": {
               "out": {
                 "log": []
+              }
+            }
+          }
+        ]
+      },
+      "phases": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/phases#declare-all-then-activate",
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$b:define",
+                  "probe$a:activate",
+                  "probe$b:activate"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$c"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/phases#reverse-teardown",
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$b:define",
+                  "probe$a:activate",
+                  "probe$b:activate",
+                  "probe$b:deactivate",
+                  "probe$b:close",
+                  "probe$a:deactivate",
+                  "probe$a:close",
+                  "probe$c:define",
+                  "probe$c:activate"
+                ]
               }
             }
           }
@@ -4025,6 +4238,95 @@
           }
         ]
       },
+      "cascadefail": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate",
+                  "requires": [
+                    "s"
+                  ]
+                },
+                "ref": "noisy$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/cascadefail#consumer",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$p": "loaded",
+                  "noisy$c": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate",
+                  "requires": [
+                    "s"
+                  ]
+                },
+                "ref": "noisy$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$p"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "dep$p": "live",
+                  "noisy$c": "failed"
+                }
+              }
+            }
+          }
+        ]
+      },
       "cycle": {
         "set": [
           {
@@ -5934,6 +6236,44 @@
               }
             ],
             "err": "plugin_ref_reserved"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "reserved": [
+                  "probe"
+                ]
+              },
+              {
+                "do": "hostdeclare",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "error/codes#reserved-host-path",
+            "match": {
+              "out": {
+                "result": "probe$a",
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "reserved": [
+                  "probe"
+                ]
+              },
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_ref_reserved"
           }
         ]
       },
@@ -6989,6 +7329,64 @@
           }
         ]
       },
+      "failedexit": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_bad_state",
+            "id": "lifecycle/failedexit#deactivate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "deactivate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          }
+        ]
+      },
       "forward": {
         "set": [
           {
@@ -7558,6 +7956,102 @@
                 "result": 0
               }
             }
+          }
+        ]
+      },
+      "wrap": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bare": true,
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_activate_failed",
+            "id": "lifecycle/wrap#bare-activate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bare": true,
+                  "fail": "define"
+                },
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_define_failed"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "bare": true,
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_deactivate_failed"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bare": true,
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "code": "store_unreachable",
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "store_unreachable",
+            "id": "lifecycle/wrap#own-code-kept"
           }
         ]
       }
@@ -10264,9 +10758,97 @@
                 "ref": "probe$a"
               }
             ],
+            "err": "plugin_release_scope",
+            "id": "resource/scope#stray"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "catch": true,
+                "do": "call",
+                "method": "stray",
+                "ref": "probe$a"
+              }
+            ],
             "match": {
               "out": {
                 "open": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "load",
+                "options": {
+                  "early": "acquire"
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_release_scope",
+            "id": "resource/scope#capture-phase"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "load",
+                "options": {
+                  "early": "release"
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_release_scope"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 2,
+                  "markfail": true
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_release_failed",
+            "id": "resource/scope#release-failed"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 2,
+                  "markfail": true
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "catch": true,
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "greedy$a": "failed"
+                }
               }
             }
           }

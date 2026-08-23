@@ -60,7 +60,10 @@ class Inst:
         resources CURRENTLY HELD, so an entry that is registered and then
         unwound must leave the count where it found it.
         """
-        if not self._host._intransition:
+        # Section 8.3: "`inst.release` outside `activate` is
+        # `plugin_release_scope`". `_intransition` is true in `define`
+        # too, and a scope entry registered there is never unwound.
+        if 'activate' != self._host._phase:
             fail('plugin_release_scope', 'release called outside activate')
         host = self._host
         done = [False]
@@ -82,7 +85,9 @@ class Inst:
         scope still holds the entry and unwinding it twice is a no-op -
         releasing early must not make teardown wrong.
         """
-        if not self._host._intransition:
+        # Section 8.1: resources are "acquired during `activate` - the
+        # scope's actual job". Same reason as `release` above.
+        if 'activate' != self._host._phase:
             fail('plugin_release_scope', 'acquire called outside activate')
         host = self._host
         done = [False]
@@ -166,6 +171,13 @@ class Host:
         self._seqn = 0
         self._open = 0
         self._intransition = False
+        # WHICH callback is running, not merely that one is. Section 8.1
+        # puts resource capture in `activate` and 8.3 says `release`
+        # outside `activate` is `plugin_release_scope` - and
+        # `_intransition` alone cannot tell `activate` from `define`, so
+        # it admitted an acquire in `define` whose scope `unload` would
+        # never unwind.
+        self._phase = None
 
     # --- observation --------------------------------------------------
 
@@ -209,18 +221,33 @@ class Host:
             fail('plugin_ref_reserved', 'ref is reserved by the host: ' + ref,
                  {'ref': ref})
 
-    def _run(self, entry, callback, phase):
+    def _run(self, entry, callback, at):
         fn = entry['def'].get(callback)
-        self._log.append(entry['ref'] + ':' + phase)
-        self._events.append({'ref': entry['ref'], 'event': phase,
+        self._log.append(entry['ref'] + ':' + at)
+        self._events.append({'ref': entry['ref'], 'event': at,
                              'seq': entry['seq'], 'status': entry['status']})
         if not callable(fn):
             return
         self._intransition = True
+        self._phase = at
         try:
             fn(Inst(self, entry))
+        except Exception as err:
+            # Section 12: `plugin_define_failed` and its three siblings
+            # are "a callback raised; wraps the cause". AN ERROR THAT
+            # ALREADY CARRIES A CODE KEEPS IT - the code is the error's
+            # identity, and a plugin raising `store_unreachable` must not
+            # have it rewritten. Only a code-less error is wrapped, which
+            # is the ordinary case for a callback that let a library
+            # error escape.
+            if getattr(err, 'code', None):
+                raise
+            fail('plugin_' + at + '_failed',
+                 entry['ref'] + ' raised in ' + at + ': ' + str(err),
+                 {'ref': entry['ref'], 'cause': str(err)})
         finally:
             self._intransition = False
+            self._phase = None
 
     def autotag(self, name):
         """AUTO-TAGGING IS EXPLICIT (section 4 rule 3).
@@ -244,7 +271,8 @@ class Host:
         if '?' == spec.get('tag'):
             ref = self.autotag(parse_ref(canon_ref(ref))['name'])
         r = canon_ref(ref)
-        self._checkreserved(r)
+        if not spec.get('hostowned'):
+            self._checkreserved(r)
         defname = spec.get('definition') or parse_ref(r)['name']
         definition = self.catalog.get(defname)
         if not definition:
@@ -273,6 +301,23 @@ class Host:
         self._seqn += 1
         self._inst[r] = entry
         return entry
+
+    def hostdeclare(self, ref, spec=None):
+        """Section 9.1: a host that reserves a name MUST still be able to
+        declare the instance it reserved - "The host declares those
+        instances itself, after the user merge, and always wins."
+
+        THE BOUNDARY IS BY METHOD, NOT BY CALLER, and that is a real
+        limit: no language here can tell the embedding host from a plugin
+        holding the same host object. What reservation protects is
+        CONFIGURATION - documents, overlays, `VOXGIG_PLUGIN_*`,
+        construction options and ordinary declare/load/options - and all
+        of that still checks.
+        """
+        self._guard()
+        spec = dict(spec or {})
+        spec['hostowned'] = True
+        return self.declare(ref, spec)
 
     def load(self, ref, spec=None):
         self._guard()
@@ -346,6 +391,11 @@ class Host:
         if entry['status'] in ('loaded', 'declared'):
             return entry
 
+        # Section 5.2: `unload` is THE ONLY TRANSITION OUT OF `failed`.
+        if 'failed' == entry['status']:
+            fail('plugin_bad_state', 'instance has failed: ' + entry['ref'],
+                 {'ref': entry['ref']})
+
         if 'pending' == entry['status']:
             # DEACTIVATING A PENDING INSTANCE RUNS NO CALLBACK (section
             # 5.2). It never reached activate, so it holds no scope and no
@@ -366,7 +416,7 @@ class Host:
             self._unwind(entry)
             entry['status'] = 'failed'
             raise
-        self._unwind(entry)
+        self._releasecheck(entry, self._unwind(entry))
         entry['status'] = 'loaded'
         self._reconcile()
         return entry
@@ -389,7 +439,7 @@ class Host:
                     self._unwind(entry)
                     entry['status'] = 'failed'
                     raise
-                self._unwind(entry)
+                self._releasecheck(entry, self._unwind(entry))
             entry['status'] = 'loaded'
         if entry['status'] in ('loaded', 'failed'):
             try:
@@ -414,13 +464,35 @@ class Host:
 
     def _unwind(self, entry):
         """Bindings go live only when activation succeeds (section 8.1),
-        so the teardown is the exact inverse: reverse order, always."""
+        so the teardown is the exact inverse: reverse order, always.
+
+        Returns the errors the scope raised. Section 8.3: "A failing
+        release does not stop the rest. Every entry runs, in reverse
+        order, whatever any of them does; the errors are collected and
+        raised as one `plugin_release_failed`."
+        """
+        errors = []
         for i in range(len(entry['scope']) - 1, -1, -1):
             try:
                 entry['scope'][i]()
-            except Exception:
-                pass    # a failing release is section 12's problem
+            except Exception as err:
+                errors.append(err)
         entry['scope'] = []
+        return errors
+
+    def _releasecheck(self, entry, errors):
+        """Section 8.3: "A failed release ends the instance in `failed`,
+        exactly as a failed callback does (5.2) - a release that raised
+        may have leaked, and an instance that may be holding resources it
+        cannot account for must not be reactivated."
+        """
+        if 0 == len(errors):
+            return
+        entry['status'] = 'failed'
+        causes = [str(e) for e in errors]
+        fail('plugin_release_failed',
+             'release failed for ' + entry['ref'] + ': ' + '; '.join(causes),
+             {'ref': entry['ref'], 'cause': causes})
 
     def _unmetof(self, entry):
         """A REQUIREMENT IS ON A CAPABILITY, not on a ref (section 11.1) -
@@ -509,11 +581,19 @@ class Host:
             if 'live' != consumer['status']:
                 continue
             self._cascade(consumer, seen)          # deepest-first
+            bad = False
             try:
                 self._run(consumer, 'deactivate', 'deactivate')
             except Exception:
-                pass                                # section 12
-            self._unwind(consumer)
+                bad = True
+            errors = self._unwind(consumer)
+            if bad or 0 < len(errors):
+                # Section 5.2: ANY failure during a transition lands the
+                # instance in `failed`. Marking it `pending` handed it
+                # straight back to `_reconcile`, which would activate it
+                # again the moment the provider returned.
+                consumer['status'] = 'failed'
+                continue
             consumer['status'] = 'pending'
             consumer['unmet'] = self._unmetof(consumer)
 
@@ -578,11 +658,16 @@ class Host:
                 # swap, so it does not restart here.
                 if not any(restartsonloss(q) for q in lost):
                     continue
+                bad = False
                 try:
                     self._run(entry, 'deactivate', 'deactivate')
                 except Exception:
-                    pass
-                self._unwind(entry)
+                    bad = True
+                errors = self._unwind(entry)
+                if bad or 0 < len(errors):
+                    entry['status'] = 'failed'
+                    moved = True
+                    continue
                 entry['status'] = 'pending'
                 entry['unmet'] = self._unmetof(entry)
                 moved = True
@@ -708,6 +793,16 @@ class Host:
     # --- documents ----------------------------------------------------
 
     def apply(self, doc, profile=None):
+        """Section 9.6: "load what is missing, UNLOAD WHAT IS GONE, patch
+        what changed, and move activation state to match", with the
+        stated ordering - "deactivations and unloads first (reverse load
+        order), then loads, then activations in load order".
+
+        FOUR PHASES, NOT ONE INTERLEAVED LOOP. An earlier draft walked
+        the document once, which never looked at instances the new
+        document had DROPPED - so an integration removed from a config
+        reload stayed live with its bindings and resources.
+        """
         self._guard()
         profile = profile or self._opts.get('profile')
         norm = normalize_config({
@@ -715,43 +810,56 @@ class Host:
             'keys': self._opts.get('keys'), 'reserved': self._reserved,
         })
 
-        for ref in norm['order']:
-            ent = norm['instance'][ref]
-            defaults = self._opts.get('defaults') or {}
-            options = resolve_options({
+        want = norm['order']
+        defaults = self._opts.get('defaults') or {}
+        optionsof = {}
+        for ref in want:
+            optionsof[ref] = resolve_options({
                 'ref': ref, 'doc': doc, 'profile': profile,
                 'shape': self._shapeof(ref),
                 'hostdefaults': defaults.get(parse_ref(ref)['name']),
             })
 
-            existing = self._inst.get(ref)
-            wantlive = ent['active'] and 'eager' == ent['start']
+        def wantlive(ref):
+            """Should this ref be LIVE after the apply? False for a ref
+            the document declares lazy or inactive AND for one it does
+            not name at all - which is what makes "unload what is gone"
+            and "unload what was toggled off" one rule rather than two."""
+            ent = norm['instance'].get(ref)
+            return None is not ent and ent['active'] and 'eager' == ent['start']
 
-            # Toggling back to lazy or inactive returns it to `declared`,
-            # BY UNLOADING IT (section 9.6). There is no loaded->declared
-            # transition and there should not be one: going back to
-            # `declared` means "as if never loaded", and an instance that
-            # has run `define` has state and bindings that only `close`
-            # can properly undo.
-            if existing and not wantlive and 'declared' != existing['status']:
-                self.unload(ref)
+        # --- phase 1: deactivations and unloads, REVERSE load order ---
+        drop = [r for r in self._inst
+                if 'declared' != self._inst[r]['status'] and not wantlive(r)]
+        # Highest `pos` first, ref-descending for a tie, so a consumer
+        # declared after its provider goes down first.
+        drop.sort(key=lambda r: (-self._inst[r]['pos'],
+                                 tuple(-ord(c) for c in r)))
+        for ref in drop:
+            self.unload(ref)
 
-            self.declare(ref, {'options': options, 'order': ent.get('order'),
-                               'pos': ent['pos']})
+        # --- phase 2: declare and patch EVERYTHING, in load order -----
+        for ref in want:
+            ent = norm['instance'][ref]
+            self.declare(ref, {'options': optionsof[ref],
+                               'order': ent.get('order'), 'pos': ent['pos']})
             # REFILL rather than REBIND. A definition's callbacks close
-            # over the options map they were handed at `define`; replacing
-            # the reference here would leave every binding reading the
-            # values the first apply gave it, and a re-applied document
-            # would silently do nothing. Clearing and refilling the same
-            # map is portable to every language, unlike a getter or an
-            # interception hook - which the section 18 portability budget
-            # forbids anyway.
-            refill(self._inst[ref]['options'], options)
+            # over the options map they were handed at `define`.
+            refill(self._inst[ref]['options'], optionsof[ref])
             self._inst[ref]['order'] = ent.get('order')
             self._inst[ref]['pos'] = ent['pos']
 
-            if wantlive:
-                self.ready(ref)
+        # --- phase 3: loads, in load order ----------------------------
+        # ONLY THE EAGER, ACTIVE ONES: "a document of twenty lazy
+        # instances is twenty map entries and no executed code" (9.6).
+        for ref in want:
+            if wantlive(ref):
+                self.load(ref)
+
+        # --- phase 4: activations, in load order ----------------------
+        for ref in want:
+            if wantlive(ref):
+                self.activate(ref)
 
     def _shapeof(self, ref):
         definition = self.catalog.get(parse_ref(ref)['name'])

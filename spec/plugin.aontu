@@ -1298,6 +1298,83 @@ primary: lifecycle: {
   ]
 
 
+  # §12's `plugin_<phase>_failed` codes are "a callback raised; wraps the
+  # cause" - and nothing wrapped anything, because every probe raise
+  # carried a code of its own. An ORDINARY error escaping a callback (a
+  # socket that would not open, a library that threw) reached the caller
+  # with no code at all, so it took part in no cross-port error contract.
+  #
+  # AN ERROR THAT ALREADY CARRIES A CODE KEEPS IT: the code is the
+  # error's identity, and a plugin raising `store_unreachable` must not
+  # have it rewritten. Only the code-less case is wrapped.
+  wrap: set: [
+    {
+      id: 'lifecycle/wrap#bare-activate', doc: true
+      cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate', bare: true } }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      err: 'plugin_activate_failed'
+    }
+    {
+      cmd: [ { do: 'load', ref: 'noisy$a', options: { fail: 'define', bare: true } } ]
+      err: 'plugin_define_failed'
+    }
+    {
+      cmd: [
+        { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate', bare: true } }
+        { do: 'deactivate', ref: 'noisy$a' }
+      ]
+      err: 'plugin_deactivate_failed'
+    }
+    # ...and the instance still lands in `failed`, wrapped or not.
+    {
+      cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate', bare: true } }
+        { do: 'activate', ref: 'noisy$a', catch: true }
+      ]
+      match: { out: { status: { 'noisy$a': 'failed' }, open: 0 } }
+    }
+    # A code the plugin chose survives untouched.
+    {
+      id: 'lifecycle/wrap#own-code-kept'
+      cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'store_unreachable' } }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      err: 'store_unreachable'
+    }
+  ]
+
+
+  # `failed` HAS ONE EXIT, AND IT IS `unload` (§5.2). `deactivate` fell
+  # through its state checks, ran the definition's `deactivate` on an
+  # instance that never completed activation, and - if that callback
+  # happened to succeed - returned it to `loaded`, from where it could be
+  # activated again. Found by review of the go port.
+  failedexit: set: [
+    {
+      id: 'lifecycle/failedexit#deactivate', doc: true
+      cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a', catch: true }
+        { do: 'deactivate', ref: 'noisy$a' }
+      ]
+      err: 'plugin_bad_state'
+    }
+    # ...and it stays `failed` rather than being quietly rehabilitated.
+    {
+      cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a', catch: true }
+        { do: 'deactivate', ref: 'noisy$a', catch: true }
+        { do: 'list' }
+      ]
+      match: { out: { result: { 'noisy$a': 'failed' } } }
+    }
+  ]
+
+
   # Illegal transitions raise rather than silently no-op. The idempotent
   # cases above are the ONLY exceptions, and they are pinned there rather
   # than left to the reader.
@@ -2972,6 +3049,38 @@ primary: depend: {
   # The callback log is what makes this checkable rather than asserted:
   # a port that cascades afterwards produces the same STATUSES and a
   # different ORDER, so only the log can tell the two apart.
+  # A CASCADED CONSUMER THAT FAILS ITS OWN TEARDOWN LANDS IN `failed`.
+  #
+  # §5.2: "Any failure during a transition - a lifecycle callback
+  # raising, or a ledger entry raising - lands the instance in `failed`."
+  # The cascade discarded the error and marked the consumer `pending`,
+  # which handed it straight back to `reconcile`: the moment the provider
+  # returned, an instance whose teardown had failed was activated again.
+  # Found by review of the go port.
+  cascadefail: set: [
+    {
+      id: 'depend/cascadefail#consumer', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 's' } ] } }
+        { do: 'ready', ref: 'noisy$c', options: { requires: ['s'], fail: 'deactivate' } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'noisy$c': 'failed' } } }
+    }
+    # ...and it is NOT revived when the provider comes back, which is the
+    # whole reason `failed` is not `pending`.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 's' } ] } }
+        { do: 'ready', ref: 'noisy$c', options: { requires: ['s'], fail: 'deactivate' } }
+        { do: 'deactivate', ref: 'dep$p' }
+        { do: 'activate', ref: 'dep$p' }
+        { do: 'list' }
+      ]
+      match: { out: { result: { 'dep$p': 'live', 'noisy$c': 'failed' } } }
+    }
+  ]
+
   cascade: set: [
     {
       id: 'depend/cascade#consumer-first', doc: true
@@ -3545,12 +3654,75 @@ primary: resource: {
     # `release` outside a lifecycle callback is an error: the scope is
     # the activation's, and a call from anywhere else has no scope to
     # belong to.
+    #
+    # THIS ROW USED TO ASSERT NOTHING. Every port's `stray` command was a
+    # no-op with a comment claiming it called `release`, so the entry
+    # stayed green whatever the guard did — or did not do. The probe now
+    # exports its own instance api and `stray` calls through it. Found by
+    # review of the go port.
     {
+      id: 'resource/scope#stray'
       cmd: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'stray' }
       ]
-      match: { out: { open: 1 } }
+      err: 'plugin_release_scope'
+    }
+    { cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'stray', catch: true }
+      ]
+      match: { out: { open: 1 } } }
+
+    # ...and `acquire` in `define` is the same error, which the guard did
+    # NOT catch: it tested "a callback is running" rather than "activate
+    # is running", and §8.1 puts capture in `activate`. A scope entry
+    # registered in `define` is never unwound at all - `unload` on a
+    # merely `loaded` instance does not call it - so this was a
+    # permanent leak reachable from ordinary plugin code.
+    {
+      id: 'resource/scope#capture-phase'
+      cmd: [
+        { do: 'load', ref: 'greedy$a', definition: 'greedy', options: { early: 'acquire' } }
+      ]
+      err: 'plugin_release_scope'
+    }
+    # `release` carries the guard separately, so it needs its own entry:
+    # a port fixing one and leaving the other would pass the row above.
+    {
+      cmd: [
+        { do: 'load', ref: 'greedy$a', definition: 'greedy', options: { early: 'release' } }
+      ]
+      err: 'plugin_release_scope'
+    }
+
+    # A FAILING RELEASE. §8.3: "A failing release does not stop the rest.
+    # Every entry runs, in reverse order, whatever any of them does; the
+    # errors are collected and raised as one `plugin_release_failed`" -
+    # and "A failed release ends the instance in `failed`".
+    #
+    # None of that was implemented, and nothing exercised it: every
+    # release in the probe catalog was infallible, so `unwind` swallowing
+    # errors was invisible. The host reported a clean `loaded` for an
+    # instance that had failed to give back what it held.
+    {
+      id: 'resource/scope#release-failed'
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy'
+          options: { mark: 2, markfail: true } }
+        { do: 'deactivate', ref: 'greedy$a' }
+      ]
+      err: 'plugin_release_failed'
+    }
+    # EVERY entry still runs - the count returns to zero even though both
+    # releases raised - and the instance ends in `failed`, not `loaded`.
+    {
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy'
+          options: { mark: 2, markfail: true } }
+        { do: 'deactivate', ref: 'greedy$a', catch: true }
+      ]
+      match: { out: { open: 0, status: { 'greedy$a': 'failed' } } }
     }
   ]
 }
@@ -3671,6 +3843,84 @@ primary: apply: {
 
 
   # ADD, REMOVE, PATCH, TOGGLE — the four things a second document can do.
+  # §9.6's FIRST CLAUSE, which nothing implemented: "load what is
+  # missing, UNLOAD WHAT IS GONE, patch what changed". `apply` walked
+  # only the document's own refs, so an instance the new document
+  # DROPPED stayed live, with its bindings in every chain and its
+  # resources held - in the config-reload case the method exists for.
+  # Found by review of the go port.
+  gone: set: [
+    {
+      id: 'apply/gone#dropped', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {}, 'probe$b': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+      ]
+      match: { out: { status: { 'probe$a': 'live' } } }
+    }
+    # It is UNLOADED, not merely deactivated: `probe$b` is absent from
+    # the status map entirely, and its resource is released.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {}, 'probe$b': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'list' }
+      ]
+      match: { out: { result: { 'probe$b': '__UNDEF__' }, open: 1 } }
+    }
+    # ...and `close` ran, which is what makes "as if never loaded" true.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: {} } }
+      ]
+      match: { out: { open: 0, status: {}
+                      log: ['probe$a:define', 'probe$a:activate'
+                            'probe$a:deactivate', 'probe$a:close'] } }
+    }
+    # A ref that was only ever `declared` is left alone rather than
+    # unloaded, because there is nothing to undo and `unload` would run
+    # `close` on an instance that never ran `define`.
+    {
+      id: 'apply/gone#declared-untouched'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
+        { do: 'apply', doc: { plugin: 1, instance: {} } }
+      ]
+      match: { out: { log: [], status: { 'probe$a': 'declared' } } }
+    }
+  ]
+
+
+  # §9.6's ORDERING: "deactivations and unloads first (reverse load
+  # order), then loads, then activations in load order". THREE PHASES,
+  # not one interleaved walk - and the log is the only thing that can
+  # tell them apart, which is why nothing caught it.
+  phases: set: [
+    {
+      id: 'apply/phases#declare-all-then-activate', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
+      ]
+      match: { out: { log: ['probe$a:define', 'probe$b:define'
+                            'probe$a:activate', 'probe$b:activate'] } }
+    }
+    # Unloads come FIRST and in REVERSE load order, so a consumer
+    # declared after its provider goes down before it.
+    {
+      id: 'apply/phases#reverse-teardown'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
+        { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$c' } ] } }
+      ]
+      match: { out: { log: ['probe$a:define', 'probe$b:define'
+                            'probe$a:activate', 'probe$b:activate'
+                            'probe$b:deactivate', 'probe$b:close'
+                            'probe$a:deactivate', 'probe$a:close'
+                            'probe$c:define', 'probe$c:activate'] } }
+    }
+  ]
+
   change: set: [
     # ADD: a new ref appears.
     {
@@ -3847,6 +4097,25 @@ primary: error: {
     { cmd: [
         { do: 'host', reserved: ['station'] }
         { do: 'declare', ref: 'station$a' }
+      ], err: 'plugin_ref_reserved' }
+
+    # ...but THE HOST ITSELF MUST STILL BE ABLE TO DECLARE IT. §9.1:
+    # "The host declares those instances itself, after the user merge,
+    # and always wins." Every path to `declare` was barred, including the
+    # embedding host's, so `reserved: ['station']` made it impossible for
+    # station to install the adapter it had reserved the name for -
+    # a feature that defeated its own purpose. Found by review of the go
+    # port.
+    { id: 'error/codes#reserved-host-path'
+      cmd: [
+        { do: 'host', reserved: ['probe'] }
+        { do: 'hostdeclare', ref: 'probe$a' }
+      ], match: { out: { result: 'probe$a', status: { 'probe$a': 'declared' } } } }
+    # ...while the ordinary path to the same ref stays barred, which is
+    # what makes the pair an assertion rather than a bypass.
+    { cmd: [
+        { do: 'host', reserved: ['probe'] }
+        { do: 'declare', ref: 'probe$a' }
       ], err: 'plugin_ref_reserved' }
   ]
 }

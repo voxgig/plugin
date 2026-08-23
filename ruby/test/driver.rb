@@ -38,6 +38,9 @@ module Driver
         # spell it backwards and make every chain expectation read wrong.
         i.bind('c', ->(nxt, v) { "#{i.options['wrap'] || ':'}#{nxt.call(v)}" }, band)
         i.export('client', i.ref)
+        # The instance api itself, so the driver's `stray` command can
+        # call `release` from OUTSIDE a lifecycle callback.
+        i.export('inst', i)
         declareprovides(i)
       end,
       'activate' => lambda do |i|
@@ -74,7 +77,14 @@ module Driver
 
     greedy = {
       'name' => 'greedy',
-      'define' => ->(i) { i.state['count'] = 0 },
+      'define' => lambda do |i|
+        i.state['count'] = 0
+        # Section 8.1 puts resource capture in `activate`. `early` NAMES
+        # the call that reaches for it in `define`, because `acquire` and
+        # `release` carry the guard separately.
+        i.acquire if i.options['early'] == 'acquire'
+        i.release { nil } if i.options['early'] == 'release'
+      end,
       'activate' => lambda do |i|
         n = i.options['acquire'] || 0
         rel = i.options['release'] || 0
@@ -90,7 +100,14 @@ module Driver
         # DISTINGUISHES A REVERSE UNWIND FROM A FORWARD ONE.
         i.state['unwound'] = []
         (i.options['mark'] || 0).times do |k|
-          i.release { i.state['unwound'] << k }
+          i.release do
+            # `markfail` makes the release RAISE - the only way section
+            # 8.3's `plugin_release_failed` and its `failed` status are
+            # reachable.
+            raise "release failed at #{k}" if i.options['markfail']
+
+            i.state['unwound'] << k
+          end
         end
       end
     }
@@ -131,6 +148,10 @@ module Driver
 
   def self.boom(inst, callback)
     return unless callback == inst.options['fail']
+
+    # `bare` raises WITHOUT a code - the ordinary library error section
+    # 12's `plugin_<phase>_failed` codes exist to wrap.
+    raise "probe failed at #{callback}" if inst.options['bare']
 
     raise VoxgigPlugin::PluginError.new(
       inst.options['code'] || "plugin_#{callback}_failed",
@@ -237,6 +258,10 @@ module Driver
     when 'export' then return [host, host.exports(cmd['key'])]
     when 'capability' then return [host, host.capability(cmd['name'])]
     when 'trace' then return [host, host.trace]
+    when 'hostdeclare'
+      # Section 9.1's host-owned path: the embedding host installing the
+      # instance whose name it reserved.
+      return [host, host.hostdeclare(ref, spec)['ref']]
     when 'declare' then return [host, host.declare(ref, spec)['ref']]
     when 'order' then return [host, host.order(point)]
     when 'seq'
@@ -273,10 +298,10 @@ module Driver
       # it - a plugin asks about itself.
       [host, host.positionof(ref, point)]
     when 'stray'
-      # A release from outside a lifecycle callback. The scope belongs to
-      # the activation; a call from anywhere else has no scope to belong
-      # to, so it raises - and `catch` is not set, so this entry would
-      # fail loudly if it silently succeeded.
+      # A release from OUTSIDE a lifecycle callback. THIS BRANCH USED TO
+      # DO NOTHING, and its corpus row stayed green whatever `release`
+      # did with its guard.
+      host.exports("#{ref}/inst").release { nil }
       [host, NOTHING]
     else
       [host, NOTHING]

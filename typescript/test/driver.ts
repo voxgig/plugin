@@ -31,6 +31,11 @@ export function probes(): Definition[] {
       i.bind('c', (next: any, v: any) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
         i.options && i.options.band)
       i.export('client', i.ref)
+      // The instance api itself, so the driver's `stray` command can
+      // call `release` from OUTSIDE a lifecycle callback — which is the
+      // only way to exercise §8.3's scope guard, and which the command
+      // claimed to do while being a no-op.
+      i.export('inst', i)
       if (i.options && i.options.provides) {
         for (const p of i.options.provides) i.provides(p)
       }
@@ -68,7 +73,17 @@ export function probes(): Definition[] {
 
   const greedy: Definition = {
     name: 'greedy',
-    define: (i: any) => { i.state.count = 0 },
+    define: (i: any) => {
+      i.state.count = 0
+      // §8.1 puts resource capture in `activate`. `early` reaches for it
+      // in `define`, where the scope does not exist yet — a `loaded`
+      // instance is not supposed to hold anything, and `unload` on one
+      // never unwinds. It NAMES the call, because `acquire` and
+      // `release` carry the guard separately and an entry that exercised
+      // only one would leave the other's mutation alive.
+      if (i.options && 'acquire' === i.options.early) i.acquire()
+      if (i.options && 'release' === i.options.early) i.release(() => undefined)
+    },
     activate: (i: any) => {
       const n = i.options.acquire || 0
       const rel = i.options.release || 0
@@ -91,7 +106,14 @@ export function probes(): Definition[] {
       const mark = i.options.mark || 0
       i.state.unwound = []
       for (let k = 0; k < mark; k++) {
-        i.release(() => { i.state.unwound.push(k) })
+        i.release(() => {
+          // `markfail` makes the release RAISE. §8.3 says every entry
+          // still runs, the errors are collected, and the instance ends
+          // in `failed` — none of which any entry exercised while every
+          // release was infallible.
+          if (i.options.markfail) throw new Error('release failed at ' + k)
+          i.state.unwound.push(k)
+        })
       }
     },
   }
@@ -130,6 +152,11 @@ export function probes(): Definition[] {
 
 function boom(i: any, cb: string): void {
   if (i.options && cb === i.options.fail) {
+    // `bare` raises WITHOUT a code — an ordinary library error escaping
+    // a callback, which is the case §12's `plugin_<phase>_failed` codes
+    // exist to wrap and which nothing exercised while every probe raise
+    // carried a code of its own.
+    if (i.options.bare) throw new Error('probe failed at ' + cb)
     const err: any = new Error('probe failed at ' + cb)
     err.code = i.options.code || 'plugin_' + cb + '_failed'
     throw err
@@ -222,6 +249,13 @@ export function drive(cmds: Cmd[]): any {
       case 'export': last = host.exports(c.key); break
       case 'capability': last = host.capability(c.name); break
       case 'trace': last = host.trace(); break
+      case 'hostdeclare':
+        // §9.1's host-owned path: the embedding host installing the
+        // instance whose name it reserved.
+        last = (host as any).hostdeclare(c.ref, {
+          tag: c.tag, options: c.options, order: c.order, definition: c.definition,
+        }).ref
+        break
       case 'declare':
         last = host.declare(c.ref, { tag: c.tag, options: c.options, order: c.order, definition: c.definition }).ref
         break
@@ -254,10 +288,16 @@ export function drive(cmds: Cmd[]): any {
           break
         }
         if ('stray' === c.method) {
-          // A release from outside a lifecycle callback. The scope
+          // A release from OUTSIDE a lifecycle callback. The scope
           // belongs to the activation; a call from anywhere else has no
-          // scope to belong to, so it raises — and `catch` is not set,
-          // so this entry would fail loudly if it silently succeeded.
+          // scope to belong to, so it raises.
+          //
+          // THIS BRANCH USED TO DO NOTHING, and its corpus row stayed
+          // green whatever `release` did with its guard. The probe
+          // exports its own instance api precisely so the call can be
+          // made from here.
+          const strayapi: any = host.exports(c.ref + '/inst')
+          strayapi.release(() => undefined)
           break
         }
         break

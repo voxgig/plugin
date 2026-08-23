@@ -33,6 +33,9 @@ def probes():
         i.bind('c', lambda nxt, v: (i.options.get('wrap') or ':') +
                str(nxt(v)), band)
         i.export('client', i.ref)
+        # The instance api itself, so the driver's `stray` command can
+        # call `release` from OUTSIDE a lifecycle callback.
+        i.export('inst', i)
         declareprovides(i)
 
     def bump(i):
@@ -95,11 +98,21 @@ def probes():
         # the same `open`.
         i.state['unwound'] = []
         for k in range(i.options.get('mark') or 0):
-            i.release(lambda k=k: i.state['unwound'].append(k))
+            i.release(lambda k=k: markrelease(i, k))
+
+    def greedy_define(i):
+        i.state['count'] = 0
+        # Section 8.1 puts resource capture in `activate`. `early` NAMES
+        # the call that reaches for it in `define`, because `acquire` and
+        # `release` carry the guard separately.
+        if 'acquire' == i.options.get('early'):
+            i.acquire()
+        if 'release' == i.options.get('early'):
+            i.release(lambda: None)
 
     greedy = {
         'name': 'greedy',
-        'define': lambda i: i.state.__setitem__('count', 0),
+        'define': greedy_define,
         'activate': greedy_activate,
     }
 
@@ -129,6 +142,14 @@ def probes():
             record('late')]
 
 
+def markrelease(i, k):
+    """`markfail` makes the release RAISE - the only way section 8.3's
+    `plugin_release_failed` and its `failed` status are reachable."""
+    if i.options.get('markfail'):
+        raise Exception('release failed at ' + str(k))
+    i.state['unwound'].append(k)
+
+
 def declareprovides(i):
     for prov in i.options.get('provides') or []:
         i.provides(prov)
@@ -136,6 +157,10 @@ def declareprovides(i):
 
 def boom(i, callback):
     if callback == i.options.get('fail'):
+        # `bare` raises WITHOUT a code - the ordinary library error
+        # section 12's `plugin_<phase>_failed` codes exist to wrap.
+        if i.options.get('bare'):
+            raise Exception('probe failed at ' + callback)
         raise PluginError(i.options.get('code') or ('plugin_' + callback +
                                                     '_failed'),
                           'probe failed at ' + callback)
@@ -276,6 +301,10 @@ def docmd(host, cmd):
         return host, host.capability(cmd.get('name'))
     if 'trace' == verb:
         return host, host.trace()
+    if 'hostdeclare' == verb:
+        # Section 9.1's host-owned path: the embedding host installing
+        # the instance whose name it reserved.
+        return host, host.hostdeclare(ref, spec)['ref']
     if 'declare' == verb:
         return host, host.declare(ref, spec)['ref']
     if 'order' == verb:
@@ -315,9 +344,9 @@ def docall(host, cmd, ref, point):
         # puts it - a plugin asks about itself.
         return host, host.positionof(ref, point)
     if 'stray' == method:
-        # A release from outside a lifecycle callback. The scope belongs
-        # to the activation; a call from anywhere else has no scope to
-        # belong to, so it raises - and `catch` is not set, so this entry
-        # would fail loudly if it silently succeeded.
+        # A release from OUTSIDE a lifecycle callback. THIS BRANCH USED
+        # TO DO NOTHING, and its corpus row stayed green whatever
+        # `release` did with its guard.
+        host.exports(ref + '/inst').release(lambda: None)
         return host, NOTHING
     return host, NOTHING

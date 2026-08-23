@@ -97,6 +97,12 @@ export function makehost(options?: HostOptions) {
   let seqn = 0
   let open = 0
   let intransition = false
+  /** WHICH callback is running, not merely that one is. §8.1 puts
+   * resource capture in `activate` and §8.3 says `inst.release` outside
+   * `activate` is `plugin_release_scope` — and `intransition` alone
+   * cannot tell `activate` from `define`, so it admitted an acquire in
+   * `define` whose scope `unload` would never unwind. */
+  let phase: string | null = null
 
   // --- observation -------------------------------------------------
 
@@ -139,17 +145,31 @@ export function makehost(options?: HostOptions) {
     }
   }
 
-  function run(e: Live, cb: keyof Definition, phase: string): void {
+  function run(e: Live, cb: keyof Definition, at: string): void {
     const fn = e.def[cb] as any
-    log.push(e.ref + ':' + phase)
-    events.push({ ref: e.ref, event: phase, seq: e.seq, status: e.status })
+    log.push(e.ref + ':' + at)
+    events.push({ ref: e.ref, event: at, seq: e.seq, status: e.status })
     if ('function' !== typeof fn) return
     intransition = true
+    phase = at
     try {
       fn(api(e))
     }
+    catch (err: any) {
+      // §12: `plugin_define_failed` and its three siblings are "a
+      // callback raised; wraps the cause". AN ERROR THAT ALREADY
+      // CARRIES A CODE KEEPS IT — the code is the error's identity, and
+      // a plugin that raised `store_unreachable` must not have it
+      // rewritten. Only a code-less error is wrapped, which is the
+      // ordinary case for a callback that let a library error escape.
+      if (err && err.code) throw err
+      fail('plugin_' + at + '_failed',
+        e.ref + ' raised in ' + at + ': ' + (err && err.message),
+        { ref: e.ref, cause: err && err.message })
+    }
     finally {
       intransition = false
+      phase = null
     }
   }
 
@@ -165,7 +185,12 @@ export function makehost(options?: HostOptions) {
       /** Foreign resources the host did not hand out are registered
        * explicitly (§8.3); host calls are recorded automatically. */
       release: (fn: () => void) => {
-        if (!intransition) {
+        // §8.3: "`inst.release` outside `activate` is
+        // `plugin_release_scope`". `intransition` is true in `define`
+        // too, and a scope entry registered there is never unwound —
+        // `unload` on a merely `loaded` instance does not call `unwind`,
+        // because a loaded instance is not supposed to hold anything.
+        if ('activate' !== phase) {
           fail('plugin_release_scope', 'release called outside activate')
         }
         // SYMMETRIC WITH `acquire`, and it has to be: `open` counts the
@@ -186,7 +211,9 @@ export function makehost(options?: HostOptions) {
        * The scope still holds the entry and unwinding it twice is a
        * no-op — releasing early must not make teardown wrong. */
       acquire: (): (() => void) => {
-        if (!intransition) {
+        // §8.1: resources are "acquired during `activate` — the scope's
+        // actual job". Same reason as `release` above.
+        if ('activate' !== phase) {
           fail('plugin_release_scope', 'acquire called outside activate')
         }
         let done = false
@@ -272,12 +299,20 @@ export function makehost(options?: HostOptions) {
     }
   }
 
-  function declare(ref: string, spec?: { definition?: string, options?: any, order?: OrderBlock, pos?: number, tag?: string }): Live {
+  type DeclareSpec = {
+    definition?: string, options?: any, order?: OrderBlock,
+    pos?: number, tag?: string,
+    /** §9.1: "The host declares those instances itself, after the user
+     * merge, and always wins." Set ONLY by `hostdeclare`. */
+    hostowned?: boolean,
+  }
+
+  function declare(ref: string, spec?: DeclareSpec): Live {
     if (spec && '?' === spec.tag) {
       ref = autotag(parseref(canonref(ref)).name)
     }
     const r = canonref(ref)
-    checkreserved(r)
+    if (!(spec && spec.hostowned)) checkreserved(r)
     const s = spec || {}
     const defname = s.definition || parseref(r).name
     const def = catalog.get(defname)
@@ -381,6 +416,16 @@ export function makehost(options?: HostOptions) {
     const e = need(ref)
     if ('loaded' === e.status || 'declared' === e.status) return e
 
+    // §5.2: `unload` is THE ONLY TRANSITION OUT OF `failed`. Falling
+    // through here ran the definition's `deactivate` on an instance that
+    // never completed activation and, if that callback happened to
+    // succeed, returned it to `loaded` — from where it could be
+    // activated again, which is precisely what `failed` exists to
+    // prevent.
+    if ('failed' === e.status) {
+      fail('plugin_bad_state', 'instance has failed: ' + e.ref, { ref: e.ref })
+    }
+
     if ('pending' === e.status) {
       // DEACTIVATING A PENDING INSTANCE RUNS NO CALLBACK (§5.2). It
       // never reached activate, so it holds no scope and no live
@@ -398,13 +443,13 @@ export function makehost(options?: HostOptions) {
 
     try {
       run(e, 'deactivate', 'deactivate')
-      unwind(e)
     }
     catch (err: any) {
       unwind(e)
       e.status = 'failed'
       throw err
     }
+    releasecheck(e, unwind(e))
     e.status = 'loaded'
     reconcile()
     return e
@@ -432,7 +477,7 @@ export function makehost(options?: HostOptions) {
           e.status = 'failed'
           throw err
         }
-        unwind(e)
+        releasecheck(e, unwind(e))
       }
       e.status = 'loaded'
     }
@@ -457,12 +502,34 @@ export function makehost(options?: HostOptions) {
   }
 
   /** Bindings go live only when activation succeeds (§8.1), so the
-   * teardown is the exact inverse: reverse order, always. */
-  function unwind(e: Live): void {
+   * teardown is the exact inverse: reverse order, always.
+   *
+   * Returns the errors the scope raised. §8.3: "A failing release does
+   * not stop the rest. Every entry runs, in reverse order, whatever any
+   * of them does; the errors are collected and raised as one
+   * `plugin_release_failed`." An earlier draft swallowed them, which
+   * left the host reporting a clean `loaded` for an instance that may
+   * still be holding what it failed to give back. */
+  function unwind(e: Live): any[] {
+    const errors: any[] = []
     for (let i = e.scope.length - 1; 0 <= i; i--) {
-      try { e.scope[i]() } catch (err) { /* a failing release is §12's problem, not a leak here */ }
+      try { e.scope[i]() } catch (err) { errors.push(err) }
     }
     e.scope = []
+    return errors
+  }
+
+  /** §8.3: "A failed release ends the instance in `failed`, exactly as a
+   * failed callback does (§5.2) — a release that raised may have leaked,
+   * and an instance that may be holding resources it cannot account for
+   * must not be reactivated." */
+  function releasecheck(e: Live, errors: any[]): void {
+    if (0 === errors.length) return
+    e.status = 'failed'
+    const causes = errors.map((x) => (x && x.message) || String(x))
+    fail('plugin_release_failed',
+      'release failed for ' + e.ref + ': ' + causes.join('; '),
+      { ref: e.ref, cause: causes })
   }
 
   /** A REQUIREMENT IS ON A CAPABILITY, not on a ref (§11.1) — it is a
@@ -548,8 +615,18 @@ export function makehost(options?: HostOptions) {
       const c = inst[r]
       if ('live' !== c.status) continue
       cascade(c, done)                     // deepest-first
-      try { run(c, 'deactivate', 'deactivate') } catch (err) { /* §12 */ }
-      unwind(c)
+      let bad = false
+      try { run(c, 'deactivate', 'deactivate') } catch (err) { bad = true }
+      const errors = unwind(c)
+      if (bad || 0 < errors.length) {
+        // §5.2: ANY failure during a transition lands the instance in
+        // `failed`, and a cascaded consumer is not an exception.
+        // Marking it `pending` instead handed it straight back to
+        // `reconcile`, which would activate it again the moment the
+        // provider returned — the one thing `failed` exists to stop.
+        c.status = 'failed'
+        continue
+      }
       c.status = 'pending'
       c.unmet = unmetof(c)
     }
@@ -605,8 +682,14 @@ export function makehost(options?: HostOptions) {
         // leaves the consumer LIVE and notified; it is a statement
         // about surviving a swap, so it does not restart here.
         if (lost.every((q) => !restartsonloss(q))) continue
-        try { run(e, 'deactivate', 'deactivate') } catch (err) { /* → failed below */ }
-        unwind(e)
+        let bad = false
+        try { run(e, 'deactivate', 'deactivate') } catch (err) { bad = true }
+        const errors = unwind(e)
+        if (bad || 0 < errors.length) {
+          e.status = 'failed'
+          moved = true
+          continue
+        }
         e.status = 'pending'
         e.unmet = unmetof(e)
         moved = true
@@ -725,6 +808,18 @@ export function makehost(options?: HostOptions) {
 
   // --- documents ---------------------------------------------------
 
+  /** §9.6: "load what is missing, UNLOAD WHAT IS GONE, patch what
+   * changed, and move activation state to match", with the stated
+   * ordering — "deactivations and unloads first (reverse load order),
+   * then loads, then activations in load order".
+   *
+   * THREE PHASES, NOT ONE INTERLEAVED LOOP, and both halves matter. An
+   * earlier draft walked the document once, unloading and activating per
+   * ref, which (a) never looked at instances the new document had
+   * DROPPED, so an integration removed from a config reload stayed live
+   * with its bindings and resources — the case this method exists for —
+   * and (b) activated the first instance before the second was declared,
+   * which is not the order §9.6 states. */
   function apply(doc: any, profile?: string): void {
     guard()
     const norm = normalizeconfig({
@@ -732,39 +827,81 @@ export function makehost(options?: HostOptions) {
       keys: opts.keys, reserved,
     })
 
-    for (let i = 0; i < norm.order.length; i++) {
-      const ref = norm.order[i]
-      const ent: Instance = norm.instance[ref]
-      const options = resolveoptions({
+    const want = norm.order
+    const optionsof: { [ref: string]: any } = {}
+    for (const ref of want) {
+      optionsof[ref] = resolveoptions({
         ref, doc, profile: profile || opts.profile,
-        shape: shapeof(ref), hostdefaults: opts.defaults && opts.defaults[parseref(ref).name],
+        shape: shapeof(ref),
+        hostdefaults: opts.defaults && opts.defaults[parseref(ref).name],
       })
+    }
 
-      const existing = inst[ref]
-      const wantlive = ent.active && 'eager' === ent.start
+    /** Should this ref be LIVE after the apply? False for a ref the
+     * document declares lazy or inactive AND for one it does not name at
+     * all — which is what makes "unload what is gone" and "unload what
+     * was toggled off" one rule rather than two. */
+    const wantlive = (ref: string): boolean => {
+      const ent = norm.instance[ref]
+      return undefined !== ent && ent.active && 'eager' === ent.start
+    }
 
-      // Toggling back to lazy or inactive returns it to `declared`, BY
-      // UNLOADING IT (§9.6). There is no loaded->declared transition and
-      // there should not be one: going back to `declared` means "as if
-      // never loaded", and an instance that has run `define` has state
-      // and bindings that only `close` can properly undo.
-      if (existing && !wantlive && 'declared' !== existing.status) {
-        unload(ref)
-      }
+    // --- phase 1: deactivations and unloads, in REVERSE load order ---
+    //
+    // Two populations, and the second is the one that was missing: refs
+    // the document no longer names at all, and refs it now names as lazy
+    // or inactive. Toggling back to lazy or inactive returns an instance
+    // to `declared` BY UNLOADING IT (§9.6) — there is no loaded->declared
+    // transition and there should not be one, because an instance that
+    // has run `define` has state and bindings that only `close` can
+    // properly undo.
+    const drop: string[] = []
+    for (const ref of Object.keys(inst)) {
+      if ('declared' === inst[ref].status) continue
+      if (!wantlive(ref)) drop.push(ref)
+    }
+    // Reverse load order: highest `pos` first, ref-descending for a tie,
+    // so a consumer declared after its provider goes down first.
+    drop.sort((a, b) => (inst[b].pos - inst[a].pos) || (a < b ? 1 : a > b ? -1 : 0))
+    for (const ref of drop) unload(ref)
 
-      declare(ref, { options, order: ent.order, pos: ent.pos })
+    // --- phase 2: declare and patch EVERYTHING, in load order --------
+    for (const ref of want) {
+      const ent: Instance = norm.instance[ref]
+      declare(ref, { options: optionsof[ref], order: ent.order, pos: ent.pos })
       // REFILL rather than REBIND. A definition's callbacks close over
       // the options map they were handed at `define`; replacing the
       // reference here would leave every binding reading the values the
-      // first apply gave it, and a re-applied document would silently
-      // do nothing. Clearing and refilling the same map is portable to
-      // every language, unlike a getter or an interception hook — which
-      // the §18 portability budget forbids anyway.
-      refill(inst[ref].options, options)
+      // first apply gave it, and a re-applied document would silently do
+      // nothing. Clearing and refilling the same map is portable to every
+      // language, unlike a getter or an interception hook — which the
+      // §18 portability budget forbids anyway.
+      refill(inst[ref].options, optionsof[ref])
       inst[ref].order = ent.order
       inst[ref].pos = ent.pos
+    }
 
-      if (wantlive) ready(ref)
+    // --- phase 3: loads, in load order -------------------------------
+    //
+    // ONLY THE EAGER, ACTIVE ONES. §9.6: "`apply` declares everything
+    // and activates only what asked for it… A document of twenty lazy
+    // instances is therefore twenty map entries and no executed code."
+    for (const ref of want) {
+      if (wantlive(ref)) load(ref)
+    }
+
+    // --- phase 4: activations, in load order -------------------------
+    //
+    // Separate from the loads because §9.6 names them separately, and
+    // the difference is observable: every `define` runs before the first
+    // `activate`, so a plugin cannot see a half-built registry.
+    //
+    // Activation order does not have to be dependency-sorted (§9.6):
+    // under §11 activation is a standing request, so a consumer
+    // activated before its provider sits in `pending` until the provider
+    // arrives a few lines later in the same plan.
+    for (const ref of want) {
+      if (wantlive(ref)) activate(ref)
     }
   }
 
@@ -832,8 +969,30 @@ export function makehost(options?: HostOptions) {
     }
   }
 
+  /** §9.1: a host that reserves a name MUST still be able to declare
+   * the instance it reserved — "The host declares those instances
+   * itself, after the user merge, and always wins."
+   *
+   * Without this, `reserved` was a feature that made its own purpose
+   * impossible: every path to `declare` was barred, including the
+   * embedding host's, so reserving `station` meant station could never
+   * install the adapter it had reserved the name for.
+   *
+   * THE BOUNDARY IS BY METHOD, NOT BY CALLER, and that is a real limit
+   * rather than an oversight. No language here can tell the embedding
+   * host from a plugin holding the same host object — and a plugin that
+   * holds it can already call `close()`. What reservation protects is
+   * CONFIGURATION: documents, profile overlays, `VOXGIG_PLUGIN_*`,
+   * construction options and ordinary `declare`/`load`/`options` calls.
+   * That is what §9.1 lists, and all of it still goes through the
+   * check. */
+  function hostdeclare(ref: string, spec?: DeclareSpec): Live {
+    guard()
+    return declare(ref, { ...(spec || {}), hostowned: true })
+  }
+
   const self = {
-    catalog, list, instance, order, observable,
+    catalog, list, instance, order, observable, hostdeclare,
     trace: () => events.slice(),
     autotag, positionof,
     emit, call, provider: provide, shadowed, exports, capability,
