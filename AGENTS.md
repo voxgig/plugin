@@ -4,9 +4,12 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P0.** The repository skeleton exists and turns over. There is
-no code in any language yet, and the corpus is empty. What that means
-for you is in "Where to start" at the bottom.
+**Status: P1, in progress.** The skeleton turns over and **four corpus
+sections are written** — `ref` and `config` (C1), `lifecycle` and
+`order` (C2), 204 entries — alongside the draft driver contract in
+`DOCS.md` §4. There is still no code in any language. What that means
+for you is in "Where to start" at the bottom, and the live per-item
+state is [`doc/plan/status.md`](doc/plan/status.md).
 
 
 ## 1. Prime directives
@@ -200,18 +203,23 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0 is done: the skeleton exists, `make spec` and `make spec-check` run
-on an empty corpus, and `make parity` reports the canonical surface.
+P0 is done. **P1 is under way**, and its first deliverables — the two
+owed to station — are written:
 
-**P1 is next**, and its first deliverables are the two owed to station,
-not its last:
+1. ~~`spec/plugin.aontu` gains `ref` and `config`~~ — **done**, 151
+   entries, pure.
+2. ~~`DOCS.md` gains the draft driver contract (§15.2), then
+   `spec/plugin.aontu` gains `lifecycle` and `order`~~ — **done**, 53
+   entries, landed together because a driver section without its
+   contract is not shippable.
+3. `typescript/` — **next**. The tracer bullet of §18's P1, written to
+   the portability budget above.
+4. `tools/check_probes.py` — also unblocked now the probe catalog
+   exists; the cheaper of the two.
 
-1. `spec/plugin.aontu` gains `ref` and `config` — pure data, so the
-   files are the whole deliverable.
-2. `DOCS.md` gains the draft driver contract (§15.2), then
-   `spec/plugin.aontu` gains `lifecycle` and `order`.
-3. `typescript/` — the tracer bullet of §18's P1, written to the
-   portability budget above.
+Neither 1 nor 2 counts as discharged until it **merges** — see
+[`doc/plan/contracts.md`](doc/plan/contracts.md), which is the
+authority on what is owed and what has actually landed.
 
 Cross-repo sequencing, and what this repo owes station and when, is in
 [station-and-plugin-plan.md](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md).

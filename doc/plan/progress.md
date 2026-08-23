@@ -32,12 +32,13 @@ The four cross-repo obligations have their own register in
 | Item | Status | Notes |
 |---|---|---|
 | 1.0 The plan register | DONE | This file and its four companions. §18.1 requires each phase to update the register in the same change that lands the work, so it exists before the work does. |
-| 1.1 `ref` corpus section (**C1**) | DONE | 93 entries, 9 groups, no host. Pure as marked — but §15.3 also lists auto-tag and `pos`/`seq` under `ref`, and neither is reachable from the pure surface; see [`handover.md`](handover.md) §5. |
-| 1.2 `config` corpus section (**C1**) | DONE | 58 entries, 12 groups, no host. All four pinned items covered, plus the partial-array rule and host key renaming. |
+| 1.1 `ref` corpus section (**C1**) | DONE | 93 entries, 9 groups, no host. **Covers the pure surface only** — grammar, parse, format, canonicalization, both predicates, the 1024 bound. It does **not** cover auto-tag or `pos`/`seq`, which §15.3 also lists under `ref`; that gap is item **1.7**, not a footnote here. |
+| 1.2 `config` corpus section (**C1**) | DONE | 84 entries, 13 groups, no host. All four pinned items, the partial-array rule, host key renaming, and the `optionlayers` split (see [`handover.md`](handover.md) §9). |
 | 1.3 Draft driver contract in `DOCS.md` (**C2**) | DONE | `DOCS.md` §4: how an entry runs, 17 verbs, the 6-probe catalog, the ordering block, the observable, and what a port must not do. Landed *with* 1.4. |
 | 1.4 `lifecycle` and `order` corpus sections (**C2**) | DONE | 31 + 22 entries. Driver sections, landed in the same change as the contract that makes them runnable. |
 | 1.5 `typescript/` — the canonical | NOT STARTED | Written to the portability budget (§18, and AGENTS.md "Sharp edges"). |
 | 1.6 `tools/check_probes.py` | NOT STARTED | **Unblocked** — 1.3 landed the probe catalog to check against. `make probes` still reports its own absence rather than passing silently. |
+| 1.7 Relocate auto-tag and `pos`/`seq`, and correct §15.3 | NOT STARTED | §15.3 marks `ref` pure while assigning it auto-tag and `pos`/`seq`, neither of which the pure surface can reach. `pos` belongs to `config`, auto-tag and `seq` to a driver section (`declare`). **Until this lands, those three identity behaviours are pinned by nothing**, so ports can diverge on them while passing a green `ref`. See [`handover.md`](handover.md) §5. |
 
 ## Phase 2 — the canonical completed
 
@@ -67,6 +68,7 @@ The four cross-repo obligations have their own register in
 | Item | Status | Notes |
 |---|---|---|
 | 5.1 Fourteen tier-3 ports | NOT STARTED | A model change costs ~15 ports from here. |
-| 5.2 Does station take the library as a dependency? | DECISION NEEDED | Deferred here **by design**, and non-blocking for station's native rollout. |
+| 5.2 Does station take the library as a dependency? | DECISION NEEDED | Deferred here **by design**, and non-blocking for station's native rollout. Decides only whether station's ports later *replace* their native implementation, and the +800-lines-per-port trade. |
+| 5.3 Does station hold Stage 5 after ts/js until P4? | DECISION NEEDED | **station's call, not this repo's** — recorded here because P4 is what it waits on. P4 is scheduled early to make model changes cheap; station porting fourteen languages first makes them expensive again, in the other repo. The alternative is to accept divergence and budget a migration pass, said out loud rather than discovered. |
 | 6.1 Six tier-4 ports | NOT STARTED | |
 | 6.2 Does sdkgen adopt plugin? (§17.2) | DECISION NEEDED | Open, uncommitted, and carries a propagation cost across 23 template trees. Gates nested hosts *natively*, deletion of `transport`, and the seventeen-model change. |

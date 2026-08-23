@@ -211,7 +211,60 @@ class this repo exists to avoid, and it is the same argument that
 rejected `{"deep": 0}` in §9.4.
 
 
-## 8. Open, and deliberately so
+## 8. What review found that writing did not
+
+Fifteen findings across two rounds on the C1/C2 PR, all fifteen
+genuine. Three are worth keeping beyond the fixes.
+
+**A chain of adjacent comparisons does not pin a total order.** The
+ten-level ladder was tested one step at a time — level 2 beats 1, 3
+beats 2, and so on. That constrains the whole order only if the
+relation is already known transitive, and a resolver applying layers in
+the wrong sequence can satisfy every adjacent pair while inverting a
+non-adjacent one. The case that actually bit: nothing required
+environment options to beat the *selected profile's* values, because
+level 7 was only ever compared with level 4. The group now carries
+sparse non-adjacent pairs and an all-ten-at-once case.
+
+**A corpus written in one alphabet pins one alphabet.** The load-order
+cases used only lowercase refs, for which bytewise, locale-aware and
+case-folded comparators all agree. Refs admit uppercase and `@`, which
+is exactly where the three diverge: bytewise gives
+`@scope/x, A, B, a, b` and case-folding gives `@scope/x, a, A, B, b`.
+The all-lowercase cases were unfalsifiable.
+
+**A pure group cannot pin when something happens.** The `$MERGE` domain
+entries call `resolveoptions` with the shape already in hand, so they
+prove *which* values are rejected and nothing about §9.4's requirement
+that the raise happen at **catalog insertion**. A port accepting an
+invalid shape and raising only at resolution time passed all of them.
+That is the same shape as §5's finding — the group now says what it
+does not cover instead of claiming coverage it cannot have.
+
+The general lesson, and it is the one to carry into `typescript/`:
+**a corpus entry is only worth what it can falsify.** Each of these
+passed for every implementation, correct or not, which makes them
+documentation rather than contract.
+
+
+## 9. Normalization does not merge options, and that is forced
+
+One contract decision came out of the same round. `normalizeconfig`
+merges the *entry* keys (`active`, `start`, `order`) across base and
+profile — §9.3's defaults-after-merge rule is about those — but leaves
+option data as **`optionlayers`**, the levels 3-6 that are present, in
+ladder order.
+
+The split is forced rather than chosen. §9.4 makes merge behaviour a
+property of the definition's option **shape**, which normalization has
+never seen. A normalizer that flattened the layers would make
+`$MERGE: append` unimplementable at load time: the layers it needed to
+concatenate are already collapsed. Preserving them is what keeps
+normalize-then-resolve equivalent to resolve-on-raw, and the corpus
+header now states it.
+
+
+## 10. Open, and deliberately so
 
 | | |
 |---|---|

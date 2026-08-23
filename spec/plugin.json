@@ -53,9 +53,11 @@
               "out": {
                 "instance": {
                   "retry": {
-                    "options": {
-                      "retries": 3
-                    }
+                    "optionlayers": [
+                      {
+                        "retries": 3
+                      }
+                    ]
                   }
                 }
               }
@@ -76,6 +78,128 @@
               "out": {
                 "order": [
                   "stripe"
+                ]
+              }
+            }
+          },
+          {
+            "id": "config/normarray#mapkey-canon",
+            "in": {
+              "doc": {
+                "instance": {
+                  "stripe$": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "stripe": "__EXISTS__"
+                },
+                "order": [
+                  "stripe"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "normdefaultmap": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normdefaultmap#inert",
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {},
+                "order": []
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "nobody": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "instance": {
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "a": 1
+                    }
+                  }
+                },
+                "instance": {
+                  "stripe": {},
+                  "stripe$test": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stripe",
+                  "stripe$test"
                 ]
               }
             }
@@ -114,9 +238,11 @@
                 "instance": {
                   "pad$a": {
                     "active": false,
-                    "options": {
-                      "base": "https://prod.example"
-                    }
+                    "optionlayers": [
+                      {
+                        "base": "https://prod.example"
+                      }
+                    ]
                   }
                 }
               }
@@ -204,13 +330,15 @@
               "out": {
                 "instance": {
                   "outer": {
-                    "options": {
-                      "instance": {
-                        "inner": {
-                          "active": false
+                    "optionlayers": [
+                      {
+                        "instance": {
+                          "inner": {
+                            "active": false
+                          }
                         }
                       }
-                    }
+                    ]
                   }
                 }
               }
@@ -244,9 +372,48 @@
             },
             "match": {
               "out": {
+                "default": {
+                  "retry": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
                 "order": [
                   "retry"
                 ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "api": {
+                  "retry": {
+                    "options": {
+                      "t": 9
+                    }
+                  }
+                },
+                "plugin": 1,
+                "sdk": {
+                  "retry$a": {}
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              }
+            },
+            "match": {
+              "out": {
+                "default": {
+                  "retry": {
+                    "options": {
+                      "t": 9
+                    }
+                  }
+                }
               }
             }
           },
@@ -283,9 +450,14 @@
               "out": {
                 "instance": {
                   "retry": {
-                    "options": {
-                      "t": 2
-                    }
+                    "optionlayers": [
+                      {
+                        "t": 1
+                      },
+                      {
+                        "t": 2
+                      }
+                    ]
                   }
                 }
               }
@@ -312,9 +484,11 @@
               "out": {
                 "instance": {
                   "retry": {
-                    "options": {
-                      "sdk": "untouched"
-                    }
+                    "optionlayers": [
+                      {
+                        "sdk": "untouched"
+                      }
+                    ]
                   }
                 }
               }
@@ -364,6 +538,32 @@
                   "stripe",
                   "stripe$eu",
                   "stripe$test"
+                ]
+              }
+            }
+          },
+          {
+            "id": "config/normmap#bytewise",
+            "in": {
+              "doc": {
+                "instance": {
+                  "@scope/x": {},
+                  "A": {},
+                  "B": {},
+                  "a": {},
+                  "b": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "@scope/x",
+                  "A",
+                  "B",
+                  "a",
+                  "b"
                 ]
               }
             }
@@ -445,6 +645,92 @@
                   "alpha": "__EXISTS__",
                   "retry": "__EXISTS__",
                   "zeta": "__EXISTS__"
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normpartial#introduce",
+            "in": {
+              "doc": {
+                "instance": {
+                  "retry": {}
+                },
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "audit$eu": {
+                        "options": {
+                          "region": "eu"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "audit$eu": {
+                    "optionlayers": [
+                      {
+                        "region": "eu"
+                      }
+                    ]
+                  }
+                },
+                "order": [
+                  "audit$eu",
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "id": "config/normpartial#arrayoptions",
+            "in": {
+              "doc": {
+                "instance": {
+                  "zeta": {
+                    "options": {
+                      "a": 1
+                    }
+                  }
+                },
+                "plugin": 1,
+                "profile": {
+                  "dev": {
+                    "instance": [
+                      {
+                        "active": false,
+                        "options": {
+                          "b": 2
+                        },
+                        "ref": "zeta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "profile": "dev"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "zeta": {
+                    "active": false,
+                    "optionlayers": [
+                      {
+                        "a": 1
+                      },
+                      {
+                        "b": 2
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -855,6 +1141,268 @@
             "out": {
               "t": 10
             }
+          },
+          {
+            "id": "config/optladder#7-beats-6",
+            "in": {
+              "doc": {
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "in": {
+              "patch": {
+                "t": 10
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 10
+            }
+          },
+          {
+            "in": {
+              "hostdefaults": {
+                "t": 2
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 8
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                }
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 9
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 6
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "t": 7
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "id": "config/optladder#all-ten",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    },
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "hostdefaults": {
+                "t": 2
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "patch": {
+                "t": 10
+              },
+              "profile": "p",
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 10
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    },
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "hostdefaults": {
+                "t": 2
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "profile": "p",
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 9
+            }
           }
         ]
       },
@@ -1177,6 +1725,266 @@
                 "b": 2
               }
             }
+          },
+          {
+            "id": "config/optmerge#replace-at-patch",
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "hostoptions": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "loadoptions": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x"
+                      ]
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "p": [
+                  "y"
+                ]
+              },
+              "ref": "r",
+              "shape": {
+                "p": {
+                  "$MERGE": "append"
+                }
+              }
+            },
+            "out": {
+              "p": [
+                "x",
+                "y"
+              ]
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "feature": {
+                        "retry": {
+                          "headers": {
+                            "a": 1
+                          },
+                          "n": 3
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "feature": {
+                  "retry": {
+                    "headers": {
+                      "c": 3
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "feature": {
+                  "$MERGE": {
+                    "deep": 2
+                  }
+                }
+              }
+            },
+            "out": {
+              "feature": {
+                "retry": {
+                  "headers": {
+                    "c": 3
+                  },
+                  "n": 3
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x",
+                        "y",
+                        "z"
+                      ]
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "p": [
+                  "a"
+                ]
+              },
+              "ref": "r"
+            },
+            "out": {
+              "p": [
+                "a"
+              ]
+            }
           }
         ]
       },
@@ -1295,6 +2103,7 @@
           },
           {
             "err": true,
+            "id": "config/optmergebad#names-key",
             "in": {
               "ref": "r",
               "shape": {
@@ -1308,6 +2117,25 @@
             "match": {
               "err": {
                 "message": "/m/"
+              }
+            }
+          },
+          {
+            "err": true,
+            "id": "config/optmergebad#names-directive",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 0
+                  }
+                }
+              }
+            },
+            "match": {
+              "err": {
+                "message": "/\\$MERGE/"
               }
             }
           }
@@ -3276,6 +4104,22 @@
               "@x"
             ],
             "err": "plugin_bad_tag"
+          },
+          {
+            "args": [
+              "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              ""
+            ],
+            "err": "plugin_bad_name",
+            "id": "ref/formatbad#name-overlong"
+          },
+          {
+            "args": [
+              "x",
+              "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ],
+            "err": "plugin_bad_tag",
+            "id": "ref/formatbad#tag-overlong"
           }
         ]
       },
@@ -3566,6 +4410,16 @@
           {
             "err": "plugin_bad_tag",
             "in": "a$b!c"
+          },
+          {
+            "err": "plugin_bad_name",
+            "id": "ref/parsebad#name-overlong",
+            "in": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "id": "ref/parsebad#tag-overlong",
+            "in": "x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
           }
         ]
       },

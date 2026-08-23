@@ -55,10 +55,14 @@ real work. It is the phase's third deliverable by design.
 Two decisions, neither the implementer's to make. Both are recorded in
 [`progress.md`](progress.md) and neither blocks P1.
 
-| Decision | Gates | Note |
+**Three**, and each has a row in [`progress.md`](progress.md) — this
+table is the summary, that file is the authority. None blocks P1.
+
+| Decision | Register row | Gates |
 |---|---|---|
-| **Does station hold its Stage 5 after ts/js until P4?** | station's fourteen remaining ports | Plugin scheduled P4 early to make model changes cheap; station porting first makes them expensive again, in the other repo. The honest alternative is to accept divergence and budget a migration pass — but say so rather than discover it. |
-| **Does sdkgen adopt plugin?** (§17.2) | nested hosts natively, `transport`'s deletion, the seventeen-model change | Uncommitted. If it never adopts, station is a sixteen-language library carrying a generic abstraction for a single consumer — the risk that invalidates the plan rather than delaying it. |
+| **Does station hold Stage 5 after ts/js until P4?** | 5.3 | station's fourteen remaining ports. P4 is scheduled early to make model changes cheap; porting first makes them expensive again, in the other repo. The alternative is to accept divergence and budget a migration pass — said out loud rather than discovered. |
+| **Does station take the library as a dependency?** | 5.2 | Only whether station's ports later *replace* their native implementation, and the +800-lines-per-port trade. Deferred to P5 by design and **non-blocking** for the native rollout. |
+| **Does sdkgen adopt plugin?** (§17.2) | 6.2 | Nested hosts natively, `transport`'s deletion, the seventeen-model change. Uncommitted. If it never adopts, station is a sixteen-language library carrying a generic abstraction for a single consumer — the risk that invalidates the plan rather than delaying it. |
 
 
 ## Recently settled

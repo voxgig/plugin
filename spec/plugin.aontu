@@ -7,18 +7,21 @@
 # tests. Edit this file, run `npm run build-spec` in tools/, and commit
 # both. Never hand-edit the JSON (§16, prime directive 5).
 #
-# THIS CORPUS IS EMPTY, AND THAT IS P0's EXIT CRITERION.
+# STATUS: P1 IN PROGRESS. Four sections are written — `ref` and `config`
+# (C1), `lifecycle` and `order` (C2). The rest are listed below and are
+# not yet delivered.
 #
-# P0 builds the machinery and proves it turns over: `make spec` compiles
-# this file and `make spec-check` proves the committed JSON matches it.
-# Both must work before there is anything to compile, because a corpus
-# pipeline first exercised on real data is one whose failures arrive mixed
-# up with the data's.
+# P0 built the machinery and proved it turns over on an EMPTY corpus,
+# which was its exit criterion: `make spec` compiles this file and
+# `make spec-check` proves the committed JSON matches it. Both worked
+# before there was anything to compile, because a corpus pipeline first
+# exercised on real data is one whose failures arrive mixed up with the
+# data's.
 #
 # P1 fills it in, and the order is an obligation rather than a preference
 # (see station's station-and-plugin-plan.md §3):
 #
-#   C1, owed BEFORE station's Stage 2 — earlier than P1's own exit:
+#   C1 — WRITTEN. Owed before station's Stage 2, earlier than P1's exit:
 #     ref      name/tag grammar, parse, format, canonicalization,
 #              auto-tag, `pos` vs `seq` across a redeclaration
 #     config   document normalization, array/map forms, the `default`
@@ -26,7 +29,8 @@
 #              defaults-after-merge, shape-declared merge depth,
 #              list-replace
 #
-#   C2, owed before P1's exit, together with the draft driver contract in
+#   C2 — WRITTEN, with the driver contract in DOCS.md §4. Owed before
+#   P1's exit, together with that contract in
 #   DOCS.md (§15.2 — probes, command vocabulary, canonical observable),
 #   because these two are DRIVER sections and a port cannot run them from
 #   corpus files alone:
@@ -149,6 +153,13 @@ primary: ref: {
     { in: 'a$@b', err: 'plugin_bad_tag' }
     { in: 'a$b c', err: 'plugin_bad_tag' }
     { in: 'a$b!c', err: 'plugin_bad_tag' }
+
+    # The 1024 maximum applies to the PUBLIC REFERENCE OPERATIONS, not
+    # only to the predicates. A port implementing checkname/checktag
+    # separately from parseref would otherwise pass `bound` while its
+    # parser happily accepted a 1025-character component.
+    { id: 'ref/parsebad#name-overlong', in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', err: 'plugin_bad_name' }
+    { id: 'ref/parsebad#tag-overlong', in: 'x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', err: 'plugin_bad_tag' }
   ]
 
 
@@ -175,6 +186,11 @@ primary: ref: {
     { args: ['stripe', 'a/b'], err: 'plugin_bad_tag' }
     { args: ['stripe', 'a$b'], err: 'plugin_bad_tag' }
     { args: ['stripe', '@x'], err: 'plugin_bad_tag' }
+
+    # And through formatref, which is the other public operation the
+    # maximum applies to.
+    { id: 'ref/formatbad#name-overlong', args: ['abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', ''], err: 'plugin_bad_name' }
+    { id: 'ref/formatbad#tag-overlong', args: ['x', 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'], err: 'plugin_bad_tag' }
   ]
 
 
@@ -247,6 +263,12 @@ primary: ref: {
   # The 1024-character bound, pinned at the boundary in both directions.
   # A bound stated in prose and absent from the corpus is not a contract,
   # and off-by-one at a length limit is the classic per-port divergence.
+  #
+  # THESE TWO GROUPS ARE NOT THE WHOLE BOUND. They exercise the
+  # predicates; `parsebad` and `formatbad` carry the matching over-limit
+  # cases for the public reference operations, because a port may
+  # implement the four functions independently and only the predicates
+  # would be constrained here.
   bound: set: [
     { id: 'ref/bound#name-max', doc: true, in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', out: true }
     { in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', out: false }
@@ -276,6 +298,20 @@ primary: ref: {
 #             -> { instance, order, default, ... }
 #           `order` is the load order: array position for the array form,
 #           sorted refs for the map form.
+#
+#           NORMALIZATION DOES NOT MERGE OPTIONS. It merges the ENTRY
+#           keys (`active`, `start`, `order`) across base and profile,
+#           because §9.3's defaults-after-merge rule is about those; it
+#           leaves option data as `optionlayers`, the levels 3-6 that are
+#           present, IN LADDER ORDER.
+#
+#           That split is forced rather than chosen. §9.4 makes merge
+#           behaviour a property of the definition's option SHAPE, which
+#           normalization has never seen — a normalizer that flattened
+#           the layers would make `$MERGE: append` unimplementable at
+#           load time, since the layers it needed to concatenate are
+#           already collapsed. Preserving them is what keeps
+#           normalize-then-resolve equivalent to resolve-on-raw.
 #
 #   opt*    resolveoptions({ ref, shape?, hostdefaults?, doc?, profile?,
 #                            env?, hostoptions?, loadoptions?, patch? })
@@ -317,6 +353,15 @@ primary: config: {
       in: { doc: { plugin: 1, instance: { 'stripe$test': {}, stripe: {}, 'stripe$eu': {} } } }
       match: { out: { order: ['stripe', 'stripe$eu', 'stripe$test'] } }
     }
+    # BYTEWISE, not locale-aware and not case-folded. All-lowercase
+    # cases pass under all three comparators, so they pin nothing; refs
+    # admit uppercase and `@`, and those are where the three disagree.
+    # '@' is 0x40, uppercase 0x41-0x5A, lowercase 0x61-0x7A.
+    {
+      id: 'config/normmap#bytewise'
+      in: { doc: { plugin: 1, instance: { a: {}, A: {}, '@scope/x': {}, B: {}, b: {} } } }
+      match: { out: { order: ['@scope/x', 'A', 'B', 'a', 'b'] } }
+    }
     # An empty document normalizes to an empty instance map and empty order,
     # not to an error and not to a missing key.
     {
@@ -338,12 +383,20 @@ primary: config: {
     # shape downstream, whichever form was authored.
     {
       in: { doc: { plugin: 1, instance: [ { ref: 'retry', options: { retries: 3 } } ] } }
-      match: { out: { instance: { retry: { options: { retries: 3 } } } } }
+      match: { out: { instance: { retry: { optionlayers: [ { retries: 3 } ] } } } }
     }
     # The ref is canonicalized on the way in, exactly as §4 rule 5 requires.
     {
       in: { doc: { plugin: 1, instance: [ { ref: 'stripe$' } ] } }
       match: { out: { order: ['stripe'] } }
+    }
+    # And in the MAP form, where refs arrive as keys through a different
+    # code path — a port can canonicalize array `ref` fields while
+    # copying a key like `stripe$` through unchanged.
+    {
+      id: 'config/normarray#mapkey-canon'
+      in: { doc: { plugin: 1, instance: { 'stripe$': {} } } }
+      match: { out: { order: ['stripe'], instance: { stripe: '__EXISTS__' } } }
     }
   ]
 
@@ -377,6 +430,40 @@ primary: config: {
       }
       match: { out: { instance: { retry: '__EXISTS__', alpha: '__EXISTS__', zeta: '__EXISTS__' } } }
     }
+    # A SELECTED PROFILE MAY INTRODUCE A REF THE BASE NEVER DECLARED.
+    # Every other case here starts with the ref already in the base map,
+    # so a normalizer that filters profile entries to the base ref set
+    # passes them all — and drops an integration declared only for prod.
+    {
+      id: 'config/normpartial#introduce'
+      in: {
+        profile: 'prod'
+        doc: {
+          plugin: 1
+          instance: { retry: {} }
+          profile: { prod: { instance: { 'audit$eu': { options: { region: 'eu' } } } } }
+        }
+      }
+      match: { out: { order: ['audit$eu', 'retry']
+                      instance: { 'audit$eu': { optionlayers: [ { region: 'eu' } ] } } } }
+    }
+    # A PROFILE ARRAY ELEMENT IS A CONFIGURATION ENTRY, NOT JUST AN
+    # ORDERING TOKEN. Both cases above use elements carrying only `ref`,
+    # so a normalizer that reads a profile array purely as an order list
+    # and discards `active`/`start`/`options` passes them.
+    {
+      id: 'config/normpartial#arrayoptions'
+      in: {
+        profile: 'dev'
+        doc: {
+          plugin: 1
+          instance: { zeta: { options: { a: 1 } } }
+          profile: { dev: { instance: [ { ref: 'zeta', active: false, options: { b: 2 } } ] } }
+        }
+      }
+      match: { out: { instance: { zeta: { active: false
+                                          optionlayers: [ { a: 1 }, { b: 2 } ] } } } }
+    }
   ]
 
 
@@ -398,7 +485,8 @@ primary: config: {
           profile: { prod: { instance: { 'pad$a': { options: { base: 'https://prod.example' } } } } }
         }
       }
-      match: { out: { instance: { 'pad$a': { active: false, options: { base: 'https://prod.example' } } } } }
+      match: { out: { instance: { 'pad$a': { active: false
+                                             optionlayers: [ { base: 'https://prod.example' } ] } } } }
     }
     # The defaults themselves, on a merged entry that states neither.
     {
@@ -421,7 +509,7 @@ primary: config: {
           profile: { prod: { instance: { outer: { options: { instance: { inner: { options: { x: 1 } } } } } } } }
         }
       }
-      match: { out: { instance: { outer: { options: { instance: { inner: { active: false } } } } } } }
+      match: { out: { instance: { outer: { optionlayers: [ { instance: { inner: { active: false } } } ] } } } }
     }
   ]
 
@@ -435,7 +523,17 @@ primary: config: {
         keys: { instance: 'sdk', default: 'api' }
         doc: { plugin: 1, sdk: { retry: {} }, api: { retry: { options: { t: 1 } } } }
       }
-      match: { out: { order: ['retry'] } }
+      match: { out: { order: ['retry'], default: { retry: { options: { t: 1 } } } } }
+    }
+    # BOTH renamed keys must map, not just the instance one. A port that
+    # maps `sdk`->instance while DROPPING `api` passes an order-only
+    # assertion and loses every host-wide definition default.
+    {
+      in: {
+        keys: { instance: 'sdk', default: 'api' }
+        doc: { plugin: 1, sdk: { 'retry$a': {} }, api: { retry: { options: { t: 9 } } } }
+      }
+      match: { out: { default: { retry: { options: { t: 9 } } } } }
     }
     # The profile overlay root too. A rename applied only at the document
     # root would leave profile.prod.sdk untranslated and SILENTLY DROP
@@ -450,7 +548,7 @@ primary: config: {
           profile: { prod: { sdk: { retry: { options: { t: 2 } } } } }
         }
       }
-      match: { out: { instance: { retry: { options: { t: 2 } } } } }
+      match: { out: { instance: { retry: { optionlayers: [ { t: 1 }, { t: 2 } ] } } } }
     }
     # It does NOT recurse: option data belongs to the definition, and a
     # host's key map has no business rewriting keys inside it. An option
@@ -460,7 +558,7 @@ primary: config: {
         keys: { instance: 'sdk', default: 'api' }
         doc: { plugin: 1, sdk: { retry: { options: { sdk: 'untouched' } } } }
       }
-      match: { out: { instance: { retry: { options: { sdk: 'untouched' } } } } }
+      match: { out: { instance: { retry: { optionlayers: [ { sdk: 'untouched' } ] } } } }
     }
   ]
 
@@ -499,6 +597,40 @@ primary: config: {
   ]
 
 
+  # `default` DECLARES NOTHING (§9.3), and only normalizeconfig can show
+  # it. The optdefault group calls resolveoptions, which verifies
+  # inheritance but cannot observe that no instance was created — a
+  # normalizer that copied `default.stripe` into `instance.stripe` would
+  # pass every one of those and silently manufacture an integration from
+  # a defaults-only document.
+  normdefaultmap: set: [
+    {
+      id: 'config/normdefaultmap#inert', doc: true
+      in: { doc: { plugin: 1, default: { stripe: { options: { t: 5000 } } } } }
+      match: { out: { order: [], instance: {} } }
+    }
+    # The default itself survives normalization — inert is not dropped.
+    {
+      in: { doc: { plugin: 1, default: { stripe: { options: { t: 5000 } } } } }
+      match: { out: { default: { stripe: { options: { t: 5000 } } } } }
+    }
+    # A `default` entry for a name with NO instances is inert rather than
+    # an error (§9.3) — that is what makes a shared library of defaults
+    # shippable.
+    {
+      in: { doc: { plugin: 1, default: { nobody: { options: { t: 1 } } }, instance: { retry: {} } } }
+      match: { out: { order: ['retry'] } }
+    }
+    # And `default.stripe` beside `instance.stripe` still declares ONE
+    # instance, not two: separate namespaces, same key string.
+    {
+      in: { doc: { plugin: 1, default: { stripe: { options: { a: 1 } } }
+                   instance: { stripe: {}, 'stripe$test': {} } } }
+      match: { out: { order: ['stripe', 'stripe$test'] } }
+    }
+  ]
+
+
   # §9.3's ten levels, lowest to highest. Each entry adds one level on top
   # of the one below and expects it to win.
   optladder: set: [
@@ -519,6 +651,49 @@ primary: config: {
     { in: { ref: 'r', env: { t: 7 }, hostoptions: { t: 8 } }, out: { t: 8 } }
     { in: { ref: 'r', hostoptions: { t: 8 }, loadoptions: { t: 9 } }, out: { t: 9 } }
     { in: { ref: 'r', loadoptions: { t: 9 }, patch: { t: 10 } }, out: { t: 10 } }
+
+    # ADJACENT PAIRS ALONE DO NOT PIN A TOTAL ORDER. The chain above
+    # constrains 1<2<3<...<10 only if the relation is known transitive,
+    # and a resolver that applies the layers in the wrong sequence can
+    # satisfy every adjacent pair while inverting a non-adjacent one.
+    # The env/profile boundary is the one that actually bites: a
+    # resolver merging `env` BEFORE the profile overlay passes the
+    # level-7 case above, because that case only compares env with 4.
+    { id: 'config/optladder#7-beats-6'
+      in: { ref: 'r', profile: 'p'
+            doc: { profile: { p: { instance: { r: { options: { t: 6 } } } } } }
+            env: { t: 7 } }, out: { t: 7 } }
+    { in: { ref: 'r', profile: 'p'
+            doc: { profile: { p: { default: { r: { options: { t: 5 } } } } } }
+            env: { t: 7 } }, out: { t: 7 } }
+    # Sparse non-adjacent pairs across the whole ladder.
+    { in: { ref: 'r', shape: { t: 1 }, patch: { t: 10 } }, out: { t: 10 } }
+    { in: { ref: 'r', hostdefaults: { t: 2 }, hostoptions: { t: 8 } }, out: { t: 8 } }
+    { in: { ref: 'r', doc: { default: { r: { options: { t: 3 } } } }, loadoptions: { t: 9 } }, out: { t: 9 } }
+    { in: { ref: 'r', profile: 'p'
+            doc: { default: { r: { options: { t: 3 } } }
+                   profile: { p: { instance: { r: { options: { t: 6 } } } } } } }, out: { t: 6 } }
+    { in: { ref: 'r', shape: { t: 1 }, env: { t: 7 } }, out: { t: 7 } }
+    # All ten at once: the highest present wins, whatever else is set.
+    { id: 'config/optladder#all-ten'
+      in: { ref: 'r', profile: 'p'
+            shape: { t: 1 }, hostdefaults: { t: 2 }
+            doc: { default: { r: { options: { t: 3 } } }
+                   instance: { r: { options: { t: 4 } } }
+                   profile: { p: { default: { r: { options: { t: 5 } } }
+                                   instance: { r: { options: { t: 6 } } } } } }
+            env: { t: 7 }, hostoptions: { t: 8 }, loadoptions: { t: 9 }, patch: { t: 10 } }
+      out: { t: 10 } }
+    # And with the top layer removed, level 9 wins — proving the stack
+    # is ordered rather than "patch always wins".
+    { in: { ref: 'r', profile: 'p'
+            shape: { t: 1 }, hostdefaults: { t: 2 }
+            doc: { default: { r: { options: { t: 3 } } }
+                   instance: { r: { options: { t: 4 } } }
+                   profile: { p: { default: { r: { options: { t: 5 } } }
+                                   instance: { r: { options: { t: 6 } } } } } }
+            env: { t: 7 }, hostoptions: { t: 8 }, loadoptions: { t: 9 } }
+      out: { t: 9 } }
   ]
 
 
@@ -660,13 +835,71 @@ primary: config: {
                              instance: { r: { options: { m: { a: { y: 2 } } } } } } }
       out: { m: { a: { x: 1, y: 2 }, b: 2 } }
     }
+
+    # THE DIRECTIVE HOLDS AT EVERY PRECEDENCE LEVEL, not only between
+    # document levels 3 and 4. §9.4 makes it a property of the shape,
+    # which does not know which layer a value arrived from — so a port
+    # honouring `replace` in the document while deep-merging `patch`,
+    # `env`, `hostoptions` or `loadoptions` is wrong, and every case
+    # above would still pass it.
+    #
+    # This is the one that bites in production: patching `policy` with a
+    # new host list must REPLACE it, not retain `strict` from below. An
+    # egress allowlist that silently widens because the top of the ladder
+    # merged is exactly the failure `replace` exists to prevent.
+    {
+      id: 'config/optmerge#replace-at-patch'
+      in: { ref: 'r', shape: { policy: { '$MERGE': 'replace' } }
+            doc: { instance: { r: { options: { policy: { hosts: ['a.example'], strict: true } } } } }
+            patch: { policy: { hosts: ['b.example'] } } }
+      out: { policy: { hosts: ['b.example'] } }
+    }
+    { in: { ref: 'r', shape: { policy: { '$MERGE': 'replace' } }
+            doc: { instance: { r: { options: { policy: { hosts: ['a.example'], strict: true } } } } }
+            env: { policy: { hosts: ['b.example'] } } }
+      out: { policy: { hosts: ['b.example'] } } }
+    { in: { ref: 'r', shape: { policy: { '$MERGE': 'replace' } }
+            doc: { instance: { r: { options: { policy: { hosts: ['a.example'], strict: true } } } } }
+            hostoptions: { policy: { hosts: ['b.example'] } } }
+      out: { policy: { hosts: ['b.example'] } } }
+    { in: { ref: 'r', shape: { policy: { '$MERGE': 'replace' } }
+            doc: { instance: { r: { options: { policy: { hosts: ['a.example'], strict: true } } } } }
+            loadoptions: { policy: { hosts: ['b.example'] } } }
+      out: { policy: { hosts: ['b.example'] } } }
+    # append across the upper layers too — a port special-casing the
+    # document merge would concatenate there and overwrite here.
+    { in: { ref: 'r', shape: { p: { '$MERGE': 'append' } }
+            doc: { instance: { r: { options: { p: ['x'] } } } }
+            patch: { p: ['y'] } }
+      out: { p: ['x', 'y'] } }
+    # and deep: N, which must count levels the same way wherever the
+    # overlay came from.
+    { in: { ref: 'r', shape: { feature: { '$MERGE': { deep: 2 } } }
+            doc: { instance: { r: { options: { feature: { retry: { n: 3, headers: { a: 1 } } } } } } }
+            patch: { feature: { retry: { headers: { c: 3 } } } } }
+      out: { feature: { retry: { n: 3, headers: { c: 3 } } } } }
+    # The bare list-replace default likewise, at the top of the ladder.
+    { in: { ref: 'r', doc: { instance: { r: { options: { p: ['x', 'y', 'z'] } } } }
+            patch: { p: ['a'] } }
+      out: { p: ['a'] } }
   ]
 
 
   # N IS AN INTEGER OF AT LEAST 1, AND EVERYTHING ELSE IS AN ERROR (§9.4).
-  # Raised when the SHAPE ENTERS THE CATALOG, not when a document happens
-  # to exercise the key, so a malformed shape fails once and in the same
-  # place everywhere.
+  #
+  # WHAT THIS GROUP PINS AND WHAT IT DOES NOT. It pins the DOMAIN — which
+  # values are rejected — and nothing about WHEN. §9.4 also requires the
+  # raise to happen when the shape ENTERS THE CATALOG rather than when a
+  # document happens to exercise the key, so that a malformed shape fails
+  # once and in the same place everywhere. Every entry here calls
+  # resolveoptions with the shape already in hand, so a port that accepts
+  # an invalid shape into its catalog and raises only at resolution time
+  # passes all of them.
+  #
+  # That timing is a CATALOG behaviour and needs a driver section
+  # (§10.1's makeCatalog) to observe. It is item 1.7's neighbour in
+  # doc/plan/progress.md rather than a gap here, and this comment says so
+  # instead of the group claiming coverage it cannot have.
   #
   # Stating the domain is not pedantry: without it each port picks its own
   # reading of {"deep": 0} — reject, replace, unlimited merge, or clamp to
@@ -685,10 +918,17 @@ primary: config: {
     { in: { ref: 'r', shape: { m: { '$MERGE': 'REPLACE' } } }, err: 'plugin_shape_invalid' }
     { in: { ref: 'r', shape: { m: { '$MERGE': true } } }, err: 'plugin_shape_invalid' }
     { in: { ref: 'r', shape: { m: { '$MERGE': {} } } }, err: 'plugin_shape_invalid' }
-    # The error names the key and the directive, so a shape with two
-    # problems is diagnosable without bisecting it.
-    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }
+    # The error names the key AND the directive (§9.4), so a shape with
+    # two problems is diagnosable without bisecting it. `/m/` alone
+    # would accept "invalid shape at m", which never mentions $MERGE and
+    # leaves a reader guessing which of the key's rules was broken — so
+    # both halves are asserted, separately.
+    { id: 'config/optmergebad#names-key'
+      in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }
       err: true, match: { err: { message: '/m/' } } }
+    { id: 'config/optmergebad#names-directive'
+      in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }
+      err: true, match: { err: { message: '/\\$MERGE/' } } }
   ]
 }
 
