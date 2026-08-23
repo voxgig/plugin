@@ -13,41 +13,37 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**Two PRs open.**
+**voxgig/station#9** — Stages 2, 3 and 3b, 11/11 CI ports green, awaiting
+review. **It discharges C3.**
 
-- **voxgig/station#8** — Stage 1, the config grammar as data. CI green,
-  11/11 ports. Awaiting review.
-- **voxgig/plugin** — P3b, this change.
-
-plugin `main` was `ebb54ee`; station `main` is `088f204`. **C1 and C2
-are both discharged** — voxgig/plugin#7, 234 entries across four
-sections plus the driver contract.
+plugin `main` is `8804f82` (P3b merged); station `main` is `600fdfe`
+(Stage 1 merged). C1 and C2 were discharged by voxgig/plugin#7.
 
 
 ## Pick this up first
 
-**Station's track, still.** P3 remains gated on **C3** — station's
-Stages 2–3b — because P3's acceptance bar *is* station's own
-integration test: twenty-plus declared instances with none constructed
-at `open()`, two instances of one api with distinct placeholders, and a
-fleet-wide feature default reaching an instance that never mentions it.
+**P3, as soon as station#9 merges.** Its acceptance bar is station's own
+integration test, and the three stages that bar needs are now
+implemented: twenty-plus declared instances with none constructed at
+`open()` (Stage 3), two instances of one api with distinct placeholders
+(Stage 2), and a fleet-wide feature default reaching an instance that
+never mentions it (Stage 3b).
 
-Stage 1 has now landed, so the next station work is **Stage 2**
-(instances — the identity change), which consumes C1 and is delivered.
-Then Stage 3 and 3b, at which point C3 is discharged and plugin's P3
-unblocks.
+What P3 extracts already exists in the shape it needs to be in:
+station's `typescript/src/feature.ts` carries the constraint-and-band
+resolver **written to plugin's §7 semantics** — constraints beating
+bands, vacuous satisfaction of an absent name, ties by declaration
+position rather than alphabet, and the innermost pin. That was
+deliberate, and it makes P3 a move rather than a rewrite.
 
-**P3b is done** and no longer the answer to "what can plugin do while it
-waits". §11 is complete: 11.1 ranking and 11.2 versions from P2, 11.3
-from this change, and 11.4's `resolve()` already carried all four `Why`
-kinds. What is left in plugin before P4 is 3.1 and 3.2, and both are
-blocked.
+**§11 is complete** (P3b): 11.1 ranking and 11.2 versions from P2, 11.3
+from voxgig/plugin#13, and 11.4's `resolve()` already carried all four
+`Why` kinds. Nothing else in plugin is unblocked before P3.
 
-**Station also owes itself a port sweep.** Stage 1 crossed ts, js and py
-over the `plugin` → `sdk` rename; thirteen ports have not crossed, and
-the corpus carries both grammars until they do (station
-`spec/README.md`). That is mechanical and unblocked, and it is the
-cheapest thing available to anyone with capacity.
+**Station's remaining tail**, for anyone with capacity: Stage 4 (the
+generator side) and Stage 5 (the thirteen ports that have not crossed
+the `plugin` -> `sdk` rename — the corpus carries both grammars until
+they do, see station `spec/README.md`).
 
 
 ## Blocked on a human

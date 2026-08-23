@@ -55,7 +55,7 @@ The four cross-repo obligations have their own register in
 
 | Item | Status | Notes |
 |---|---|---|
-| 3.1 Extraction against a working station | BLOCKED | On **C3** — station's Stages 2–3b. |
+| 3.1 Extraction against a working station | READY WHEN C3 MERGES | station's Stages 2, 3 and 3b are implemented and green in voxgig/station#9. What P3 extracts now exists: `feature.ts` carries the constraint-and-band resolver written to plugin's §7 semantics, deliberately so this extraction is a move rather than a rewrite. |
 | 3.2 The `FeatureHost` bridge | BLOCKED | On 3.1. |
 | 3.3 P3b — capabilities (§11) | DONE | Brought forward while 3.1 waits on C3, since nothing blocks it. §11.1 ranking and §11.2 versions landed in P2; §11.4's `resolve()` already carried all four `Why` kinds. This item closed §11.3: the four-cell cardinality/policy matrix read PER REQUIREMENT, the consumers-first cascade, `plugin_dependency_cycle` over restart-causing edges, and `dependency: 'hold'` with its coordinated-teardown suspension. New `Depend.ts`; corpus `depend` grew 12 → 32 across four new groups. Nine mutations, nine caught. |
 
