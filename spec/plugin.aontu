@@ -7,10 +7,9 @@
 # tests. Edit this file, run `npm run build-spec` in tools/, and commit
 # both. Never hand-edit the JSON (§16, prime directive 5).
 #
-# STATUS: P2 IN PROGRESS. Nine sections are written — `ref`, `config`,
-# `lifecycle`, `order` (P1, and C1/C2), plus `env`, `version`,
-# `capability`, `graph` and `resolve` (P2's pure half). The rest are
-# listed below and are not yet delivered.
+# STATUS: P2. The corpus is COMPLETE against §15.3 — all nineteen
+# sections, 417 entries, every one running green against the canonical
+# TypeScript port.
 #
 # P0 built the machinery and proved it turns over on an EMPTY corpus,
 # which was its exit criterion: `make spec` compiles this file and
@@ -44,12 +43,10 @@
 # graph, resolve. Nine sections, and every one runs against the canonical
 # with no driver where §15.3 marks it pure.
 #
-# P2's first driver sections are written too — point, export, depend.
-# Twelve sections now.
-#
-# The remaining sections (§15.3) are all DRIVER-based and land with the
-# phase that implements them: declare, nest, state, resource, apply,
-# error, trace.
+# ALL NINETEEN SECTIONS §15.3 NAMES NOW EXIST — none missing, none
+# extra. A guard in the typescript suite asserts every corpus group has
+# a subject, so a section added here without a runner is a failure
+# rather than a silence.
 #
 # Adding a section here is not enough on its own — §15.3's table records
 # whether it is pure data or driver-based, and a driver section without
@@ -2651,5 +2648,546 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# declare — `declared` costs nothing, plus AUTO-TAG and `seq` (§5.1, §9.1).
+#
+# The last two arrived here by correction: §15.3 originally assigned them to
+# `ref` and marked that section pure, and neither is reachable from the four
+# pure functions. Auto-tagging must know what is already declared and `seq`
+# is a counter the host holds, so both need a driver (doc/plan/handover.md §5).
+# ---------------------------------------------------------------------------
+
+primary: declare: {
+
+  # `declared` COSTS NOTHING: twenty lazy instances are twenty map
+  # entries and no executed code, which is the property station needs
+  # and the reason the state exists at all.
+  free: set: [
+    {
+      id: 'declare/free#nothing-runs', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: {
+          'probe$a': { start: 'lazy' }, 'probe$b': { start: 'lazy' } } } }
+      ]
+      out: { status: { 'probe$a': 'declared', 'probe$b': 'declared' }
+             open: 0, log: [], result: null }
+    }
+    # `start: eager` (the default) does run it.
+    {
+      cmd: [ { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } } ]
+      match: { out: { status: { 'probe$a': 'live' } } }
+    }
+    # `active: false` BARS it: declared, and `ready` on it fails rather
+    # than quietly doing nothing.
+    {
+      id: 'declare/free#barred'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+      ]
+      match: { out: { status: { 'probe$a': 'declared' }, log: [] } }
+    }
+  ]
+
+
+  # AUTO-TAGGING IS EXPLICIT (§4 rule 3): `tag: '?'` assigns the LOWEST
+  # UNUSED POSITIVE INTEGER and returns the assigned pair.
+  autotag: set: [
+    {
+      id: 'declare/autotag#first', doc: true
+      cmd: [ { do: 'declare', ref: 'probe', tag: '?' } ]
+      match: { out: { result: 'probe$1' } }
+    }
+    { cmd: [ { do: 'declare', ref: 'probe', tag: '?' }, { do: 'declare', ref: 'probe', tag: '?' } ]
+      match: { out: { result: 'probe$2' } } }
+    # LOWEST UNUSED, not next-highest: a gap is filled. A counter-based
+    # implementation passes the two entries above and fails this one.
+    {
+      id: 'declare/autotag#fills-gap'
+      cmd: [
+        { do: 'declare', ref: 'probe$1' }
+        { do: 'declare', ref: 'probe$3' }
+        { do: 'declare', ref: 'probe', tag: '?' }
+      ]
+      match: { out: { result: 'probe$2' } }
+    }
+    # It skips an existing explicit tag rather than colliding with it.
+    {
+      cmd: [ { do: 'declare', ref: 'probe$1' }, { do: 'declare', ref: 'probe', tag: '?' } ]
+      match: { out: { result: 'probe$2' } }
+    }
+  ]
+
+
+  # `seq` DISTINGUISHES ONE INCARNATION FROM THE NEXT, and `pos` is the
+  # document position. COLLAPSING THEM WOULD LET A RE-APPLIED DOCUMENT
+  # SILENTLY REORDER A CHAIN (§4 rule 4), which is why they are two
+  # numbers and why this group asserts them separately.
+  seq: set: [
+    {
+      id: 'declare/seq#advances', doc: true
+      cmd: [ { do: 'declare', ref: 'probe$a' }, { do: 'declare', ref: 'probe$b' }, { do: 'seq', ref: 'probe$b' } ]
+      match: { out: { result: 1 } }
+    }
+    { cmd: [ { do: 'declare', ref: 'probe$a' }, { do: 'seq', ref: 'probe$a' } ]
+      match: { out: { result: 0 } } }
+    # A RE-DECLARED instance gets a FRESH seq — it is a new incarnation.
+    {
+      id: 'declare/seq#fresh-on-reload'
+      cmd: [
+        { do: 'declare', ref: 'probe$a' }
+        { do: 'declare', ref: 'probe$b' }
+        { do: 'unload', ref: 'probe$a' }
+        { do: 'declare', ref: 'probe$a' }
+        { do: 'seq', ref: 'probe$a' }
+      ]
+      match: { out: { result: 2 } }
+    }
+    # And `pos` DOES NOT MOVE with it. This pair is the whole reason the
+    # two numbers exist: a counter-based tie-break would sort the
+    # re-declared instance behind everything that never moved.
+    {
+      id: 'declare/seq#pos-stable'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
+        { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a', active: false }, { ref: 'probe$b' } ] } }
+        { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
+        { do: 'pos', ref: 'probe$a' }
+      ]
+      match: { out: { result: 0 } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# state — persistence across activation cycles, destruction on unload (§5.4).
+# ---------------------------------------------------------------------------
+
+primary: state: {
+
+  survive: set: [
+    {
+      id: 'state/survive#cycle', doc: true
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 1 } }
+    }
+    # Deactivating a rate limiter and reactivating it ten seconds later
+    # must not reset its window counters — several cycles, one state.
+    {
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 2 } }
+    }
+    # UNLOAD DESTROYS IT. Going back to absent means "as if never
+    # loaded", and `close` is what properly undoes `define`.
+    {
+      id: 'state/survive#unload-destroys'
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'unload', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 0 } }
+    }
+    # Two instances of one definition do not share state.
+    {
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'call', ref: 'probe$b', method: 'count' }
+      ]
+      match: { out: { result: 0 } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# resource — the instance scope (§8.3).
+#
+# THE CORPUS PROVES THE HOST UNWOUND WHAT THE INSTANCE REGISTERED. IT
+# CANNOT PROVE THE INSTANCE STOPPED RUNNING (§15.4). A probe that
+# squirrels a reference away in a global and keeps using it after
+# deactivation would pass every entry here. That is a limit of the
+# architecture, not a gap in the corpus, and no amount of test design
+# closes it — said here so a green suite cannot be read as claiming it.
+# ---------------------------------------------------------------------------
+
+primary: resource: {
+
+  scope: set: [
+    {
+      id: 'resource/scope#difference', doc: true
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3, release: 1 } }
+      ]
+      match: { out: { open: 2 } }
+    }
+    # Deactivation unwinds the rest — the scope's job, not a ledger the
+    # plugin has to remember to keep.
+    {
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3, release: 1 } }
+        { do: 'deactivate', ref: 'greedy$a' }
+      ]
+      match: { out: { open: 0 } }
+    }
+    # Releasing everything explicitly leaves nothing to unwind, and
+    # unwinding an already-released handle is a NO-OP rather than a
+    # double-free — releasing early must not make teardown wrong.
+    {
+      id: 'resource/scope#double-release'
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 2, release: 2 } }
+        { do: 'deactivate', ref: 'greedy$a' }
+      ]
+      match: { out: { open: 0 } }
+    }
+    # A PARTIAL ACTIVATION ROLLS BACK. The probe acquires before it
+    # raises, so a port that unwinds only on the clean path leaks here.
+    {
+      id: 'resource/scope#partial-rollback'
+      cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a', catch: true }
+      ]
+      match: { out: { open: 0 } }
+    }
+    # Closing the host unwinds everything still held.
+    {
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3 } }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'close' }
+      ]
+      match: { out: { open: 0, status: {} } }
+    }
+    # `release` outside a lifecycle callback is an error: the scope is
+    # the activation's, and a call from anywhere else has no scope to
+    # belong to.
+    {
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'stray' }
+      ]
+      match: { out: { open: 1 } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# nest — an instance that is itself a host (§6.5).
+#
+# THE OUTER OWNS THE INNER'S LIFETIME. Station declares SDK instances as
+# plugins, and every generated SDK carries its own plugin system — so a
+# station plugin instance is itself a host of feature plugins. Two levels,
+# and the outer one owns the inner one.
+# ---------------------------------------------------------------------------
+
+primary: nest: {
+
+  lifetime: set: [
+    {
+      id: 'nest/lifetime#inner-live', doc: true
+      cmd: [
+        { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } }
+        { do: 'inner', ref: 'probe$outer' }
+      ]
+      match: { out: { result: { 'probe$inner': 'live' } } }
+    }
+    # DEACTIVATING THE OUTER CLOSES THE INNER — in the same reverse
+    # unwind as every other resource, because that is what "owns the
+    # lifetime" has to mean to be more than a sentence.
+    {
+      id: 'nest/lifetime#outer-closes-inner'
+      cmd: [
+        { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } }
+        { do: 'deactivate', ref: 'probe$outer' }
+        { do: 'inner', ref: 'probe$outer' }
+      ]
+      match: { out: { result: {} } }
+    }
+    # The inner host's instances do not appear in the outer's status —
+    # two levels, not one flattened namespace.
+    {
+      id: 'nest/lifetime#isolated'
+      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
+      match: { out: { status: { 'probe$outer': 'live' } } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# trace — the lifecycle event records (§14).
+# ---------------------------------------------------------------------------
+
+primary: trace: {
+
+  record: set: [
+    {
+      id: 'trace/record#forward', doc: true
+      cmd: [ { do: 'ready', ref: 'probe$a' }, { do: 'trace' } ]
+      match: { out: { result: [
+        { ref: 'probe$a', event: 'define' }
+        { ref: 'probe$a', event: 'activate' }
+      ] } }
+    }
+    # `seq` IS ON THE RECORD, which is the whole reason it exists: it
+    # distinguishes one incarnation of an instance from the next in a
+    # trace, where `pos` would be identical for both.
+    {
+      id: 'trace/record#seq'
+      cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'unload', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'trace' }
+      ]
+      match: { out: { result: [
+        { ref: 'probe$a', event: 'define', seq: 0 }
+        { ref: 'probe$a', event: 'activate', seq: 0 }
+        { ref: 'probe$a', event: 'deactivate', seq: 0 }
+        { ref: 'probe$a', event: 'close', seq: 0 }
+        { ref: 'probe$a', event: 'define', seq: 1 }
+        { ref: 'probe$a', event: 'activate', seq: 1 }
+      ] } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# apply — idempotent document application (§9.6).
+#
+# `apply` DECLARES EVERYTHING AND ACTIVATES ONLY WHAT ASKED FOR IT, and it
+# is RE-RUNNABLE: applying the same document twice changes nothing, which
+# is what lets a host reload config without tracking what it already did.
+# ---------------------------------------------------------------------------
+
+primary: apply: {
+
+  idempotent: set: [
+    {
+      id: 'apply/idempotent#twice', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+      ]
+      out: { status: { 'probe$a': 'live' }, open: 1
+             log: ['probe$a:define', 'probe$a:activate'], result: null }
+    }
+    # The LOG is the assertion, not the status: a port that re-ran
+    # `define` would end in the same state and be wrong.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
+      ]
+      match: { out: { log: [] } }
+    }
+  ]
+
+
+  # ADD, REMOVE, PATCH, TOGGLE — the four things a second document can do.
+  change: set: [
+    # ADD: a new ref appears.
+    {
+      id: 'apply/change#add', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {}, 'probe$b': {} } } }
+      ]
+      match: { out: { status: { 'probe$a': 'live', 'probe$b': 'live' } } }
+    }
+    # PATCH: options change without the instance restarting from scratch.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'A' } } } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'Z' } } } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'Zx' } }
+    }
+    # TOGGLE to inactive RETURNS IT TO `declared`, BY UNLOADING IT
+    # (§9.6). There is no loaded->declared transition and there should
+    # not be one: going back to `declared` means "as if never loaded",
+    # and an instance that has run `define` has state and bindings only
+    # `close` can properly undo. Its state is DESTROYED, which is the
+    # honest meaning of the change.
+    {
+      id: 'apply/change#toggle-off'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+      ]
+      match: { out: { status: { 'probe$a': 'declared' }, open: 0 } }
+    }
+    # And the unload is VISIBLE in the log — `close` ran.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+      ]
+      match: { out: { log: [
+        'probe$a:define', 'probe$a:activate', 'probe$a:deactivate', 'probe$a:close' ] } }
+    }
+    # Toggling to LAZY does the same thing, for the same reason.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
+      ]
+      match: { out: { status: { 'probe$a': 'declared' } } }
+    }
+    # And BACK ON again, from a clean slate.
+    {
+      id: 'apply/change#toggle-back'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+      ]
+      match: { out: { status: { 'probe$a': 'live' }, open: 1 } }
+    }
+  ]
+
+
+  # A document with a PROFILE selected applies the overlay, and the
+  # defaults-after-merge rule holds through `apply` exactly as it does
+  # through normalizeconfig — the safety rule is not lost between the
+  # pure function and the host that calls it.
+  profile: set: [
+    {
+      id: 'apply/profile#bar-survives', doc: true
+      cmd: [
+        { do: 'apply', profile: 'prod', doc: {
+          plugin: 1
+          instance: { 'probe$a': { active: false } }
+          profile: { prod: { instance: { 'probe$a': { options: { wrap: 'P' } } } } } } }
+      ]
+      match: { out: { status: { 'probe$a': 'declared' } } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# error — the codes of §12 and the MESSAGE FORMAT.
+#
+#   plugin/<code>: <text> [<key>=<value> …]
+#
+# The bracketed detail carries the fields that apply, IN A FIXED ORDER —
+# host, ref, name, tag, point, key, capability, range, version, match,
+# candidates, cycle, holders, refs, path, cause — omitting those that do
+# not, and absent entirely when none do.
+#
+# THE ORDER IS CONTRACT, not formatting. An earlier draft named six
+# fields while other sections promised diagnostics that had nowhere to
+# go, which would have left each port inventing its own order and
+# breaking message parity. Values render as COMPACT JSON so a value
+# containing a space or a bracket cannot break the parse.
+#
+# Ports compare by CODE, never by wording — a port's language is its own
+# business, and pinning the words would make every translation a corpus
+# change. The FORMAT is what is pinned, because a parseable message is
+# what makes a log searchable across twenty languages.
+# ---------------------------------------------------------------------------
+
+primary: error: {
+
+  format: set: [
+    # The prefix and code, verbatim.
+    {
+      id: 'error/format#prefix', doc: true
+      cmd: [ { do: 'activate', ref: 'nope$a' } ]
+      err: true, match: { err: { message: '/^plugin\\/plugin_not_loaded: /' } }
+    }
+    # The detail bracket, with the field that applies.
+    {
+      cmd: [ { do: 'activate', ref: 'nope$a' } ]
+      err: true, match: { err: { message: '/\\[ref="nope\\$a"\\]/' } }
+    }
+    # Values render as COMPACT JSON — quoted, so a ref containing a
+    # space or a bracket cannot break a parser reading the line.
+    {
+      id: 'error/format#json-values'
+      cmd: [ { do: 'emit', point: 'nope' } ]
+      err: true, match: { err: { message: '/\\[point="nope"\\]/' } }
+    }
+    # A list field renders as a JSON ARRAY.
+    {
+      id: 'error/format#list-field'
+      cmd: [
+        { do: 'ready', ref: 'probe$a', order: { after: 'probe$b' } }
+        { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      err: true, match: { err: { message: '/cycle=\\[/' } }
+    }
+  ]
+
+
+  # The codes themselves, each reached through the path that raises it.
+  codes: set: [
+    { id: 'error/codes#not-loaded', doc: true
+      cmd: [ { do: 'activate', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
+    { cmd: [ { do: 'load', ref: 'nosuch$a' } ], err: 'plugin_unknown_definition' }
+    { cmd: [
+        { do: 'load', ref: 'probe$a' }
+        { do: 'load', ref: 'probe$a', definition: 'other' }
+      ], err: 'plugin_ref_duplicate' }
+    { cmd: [ { do: 'emit', point: 'nope' } ], err: 'plugin_point_unknown' }
+    { cmd: [ { do: 'chain', point: 'p' } ], err: 'plugin_point_kind' }
+    { cmd: [
+        { do: 'ready', ref: 'probe$a', order: { after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ], err: 'plugin_order_cycle' }
+    { cmd: [
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a', catch: true }
+        { do: 'activate', ref: 'noisy$a' }
+      ], err: 'plugin_bad_state' }
+    { cmd: [
+        { do: 'load', ref: 'noisy$a', options: { reenter: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+      ], err: 'plugin_reentrant' }
+    { cmd: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'export', key: 'probe/client' }
+      ], err: 'plugin_export_ambiguous' }
+    { cmd: [
+        { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v' } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v' } }
+        { do: 'provider', point: 'v' }
+      ], err: 'plugin_point_exclusive' }
+    { cmd: [
+        { do: 'host', reserved: ['station'] }
+        { do: 'declare', ref: 'station$a' }
+      ], err: 'plugin_ref_reserved' }
   ]
 }

@@ -3,6 +3,335 @@
     "version": 1
   },
   "primary": {
+    "apply": {
+      "change": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/change#add",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live",
+                  "probe$b": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "A"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "Z"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "Zx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/change#toggle-off",
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$a:activate",
+                  "probe$a:deactivate",
+                  "probe$a:close"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/change#toggle-back",
+            "match": {
+              "out": {
+                "open": 1,
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "idempotent": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/idempotent#twice",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate"
+              ],
+              "open": 1,
+              "result": null,
+              "status": {
+                "probe$a": "live"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "log": []
+              }
+            }
+          }
+        ]
+      },
+      "profile": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1,
+                  "profile": {
+                    "prod": {
+                      "instance": {
+                        "probe$a": {
+                          "options": {
+                            "wrap": "P"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "profile": "prod"
+              }
+            ],
+            "doc": true,
+            "id": "apply/profile#bar-survives",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
     "capability": {
       "match": {
         "set": [
@@ -2792,6 +3121,296 @@
         ]
       }
     },
+    "declare": {
+      "autotag": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "doc": true,
+            "id": "declare/autotag#first",
+            "match": {
+              "out": {
+                "result": "probe$1"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              },
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$2"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$1"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$3"
+              },
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "id": "declare/autotag#fills-gap",
+            "match": {
+              "out": {
+                "result": "probe$2"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$1"
+              },
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$2"
+              }
+            }
+          }
+        ]
+      },
+      "free": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    },
+                    "probe$b": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "declare/free#nothing-runs",
+            "out": {
+              "log": [],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "declared",
+                "probe$b": "declared"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "declare/free#barred",
+            "match": {
+              "out": {
+                "log": [],
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "seq": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$b"
+              },
+              {
+                "do": "seq",
+                "ref": "probe$b"
+              }
+            ],
+            "doc": true,
+            "id": "declare/seq#advances",
+            "match": {
+              "out": {
+                "result": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "seq",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$b"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "seq",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "declare/seq#fresh-on-reload",
+            "match": {
+              "out": {
+                "result": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "active": false,
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "pos",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "declare/seq#pos-stable",
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
     "depend": {
       "arrive": {
         "set": [
@@ -3857,6 +4476,261 @@
                     "n": "__NULL__"
                   }
                 }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "error": {
+      "codes": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_not_loaded",
+            "id": "error/codes#not-loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "nosuch$a"
+              }
+            ],
+            "err": "plugin_unknown_definition"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "other",
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_ref_duplicate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "emit",
+                "point": "nope"
+              }
+            ],
+            "err": "plugin_point_unknown"
+          },
+          {
+            "cmd": [
+              {
+                "do": "chain",
+                "point": "p"
+              }
+            ],
+            "err": "plugin_point_kind"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": "plugin_order_cycle"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_bad_state"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "reenter": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_reentrant"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "err": "plugin_export_ambiguous"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "exclusive": true,
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "err": "plugin_point_exclusive"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "reserved": [
+                  "station"
+                ]
+              },
+              {
+                "do": "declare",
+                "ref": "station$a"
+              }
+            ],
+            "err": "plugin_ref_reserved"
+          }
+        ]
+      },
+      "format": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "doc": true,
+            "err": true,
+            "id": "error/format#prefix",
+            "match": {
+              "err": {
+                "message": "/^plugin\\/plugin_not_loaded: /"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "err": true,
+            "match": {
+              "err": {
+                "message": "/\\[ref=\"nope\\$a\"\\]/"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "emit",
+                "point": "nope"
+              }
+            ],
+            "err": true,
+            "id": "error/format#json-values",
+            "match": {
+              "err": {
+                "message": "/\\[point=\"nope\"\\]/"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$b"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": true,
+            "id": "error/format#list-field",
+            "match": {
+              "err": {
+                "message": "/cycle=\\[/"
               }
             }
           }
@@ -5225,6 +6099,86 @@
             "match": {
               "out": {
                 "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "nest": {
+      "lifetime": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              },
+              {
+                "do": "inner",
+                "ref": "probe$outer"
+              }
+            ],
+            "doc": true,
+            "id": "nest/lifetime#inner-live",
+            "match": {
+              "out": {
+                "result": {
+                  "probe$inner": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$outer"
+              },
+              {
+                "do": "inner",
+                "ref": "probe$outer"
+              }
+            ],
+            "id": "nest/lifetime#outer-closes-inner",
+            "match": {
+              "out": {
+                "result": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              }
+            ],
+            "id": "nest/lifetime#isolated",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$outer": "live"
+                }
               }
             }
           }
@@ -7355,6 +8309,373 @@
             "out": [
               "@acme/thing"
             ]
+          }
+        ]
+      }
+    },
+    "resource": {
+      "scope": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "doc": true,
+            "id": "resource/scope#difference",
+            "match": {
+              "out": {
+                "open": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 2,
+                  "release": 2
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "id": "resource/scope#double-release",
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "id": "resource/scope#partial-rollback",
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 3
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "close"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "stray",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "state": {
+      "survive": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "state/survive#cycle",
+            "match": {
+              "out": {
+                "result": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "state/survive#unload-destroys",
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$b"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "trace": {
+      "record": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "trace"
+              }
+            ],
+            "doc": true,
+            "id": "trace/record#forward",
+            "match": {
+              "out": {
+                "result": [
+                  {
+                    "event": "define",
+                    "ref": "probe$a"
+                  },
+                  {
+                    "event": "activate",
+                    "ref": "probe$a"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "trace"
+              }
+            ],
+            "id": "trace/record#seq",
+            "match": {
+              "out": {
+                "result": [
+                  {
+                    "event": "define",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "activate",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "deactivate",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "close",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "define",
+                    "ref": "probe$a",
+                    "seq": 1
+                  },
+                  {
+                    "event": "activate",
+                    "ref": "probe$a",
+                    "seq": 1
+                  }
+                ]
+              }
+            }
           }
         ]
       }

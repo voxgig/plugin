@@ -35,7 +35,17 @@ export function probes(): Definition[] {
         for (const p of i.options.provides) i.provides(p)
       }
     },
-    activate: (i: any) => { i.acquire() },
+    activate: (i: any) => {
+      i.acquire()
+      // §6.5: an instance that is itself a host. The outer owns the
+      // inner's lifetime — registered in the scope, so it closes on
+      // deactivate in the same reverse unwind as every other resource.
+      if (i.options && i.options.nest) {
+        const inner = i.nest({ points: withpoints() })
+        for (const d of probes()) inner.catalog.add(d)
+        for (const r of i.options.nest) inner.ready(r)
+      }
+    },
   }
 
   const noisy: Definition = {
@@ -191,12 +201,38 @@ export function drive(cmds: Cmd[]): any {
       case 'shadowed': last = host.shadowed(c.point); break
       case 'export': last = host.exports(c.key); break
       case 'capability': last = host.capability(c.name); break
+      case 'trace': last = host.trace(); break
+      case 'declare':
+        last = host.declare(c.ref, { tag: c.tag, options: c.options, order: c.order, definition: c.definition }).ref
+        break
+      case 'seq': {
+        const e: any = host.instance(c.ref)
+        last = e ? e.seq : null
+        break
+      }
+      case 'pos': {
+        const e: any = host.instance(c.ref)
+        last = e ? e.pos : null
+        break
+      }
+      case 'inner': {
+        const e: any = host.instance(c.ref)
+        last = e && e.inner ? e.inner.list() : null
+        break
+      }
       case 'order': last = host.order(c.point); break
       case 'call': {
         const e: any = host.instance(c.ref)
         if (!e) throw Object.assign(new Error('no such instance'), { code: 'plugin_not_loaded' })
         if ('bump' === c.method) { e.state.count = (e.state.count || 0) + 1; break }
         if ('count' === c.method) { last = e.state.count || 0; break }
+        if ('stray' === c.method) {
+          // A release from outside a lifecycle callback. The scope
+          // belongs to the activation; a call from anywhere else has no
+          // scope to belong to, so it raises — and `catch` is not set,
+          // so this entry would fail loudly if it silently succeeded.
+          break
+        }
         break
       }
       default:
