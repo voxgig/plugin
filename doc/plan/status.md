@@ -20,22 +20,26 @@ entries across four sections plus the driver contract.
 
 ## Pick this up first
 
-**P1 item 1.5 — `typescript/`, the canonical.** Everything owed outward
-has landed, and 1.7 has corrected §15.3 ahead of it, so the canonical
-will not pin a classification the design got wrong.
+**P3 — extraction against a working station, and the `FeatureHost`
+bridge.** P2 is complete: nineteen corpus sections, 400+ entries, the
+canonical passing all of them, and `DOCS.md` written.
 
-Write it to the portability budget (AGENTS.md §5): no reflection-backed
-APIs, no `Proxy`, no decorators, no meta-level interception, and eager
-lifecycle reconciliation. Every one of those is cheaper to obey now
-than to remove at P4.
+**P3 IS BLOCKED, AND NOT ON THIS REPO.** It is gated on **C3** —
+station's Stages 2–3b — because P3's acceptance bar *is* station's own
+integration test: twenty-plus declared instances with none constructed
+at `open()`, two instances of one api with distinct placeholders, and a
+fleet-wide feature default reaching an instance that never mentions it.
+Station is still at Stage 0.
 
-**1.6 `tools/check_probes.py`** is the cheaper of the two and also
-ready — the probe catalog exists to check against.
+So the next work is **station's track**, not plugin's. Stage 1 (the
+grammar) is independent of plugin entirely and can start immediately;
+Stage 2 consumes C1, which is delivered.
 
-One thing to carry into the canonical, from `handover.md` §8: **a
-corpus entry is worth exactly what it can falsify.** Three of the
-entries written for C1 passed for every implementation, correct or not,
-and review had to find them.
+**P3b (capabilities, §11)** could be brought forward — it is
+deliberately scheduled after the station proof because station uses none
+of §11, but nothing blocks it. It is the largest single tranche in the
+library, so doing it while P3 waits is a real option rather than
+make-work.
 
 
 ## Blocked on a human

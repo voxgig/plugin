@@ -44,11 +44,11 @@ The four cross-repo obligations have their own register in
 
 | Item | Status | Notes |
 |---|---|---|
-| 2.1 Dynamic resolution, `apply()`, exports, position verification | NOT STARTED | |
+| 2.1 Dynamic resolution, `apply()`, exports, position verification | DONE | Scoped names resolve verbatim (they did not); `from` bypasses candidate generation; `position()` returns §6.6's record with `outermost`/`innermost` pinned against a chain whose composition is asserted the other way in the same group. |
 | 2.2a Remaining PURE corpus sections | DONE | `env` 30, `version` 29, `capability` 16, `graph` 10, `resolve` 8 — 93 entries, all running green against the canonical. Nine sections total, 330 entries. |
 | 2.2b DRIVER sections: point, export, depend | DONE | 37 entries. Twelve sections, 367 total. Points (three kinds, four hook modes, composition, shadowing, exclusivity), export aliasing and ambiguity, and the reactive half of dependencies. |
 | 2.2c DRIVER sections: declare, state, resource, apply, nest, trace, error | DONE | 50 entries. **All 19 sections §15.3 names now exist** — none missing, none extra — 417 entries total. Includes item 2.4's `seq` and auto-tag. |
-| 2.3 `DOCS.md` completed from P1's draft | NOT STARTED | |
+| 2.3 `DOCS.md` completed from P1's draft | DONE | Tutorial, how-to, reference and explanation written; 517 lines. §4 stays a draft in COVERAGE, not stability. |
 | 2.4 `declare` section: `seq` and auto-tag | DONE | The gap 1.7 moved rather than closed is now closed. Auto-tag pins LOWEST-UNUSED including the fills-a-gap case a counter-based implementation fails; `seq` pins that a re-declared instance gets a fresh one while `pos` does not move. |
 
 ## Phase 3 — proof, and the bridge

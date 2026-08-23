@@ -7416,6 +7416,134 @@
           }
         ]
       },
+      "position": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "call",
+                "method": "position",
+                "point": "c",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "point/position#outermost",
+            "match": {
+              "out": {
+                "result": {
+                  "count": 2,
+                  "index": 0,
+                  "innermost": false,
+                  "outermost": true
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "call",
+                "method": "position",
+                "point": "c",
+                "ref": "probe$b"
+              }
+            ],
+            "id": "point/position#innermost",
+            "match": {
+              "out": {
+                "result": {
+                  "count": 2,
+                  "index": 1,
+                  "innermost": true,
+                  "outermost": false
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "position",
+                "point": "c",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "count": 1,
+                  "index": 0,
+                  "innermost": true,
+                  "outermost": true
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "point/position#agrees-with-composition",
+            "match": {
+              "out": {
+                "result": "ABx"
+              }
+            }
+          }
+        ]
+      },
       "provider": {
         "set": [
           {
@@ -8295,19 +8423,66 @@
             ]
           },
           {
+            "id": "resolve/candidates#scoped-verbatim",
+            "in": {
+              "name": "@acme/thing"
+            },
+            "out": [
+              "@acme/thing"
+            ]
+          },
+          {
             "in": {
               "name": "@acme/thing",
               "sources": [
                 {
                   "kind": "module",
                   "prefix": [
-                    ""
+                    "x-"
                   ]
                 }
               ]
             },
             "out": [
               "@acme/thing"
+            ]
+          },
+          {
+            "in": {
+              "name": "@acme/thing",
+              "sources": [
+                {
+                  "dir": "./p",
+                  "kind": "path"
+                }
+              ]
+            },
+            "out": [
+              "@acme/thing"
+            ]
+          }
+        ]
+      },
+      "from": {
+        "set": [
+          {
+            "doc": true,
+            "id": "resolve/from#verbatim",
+            "in": "./local/thing",
+            "out": [
+              "./local/thing"
+            ]
+          },
+          {
+            "in": "/abs/path",
+            "out": [
+              "/abs/path"
+            ]
+          },
+          {
+            "in": "../up/one",
+            "out": [
+              "../up/one"
             ]
           }
         ]

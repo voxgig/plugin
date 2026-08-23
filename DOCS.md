@@ -9,48 +9,241 @@ conformance corpus as the runner is (design §15.2).
 
 ---
 
-## Status: P1 — §4 is written, the rest is scheduled
+## Status: P2 — complete
 
-**Scheduled, not forgotten.** The section headings below are the shape
-this takes, and each names the phase that fills it. §4 carries a date
-that is an obligation to another repository rather than an internal
-milestone — see [`AGENTS.md`](./AGENTS.md) §5.
+Every section is written. The driver contract (§4) is the one still
+called a draft, and draft here means COVERAGE rather than stability: it
+specifies what the nineteen corpus sections need and is meant to be
+relied on. A future phase extends it; it does not rewrite it.
 
-| section | filled by |
+| section | state |
 |---|---|
-| 1. Tutorial | P1 (after the tracer bullet runs) |
-| 2. How-to guides | P2 |
-| 3. Reference — the canonical API | P1, extended per phase |
-| **4. The driver contract** | **DRAFT WRITTEN** — extended at P2 |
-| 5. Explanation | P2 |
+| 1. Tutorial | written |
+| 2. How-to guides | written |
+| 3. Reference — the canonical API | written, extended per phase |
+| 4. The driver contract | written (draft coverage) |
+| 5. Explanation | written |
 
-**§4 is in draft, and draft means coverage rather than stability.** It
-specifies what `lifecycle` and `order` need and is meant to be relied
-on; P2 extends it for the remaining driver sections rather than
-rewriting it.
-
-For everything else, [`docs/design/plugin.md`](./docs/design/plugin.md)
-is the authority, and it is complete.
+[`docs/design/plugin.md`](./docs/design/plugin.md) remains the authority
+on anything these disagree about, and the corpus is the authority on
+anything the design leaves open.
 
 ---
 
 ## 1. Tutorial
 
-*P1.* A guided tour: declare a host, define a plugin, load and activate
-it, bind a `hook` and a `chain`, deactivate and watch the resources go.
+A first plugin, end to end.
+
+```ts
+import { makehost, makecatalog } from '@voxgig/plugin'
+
+// 1. The host declares its extension points. A PLUGIN NEVER MUTATES
+//    THE HOST — that inversion is what makes deactivation possible.
+const host = makehost({
+  catalog: makecatalog([{
+    name: 'retry',
+    define: (inst) => {
+      inst.state.attempts = 0
+      inst.bind('request', (next, req) => {
+        inst.state.attempts += 1
+        return next(req)
+      })
+      inst.export('attempts', () => inst.state.attempts)
+    },
+    activate: (inst) => {
+      // Anything acquired here is released automatically on deactivate,
+      // in reverse. You do not keep a ledger.
+      inst.acquire()
+    },
+  }]),
+  points: { request: { kind: 'chain', base: (req) => req } },
+})
+
+// 2. Declaring costs nothing — no module loads, no callback runs.
+host.declare('retry$fast')
+host.list()                      // { 'retry$fast': 'declared' }
+
+// 3. `ready` walks the whole staircase in one call.
+host.ready('retry$fast')
+host.list()                      // { 'retry$fast': 'live' }
+
+// 4. The binding is now in the chain.
+host.call('request', 'hello')
+host.order('request')            // ['retry$fast']
+
+// 5. And away again. The binding is removed and the resource released;
+//    the plugin's STATE survives, because a rate limiter reactivated
+//    ten seconds later must not have forgotten its window.
+host.deactivate('retry$fast')
+host.order('request')            // []
+host.list()                      // { 'retry$fast': 'loaded' }
+```
+
+**Two instances of one definition** is the headline feature, and costs
+nothing extra:
+
+```ts
+host.ready('retry$fast')
+host.ready('retry$slow')
+host.order('request')            // ['retry$fast', 'retry$slow']
+```
+
+The name is always the definition and the tag says which one, so a
+registry groups by the part before the `$` and a config file's key is
+its own documentation.
+
 
 ## 2. How-to guides
 
-*P2.* Recipes: configure instances from a document, add a profile
-overlay, share defaults across instances of one definition, order
-bindings with constraints and bands, load a definition dynamically,
-reserve a ref a host owns.
+### Order two plugins relative to each other
+
+Prefer a **constraint**, which says what you mean:
+
+```json
+{ "instance": { "audit": { "order": { "after": "auth" } } } }
+```
+
+Reach for a **band** only for a genuine cross-cutting layer — "the base
+transport wrapper is band 100" — said once by the host instead of by
+every plugin. Constraints beat bands in the sort precisely so the
+correct tool wins when both are present.
+
+> **A band chosen by trial and error to fix an ordering bug is a bug
+> wearing a number.** Bands are OSGi start levels and carry the same
+> hazard: bump the number until it works, ship it, and leave a system
+> whose startup order is a pile of magic constants nobody can safely
+> change.
+
+### Depend on something
+
+Depend on a **capability**, not a ref — you need something that can do
+the job, and which instance is doing it is exactly the configuration
+detail your plugin must not care about.
+
+```ts
+inst.provides({ name: 'store', version: '2.3', attrs: { durable: true } })
+```
+```json
+{ "requires": [{ "name": "store", "range": "2.1", "match": { "durable": true } }] }
+```
+
+If no provider is live yet your instance sits in `pending`, and the host
+activates it the moment one arrives. **Activation is a standing request,
+not a one-shot event**, so you never poll and never retry.
+
+Write `range: '2.1'` if you merely *call* the store. Write `~2.1` if you
+*implement* it for someone else to call — adding a method to an
+interface is a minor bump that breaks every provider and no consumer.
+
+### Hold a resource
+
+Acquire in `activate` and forget about it:
+
+```ts
+activate: (inst) => {
+  const sock = net.connect(inst.options.addr)
+  inst.release(() => sock.destroy())
+}
+```
+
+The scope unwinds in reverse on `deactivate`, on a failed partial
+activation, and on host close. **You cannot forget to release what you
+never registered.**
+
+### Substitute rather than wrap
+
+Bind innermost and do not call `next`:
+
+```ts
+inst.bind('request', (next, req) => myOwnTransport(req))
+```
+
+The host's base stays reachable, the substitution is visible in
+`host.order(point)` like every other link, and nothing needs a declared
+"this one is a base" role.
+
+### Turn something off in production without a deploy
+
+```
+VOXGIG_PLUGIN_INACTIVE=stripe$test
+```
+
+`INACTIVE` wins over everything. If the ref collides with another in the
+environment encoding the host names both — at startup, not when the
+variable is first read.
+
+### Port to a new language
+
+1. `parseref`, `formatref`, `checkname`, `checktag` — pass `ref`. It is
+   the first section a port passes and needs no host.
+2. `normalizeconfig`, `resolveoptions` — pass `config`.
+3. The other pure sections: `env`, `version`, `capability`, `graph`,
+   `resolve`. Still no host.
+4. The driver (§4), then the driver sections.
+
+**Do not skip an entry you cannot pass.** A divergence is a thing to
+report, not a case to filter — filtering inverts the one mechanism
+keeping twenty implementations honest.
+
 
 ## 3. Reference
 
-*P1, extended per phase.* The complete API, function by function, with
-exact semantics and edge cases. The canonical surface `make parity`
-checks is in `AGENTS.md` §4.
+The canonical surface `make parity` checks. Everything else is a method
+on the host or the instance — small on purpose (§19), because a library
+that grows a public entry point per feature is one twenty ports pay for
+twice.
+
+| | |
+|---|---|
+| `parseref(str)` | `stripe$test` → `{name, tag}`. Canonicalizing; splits on the FIRST `$`. |
+| `formatref(name, tag)` | The pair → the written form. An empty tag never writes the separator. |
+| `checkname(str)` | `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$`, max 1024. |
+| `checktag(str)` | `^[a-zA-Z0-9.~_-]+$`, max 1024, or empty. A tag may start with a digit; a name may not. |
+| `normalizeconfig({doc, profile?, keys?, reserved?})` | Structure and entry keys. **Does not merge options.** |
+| `resolveoptions({ref, shape?, …})` | §9.3's ten levels, honouring the shape's `$MERGE`. |
+| `resolveorder(bindings, pin?)` | Constraints, then bands, then `pos`. |
+| `resolvecandidates(name, sources?)` | Name → module ids, in order. A scoped name resolves verbatim only. |
+| `applyenv({env, refs, reserved?})` | `VOXGIG_PLUGIN_*`. Needs the ref set: the encoding is lossy. |
+| `makehost(options?)` | The host. |
+| `makecatalog(defs?)` | The definition registry. Option shapes are validated **here**. |
+
+**`normalizeconfig` does not merge options, and cannot.** It merges the
+entry keys (`active`, `start`, `order`) and leaves option data as
+`optionlayers` — levels 3–6 present, in ladder order. §9.4 makes merge
+behaviour a property of the definition's option *shape*, which
+normalization has never seen; flattening the layers would make
+`$MERGE: append` unimplementable at load time.
+
+### The host
+
+`declare` `load` `activate` `deactivate` `unload` `ready` `apply`
+`options` `close` — the lifecycle. `emit` `call` `provider` `shadowed`
+`order` — the points. `list` `instance` `exports` `capability` `trace` —
+observation, and **none of it advances the state**.
+
+### The instance
+
+`bind(point, fn)` `export(key, value)` `provides(cap)` `acquire()`
+`release(fn)` `position(point)` `nest(options?)`, plus `ref` `name`
+`tag` `options` `state`.
+
+### Errors
+
+```
+plugin/<code>: <text> [<key>=<value> …]
+```
+
+Fields appear in a fixed order — `host`, `ref`, `name`, `tag`, `point`,
+`key`, `capability`, `range`, `version`, `match`, `candidates`, `cycle`,
+`holders`, `refs`, `path`, `cause` — omitting those that do not apply,
+and rendered as compact JSON so a value containing a space or a bracket
+cannot break a parser.
+
+**Compare by code, never by wording.** A port's language is its own
+business; pinning the words would make every translation a corpus
+change. The *format* is what makes a log searchable across twenty
+languages.
+
 
 ## 4. The driver contract
 
@@ -241,11 +434,82 @@ would otherwise fail a test about something else.
 
 ## 5. Explanation
 
-*P2.* The ideas behind the design: why identity is `name$tag`, why
-`declared` costs nothing, why resource capture is a scope rather than a
-ledger, and why the corpus is the contract.
+### Why identity is `name$tag`
 
----
+Because an instance *is* "the `test` one of `stripe`", and `stripe$test`
+says exactly that in one token. **The name is always the definition** —
+the invariant that makes everything downstream cheap: a registry groups
+by the part before the `$`, a config file's key is its own
+documentation, and nothing has to be told twice what a thing is an
+instance of.
+
+Two earlier drafts carried more machinery than the job needs. The
+free-form form let a config write `stripe-test` and say `api: stripe`
+separately, which reads well and costs a second name to keep consistent,
+a field that can disagree with it, and an "is this the instance or the
+definition?" question at every use site. The one real forfeit is
+aliasing — an instance of `memcache` called `cache$hot` must be
+`memcache$hot` — a cosmetic loss against a load-bearing invariant.
+
+### Why `declared` costs nothing
+
+Because a host with twenty integrations should not import twenty
+packages to render a status page. `declared` means the ref exists and
+its configuration is collected, and *nothing else has happened*: no
+module resolved, no callback run.
+
+That is also why **introspection never advances the state**. A status
+endpoint that quietly loaded what it listed would be a denial of service
+with a friendly name.
+
+### Why resource capture is a scope, not a ledger
+
+Because the alternative asks every plugin author to remember something,
+in twenty languages, forever. `init()` conflating configuration with
+capture is what makes sdkgen's features un-deactivatable:
+`RetryFeature.init` reads options *and* wraps `utility.fetcher`, and
+there is no way to undo it.
+
+An instance scope inverts that. The host records what it hands out, the
+plugin registers what it acquired elsewhere, and teardown unwinds in
+reverse. **You cannot forget to release what you never registered.**
+
+The honest limit, stated because a green suite must not be read as
+claiming more: the corpus proves the host stopped routing to a
+deactivated instance and unwound what it registered. **It cannot prove
+the instance stopped running.** A plugin that squirrels a reference into
+a global would pass every entry. That is a limit of the architecture,
+not a gap in the tests.
+
+### Why a plugin never mutates the host
+
+`utility.fetcher = wrapped` is not undoable. "This instance holds slot 3
+of the `request` chain" is undoable in O(1).
+
+The idea is not new and should not pretend to be: OSGi named it the
+**whiteboard pattern** in 2004, in a paper called *Listeners Considered
+Harmful*, and gave exactly this reason — an extension that calls
+`addListener` has created a cleanup obligation something must remember,
+while one that merely registers and waits to be discovered has not.
+
+### Why the corpus is the contract
+
+Because twenty implementations of one idea drift, and nothing in a code
+review catches it. The corpus is the only artefact that says the same
+thing to all of them.
+
+Two rules follow, and both are prime directives. **Never weaken the
+corpus to make a port pass** — that inverts the mechanism. And **an
+entry is worth exactly what it can falsify**: one that passes for every
+implementation, correct or not, is documentation wearing a contract's
+clothes.
+
+Writing this corpus produced several, and review found them — adjacent
+comparisons that pin a total order only under an unstated transitivity
+assumption, all-lowercase sort cases that agree under every comparator,
+and a pure group claiming to pin *when* a raise happens rather than
+which values are rejected. Each looked like a test and tested nothing.
+
 
 ## Per-language documentation
 
