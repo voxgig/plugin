@@ -305,7 +305,16 @@ class Host:
             'pos': len(self._inst) if None is spec.get('pos') else spec['pos'],
             'seq': self._seqn,
             'options': {} if None is spec.get('options') else spec['options'],
-            'state': {}, 'order': spec.get('order'), 'unmet': [], 'scope': [],
+            'state': {},
+            # Section 11.4's ALWAYS-RELUCTANT rebinding made concrete: the
+            # provider ref this instance's activation actually chose, per
+            # requirement name. "A satisfied requirement is not re-bound
+            # while it stays satisfied" is a statement about a REMEMBERED
+            # choice - re-ranking on every question silently re-points a
+            # live consumer at any better newcomer, and then losing the
+            # provider it was really using does not restart it.
+            'selected': {},
+            'order': spec.get('order'), 'unmet': [], 'scope': [],
             'bindings': [], 'exports': {}, 'provides': [], 'inner': None,
         }
         self._seqn += 1
@@ -403,6 +412,12 @@ class Host:
             self._unwind(entry)
             entry['status'] = 'failed'
             raise
+        # Section 11.4: THE SELECTION IS MADE HERE, once, and remembered.
+        # Every later question - the cascade, `hold`, `unmet` - reads it
+        # back rather than re-ranking, which is what "always-reluctant"
+        # means.
+        for req in requirements(entry['options']):
+            self._chosen(entry, req, True)
         entry['status'] = 'live'
         self._reconcile()
         return entry
@@ -493,6 +508,11 @@ class Host:
         order, whatever any of them does; the errors are collected and
         raised as one `plugin_release_failed`."
         """
+        # A selection belongs to ONE activation (section 11.4). Leaving
+        # `live` by any door drops it, so the next activation ranks
+        # afresh - keeping it would make a consumer prefer a provider it
+        # never actually ran against.
+        entry['selected'] = {}
         errors = []
         for i in range(len(entry['scope']) - 1, -1, -1):
             try:
@@ -544,9 +564,9 @@ class Host:
         for req in requirements(entry['options']):
             if not restartsonloss(req):
                 continue
-            cands = self._providersof(req)
-            if 0 < len(cands) and cands[0]['ref'] not in out:
-                out.append(cands[0]['ref'])
+            ref = self._chosen(entry, req, False)
+            if None is not ref and ref not in out:
+                out.append(ref)
         return out
 
     def _consumersof(self, ref):
@@ -557,6 +577,26 @@ class Host:
             if r != ref and 'live' == self._inst[r]['status']
             and ref in self._boundproviders(self._inst[r])
         ]
+
+    def _chosen(self, entry, req, remember):
+        """Section 11.4's always-reluctant selection, and the ONE place a
+        provider is picked for a live instance.
+
+        If this instance already selected a provider for `req` and that
+        provider is STILL a candidate, it keeps it - a better-ranked
+        newcomer does not take it. `remember` is false for the questions
+        asked ABOUT an instance rather than BY it: introspection must not
+        create a binding.
+        """
+        cands = self._providersof(req)
+        if 0 == len(cands):
+            return None
+        held = entry['selected'].get(req['name'])
+        if None is not held and any(c['ref'] == held for c in cands):
+            return held
+        if remember:
+            entry['selected'][req['name']] = cands[0]['ref']
+        return cands[0]['ref']
 
     def _holdersof(self, ref):
         """Section 11.3's `hold` asks a DIFFERENT question from the
@@ -588,8 +628,7 @@ class Host:
             for req in requirements(consumer['options']):
                 if not gatesactivation(req):
                     continue
-                cands = self._providersof(req)
-                if 0 < len(cands) and cands[0]['ref'] == ref:
+                if self._chosen(consumer, req, False) == ref:
                     out.append(r)
                     break
         return out

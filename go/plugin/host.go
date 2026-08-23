@@ -57,6 +57,14 @@ type Live struct {
 
 	def   Definition
 	order *OrderBlock
+	// selected is §11.4's ALWAYS-RELUCTANT rebinding made concrete: the
+	// provider ref this instance's activation actually chose, per
+	// requirement name. "A satisfied requirement is not re-bound while
+	// it stays satisfied" is a statement about a REMEMBERED choice —
+	// re-ranking on every question silently re-points a live consumer at
+	// any better newcomer, and then losing the provider it was really
+	// using does not restart it. Captured at activate, cleared on exit.
+	selected map[string]string
 	// barred is §9.6's `active: false` — "declares it and bars it: it
 	// appears in `host.list()`, and `activate` and `ready` on it fail
 	// rather than quietly doing nothing". THE BAR OUTLIVES THE APPLY
@@ -512,9 +520,10 @@ func (h *Host) declare(ref string, spec DeclareSpec) (*Live, error) {
 	e := &Live{
 		Ref: r, def: def, Status: StatusDeclared,
 		Pos: pos, Seq: h.seqn,
-		Options: options,
-		State:   map[string]any{},
-		order:   spec.Order, unmet: []string{}, scope: []func(){},
+		Options:  options,
+		State:    map[string]any{},
+		selected: map[string]string{},
+		order:    spec.Order, unmet: []string{}, scope: []func(){},
 		bindings: []Bound{}, exports: map[string]any{}, provides: []Provided{},
 	}
 	h.seqn++
@@ -642,6 +651,12 @@ func (h *Host) activate(ref string) (*Live, error) {
 		h.unwind(e)
 		e.Status = StatusFailed
 		return nil, err
+	}
+	// §11.4: THE SELECTION IS MADE HERE, once, and remembered. Every
+	// later question — the cascade, `hold`, `unmet` — reads it back
+	// rather than re-ranking, which is what "always-reluctant" means.
+	for _, r := range Requirements(e.Options) {
+		h.chosen(e, r, true)
 	}
 	e.Status = StatusLive
 	h.reconcile()
@@ -788,7 +803,11 @@ func (h *Host) ready(ref string) (*Live, error) {
 // failure by PANICKING — which is what a Go author's `defer f.Close()`
 // wrapper does when it has nowhere to put the error, and which is
 // recovered here rather than taking the host down.
+// A selection belongs to ONE activation (§11.4). Leaving `live` by any
+// door drops it, so the next activation ranks afresh — keeping it would
+// make a consumer prefer a provider it never actually ran against.
 func (h *Host) unwind(e *Live) []string {
+	e.selected = map[string]string{}
 	errors := []string{}
 	for i := len(e.scope) - 1; 0 <= i; i-- {
 		errors = append(errors, callrelease(e.scope[i])...)
@@ -849,15 +868,38 @@ func (h *Host) unmetof(e *Live) []string {
  * It is not silently re-pointed — `static` is the plugin saying in
  * writing that it cannot survive a provider swap, and a survivor being
  * available does not make the swap survivable. */
+// chosen is §11.4's always-reluctant selection, and the ONE place a
+// provider is picked for a live instance. If this instance already
+// selected a provider for `req` and that provider is STILL a candidate,
+// it keeps it — a better-ranked newcomer does not take it. `remember`
+// is false for the questions asked ABOUT an instance rather than BY it:
+// introspection must not create a binding.
+func (h *Host) chosen(e *Live, req Required, remember bool) string {
+	cands := h.providersof(req)
+	if 0 == len(cands) {
+		return ""
+	}
+	if held, has := e.selected[req.Name]; has {
+		for _, c := range cands {
+			if c.Ref == held {
+				return held
+			}
+		}
+	}
+	if remember {
+		e.selected[req.Name] = cands[0].Ref
+	}
+	return cands[0].Ref
+}
+
 func (h *Host) boundproviders(e *Live) []string {
 	out := []string{}
 	for _, r := range Requirements(e.Options) {
 		if !RestartsOnLoss(r) {
 			continue
 		}
-		cands := h.providersof(r)
-		if 0 < len(cands) && !hasstring(out, cands[0].Ref) {
-			out = append(out, cands[0].Ref)
+		if ref := h.chosen(e, r, false); "" != ref && !hasstring(out, ref) {
+			out = append(out, ref)
 		}
 	}
 	return out
@@ -905,8 +947,7 @@ func (h *Host) holdersof(ref string) []string {
 			if !GatesActivation(req) {
 				continue
 			}
-			cands := h.providersof(req)
-			if 0 < len(cands) && cands[0].Ref == ref {
+			if h.chosen(c, req, false) == ref {
 				out = append(out, r)
 				break
 			}

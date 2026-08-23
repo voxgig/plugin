@@ -263,6 +263,12 @@ function makehost(options) {
       options: s.options || {},
       state: {}, order: s.order, unmet: [], scope: [],
       bindings: [], exports: {}, provides: [],
+      // §11.4's ALWAYS-RELUCTANT rebinding made concrete: the provider
+      // ref this instance's activation actually chose, per requirement
+      // name. Re-ranking on every question silently re-points a live
+      // consumer at any better newcomer, and then losing the provider it
+      // was really using does not restart it.
+      selected: {},
     }
     inst[r] = e
     return e
@@ -338,6 +344,10 @@ function makehost(options) {
       e.status = 'failed'
       throw err
     }
+    // §11.4: THE SELECTION IS MADE HERE, once, and remembered. Every
+    // later question — the cascade, `hold`, `unmet` — reads it back
+    // rather than re-ranking, which is what "always-reluctant" means.
+    for (const r of requirements(e.options)) chosen(e, r, true)
     e.status = 'live'
     reconcile()
     return e
@@ -424,7 +434,11 @@ function makehost(options) {
 
   /** Bindings go live only when activation succeeds (§8.1), so the
    * teardown is the exact inverse: reverse order, always. */
+  /** A selection belongs to ONE activation (§11.4). Leaving `live` by
+   * any door drops it, so the next activation ranks afresh — keeping it
+   * would make a consumer prefer a provider it never ran against. */
   function unwind(e) {
+    e.selected = {}
     const errors = []
     for (let i = e.scope.length - 1; 0 <= i; i--) {
       try { e.scope[i]() } catch (err) { errors.push(err) }
@@ -461,14 +475,27 @@ function makehost(options) {
    * restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
    * capability (§11.1): the selected one going away restarts a `static`
    * consumer even though a survivor is available. */
+  /** §11.4's always-reluctant selection, and the ONE place a provider is
+   * picked for a live instance. If this instance already selected a
+   * provider for `req` and that provider is STILL a candidate, it keeps
+   * it — a better-ranked newcomer does not take it. `remember` is false
+   * for the questions asked ABOUT an instance rather than BY it:
+   * introspection must not create a binding. */
+  function chosen(e, req, remember) {
+    const cands = providersof(req)
+    if (0 === cands.length) return undefined
+    const held = e.selected[req.name]
+    if (undefined !== held && cands.some((c) => c.ref === held)) return held
+    if (remember) e.selected[req.name] = cands[0].ref
+    return cands[0].ref
+  }
+
   function boundproviders(e) {
     const out = []
     for (const r of requirements(e.options)) {
       if (!restartsonloss(r)) continue
-      const cands = providersof(r)
-      if (0 < cands.length && -1 === out.indexOf(cands[0].ref)) {
-        out.push(cands[0].ref)
-      }
+      const ref = chosen(e, r, false)
+      if (undefined !== ref && -1 === out.indexOf(ref)) out.push(ref)
     }
     return out
   }
@@ -507,8 +534,7 @@ function makehost(options) {
       if (r === ref || 'live' !== c.status) return false
       for (const req of requirements(c.options)) {
         if (!gatesactivation(req)) continue
-        const cands = providersof(req)
-        if (0 < cands.length && cands[0].ref === ref) return true
+        if (chosen(c, req, false) === ref) return true
       }
       return false
     })

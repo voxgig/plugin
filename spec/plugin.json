@@ -5772,6 +5772,192 @@
                 }
               }
             }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$lo"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#reluctant",
+            "match": {
+              "out": {
+                "log": [
+                  "dep$lo:define",
+                  "dep$lo:activate",
+                  "dep$c:define",
+                  "dep$c:activate",
+                  "dep$hi:define",
+                  "dep$hi:activate",
+                  "dep$c:deactivate",
+                  "dep$lo:deactivate",
+                  "dep$c:activate"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$hi"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#reluctant-holds",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$hi": "loaded",
+                  "dep$lo": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "s",
+                      "range": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$hi"
+              }
+            ],
+            "err": "plugin_dependency_held"
           }
         ]
       }

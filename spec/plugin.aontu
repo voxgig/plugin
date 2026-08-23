@@ -3230,6 +3230,63 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
+    # §11.4: ALWAYS-RELUCTANT. "A satisfied requirement is not re-bound
+    # while it stays satisfied" - so a BETTER provider arriving after
+    # the consumer is live does not take it, and losing the one it
+    # actually selected still restarts it.
+    #
+    # THE LOG IS THE DISCRIMINATOR. A host that re-ranks on every
+    # question treats `dep$c` as bound to `dep$hi` the moment `dep$hi`
+    # goes live, so deactivating `dep$lo` moves nothing and the log ends
+    # at `dep$lo:deactivate` - the consumer silently keeps a reference
+    # to a provider it was never activated against. The statuses are
+    # identical in both readings, which is why this cannot be asserted
+    # on `status`.
+    {
+      id: 'depend/select#reluctant', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$lo' }
+      ]
+      match: { out: { log: [
+        'dep$lo:define', 'dep$lo:activate',
+        'dep$c:define', 'dep$c:activate',
+        'dep$hi:define', 'dep$hi:activate',
+        'dep$c:deactivate', 'dep$lo:deactivate', 'dep$c:activate'
+      ] } }
+    }
+    # ...and under `hold` the same fact is an error rather than a
+    # cascade: the HOLDER of `dep$lo` is `dep$c`, because that is the
+    # provider `dep$c` actually selected. A re-ranking host names
+    # `dep$hi` instead and lets `dep$lo` go.
+    {
+      id: 'depend/select#reluctant-holds', doc: true
+      cmd: [
+        { do: 'host', dependency: 'hold' }
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$hi' }
+      ]
+      match: { out: { status: { 'dep$hi': 'loaded', 'dep$c': 'live', 'dep$lo': 'live' } } }
+    }
+    # ...and a selection belongs to ONE activation. After the consumer
+    # goes down and comes back, it ranks afresh and takes `dep$hi`, so
+    # `dep$hi` is now the one that cannot be deactivated under `hold`.
+    {
+      cmd: [
+        { do: 'host', dependency: 'hold' }
+        { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
+        { do: 'deactivate', ref: 'dep$c' }
+        { do: 'activate', ref: 'dep$c' }
+        { do: 'deactivate', ref: 'dep$hi' }
+      ]
+      err: 'plugin_dependency_held'
+    }
   ]
 
   # CONSUMERS GO DOWN FIRST, NOT AFTERWARDS (§11.3). The cascade is part

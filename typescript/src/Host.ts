@@ -56,6 +56,15 @@ type Live = {
   options: any
   state: any
   order?: OrderBlock
+  /** §11.4's ALWAYS-RELUCTANT rebinding, made concrete: the provider
+   * ref this instance's activation actually selected, per requirement
+   * name. "A satisfied requirement is not re-bound while it stays
+   * satisfied" is a statement about a REMEMBERED choice — recomputing
+   * `providersof(r)[0]` on every question silently re-points a live
+   * consumer at any better-ranked newcomer, and then losing the
+   * provider it was really using does not restart it. Captured at
+   * activate, cleared on the way out. */
+  selected: { [name: string]: string }
   /** §9.6's `active: false` — "declares it and bars it: it appears in
    * `host.list()`, and `activate` and `ready` on it fail rather than
    * quietly doing nothing". THE BAR OUTLIVES THE APPLY THAT SET IT: a
@@ -356,7 +365,7 @@ export function makehost(options?: HostOptions) {
       seq: seqn++,
       options: s.options || {},
       state: {}, order: s.order, unmet: [], scope: [],
-      bindings: [], exports: {}, provides: [],
+      bindings: [], exports: {}, provides: [], selected: {},
     }
     inst[r] = e
     return e
@@ -432,6 +441,10 @@ export function makehost(options?: HostOptions) {
       e.status = 'failed'
       throw err
     }
+    // §11.4: THE SELECTION IS MADE HERE, once, and remembered. Every
+    // later question — the cascade, `hold`, `unmet` — reads it back
+    // rather than re-ranking, which is what "always-reluctant" means.
+    for (const r of requirements(e.options)) chosen(e, r, true)
     e.status = 'live'
     reconcile()
     return e
@@ -536,7 +549,12 @@ export function makehost(options?: HostOptions) {
    * `plugin_release_failed`." An earlier draft swallowed them, which
    * left the host reporting a clean `loaded` for an instance that may
    * still be holding what it failed to give back. */
+  /** A selection belongs to ONE activation (§11.4). Leaving `live` by
+   * any door drops it, so the next activation ranks afresh — keeping it
+   * would make a consumer prefer a provider it never actually ran
+   * against. */
   function unwind(e: Live): any[] {
+    e.selected = {}
     const errors: any[] = []
     for (let i = e.scope.length - 1; 0 <= i; i--) {
       try { e.scope[i]() } catch (err) { errors.push(err) }
@@ -572,6 +590,26 @@ export function makehost(options?: HostOptions) {
       .map((r) => r.name)
   }
 
+  /** §11.4's always-reluctant selection, and the ONE place a provider
+   * is chosen for a live instance.
+   *
+   * "A satisfied requirement is not re-bound while it stays satisfied."
+   * So: if this instance already selected a provider for `req` and that
+   * provider is STILL among the candidates, it keeps it — a
+   * better-ranked newcomer does not take it. Otherwise the rank
+   * decides, and the choice is remembered.
+   *
+   * `remember` is false for the questions asked ABOUT an instance
+   * rather than BY it — introspection must not create a binding. */
+  function chosen(e: Live, req: Required, remember: boolean): string | undefined {
+    const cands = providersof(req)
+    if (0 === cands.length) return undefined
+    const held = e.selected[req.name]
+    if (undefined !== held && cands.some((c) => c.ref === held)) return held
+    if (remember) e.selected[req.name] = cands[0].ref
+    return cands[0].ref
+  }
+
   /** The instance currently SELECTED for each of this one's
    * restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
    * capability (§11.1), and that is what decides behaviour when the
@@ -584,10 +622,8 @@ export function makehost(options?: HostOptions) {
     const out: string[] = []
     for (const r of requirements(e.options)) {
       if (!restartsonloss(r)) continue
-      const cands = providersof(r)
-      if (0 < cands.length && -1 === out.indexOf(cands[0].ref)) {
-        out.push(cands[0].ref)
-      }
+      const ref = chosen(e, r, false)
+      if (undefined !== ref && -1 === out.indexOf(ref)) out.push(ref)
     }
     return out
   }
@@ -629,8 +665,7 @@ export function makehost(options?: HostOptions) {
       if (r === ref || 'live' !== c.status) return false
       for (const req of requirements(c.options)) {
         if (!gatesactivation(req)) continue
-        const cands = providersof(req)
-        if (0 < cands.length && cands[0].ref === ref) return true
+        if (chosen(c, req, false) === ref) return true
       }
       return false
     })

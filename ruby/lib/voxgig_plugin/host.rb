@@ -337,6 +337,12 @@ module VoxgigPlugin
         'seq' => @seqn,
         'options' => spec['options'] || {},
         'state' => {}, 'order' => spec['order'], 'unmet' => [], 'scope' => [],
+        # Section 11.4's ALWAYS-RELUCTANT rebinding made concrete: the
+        # provider ref this instance's activation actually chose, per
+        # requirement name. Re-ranking on every question silently
+        # re-points a live consumer at any better newcomer, and then
+        # losing the provider it was really using does not restart it.
+        'selected' => {},
         'bindings' => [], 'exports' => {}, 'provides' => [], 'inner' => nil
       }
       @seqn += 1
@@ -434,6 +440,13 @@ module VoxgigPlugin
         entry['status'] = 'failed'
         raise
       end
+      # Section 11.4: THE SELECTION IS MADE HERE, once, and remembered.
+      # Every later question - the cascade, `hold`, `unmet` - reads it
+      # back rather than re-ranking, which is what "always-reluctant"
+      # means.
+      VoxgigPlugin.requirements(entry['options']).each do |req|
+        chosen(entry, req, true)
+      end
       entry['status'] = 'live'
       reconcile
       entry
@@ -527,7 +540,12 @@ module VoxgigPlugin
     # release does not stop the rest. Every entry runs, in reverse order,
     # whatever any of them does; the errors are collected and raised as
     # one `plugin_release_failed`."
+    # A selection belongs to ONE activation (section 11.4). Leaving
+    # `live` by any door drops it, so the next activation ranks afresh -
+    # keeping it would make a consumer prefer a provider it never
+    # actually ran against.
     def unwind(entry)
+      entry['selected'] = {}
       errors = []
       entry['scope'].reverse_each do |fn|
         fn.call
@@ -567,13 +585,30 @@ module VoxgigPlugin
     # restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
     # capability (section 11.1): the selected one going away restarts a
     # `static` consumer even though a survivor is available.
+    # Section 11.4's always-reluctant selection, and the ONE place a
+    # provider is picked for a live instance. If this instance already
+    # selected a provider for `req` and that provider is STILL a
+    # candidate, it keeps it - a better-ranked newcomer does not take it.
+    # `remember` is false for the questions asked ABOUT an instance
+    # rather than BY it: introspection must not create a binding.
+    def chosen(entry, req, remember)
+      cands = providersof(req)
+      return nil if cands.empty?
+
+      held = entry['selected'][req['name']]
+      return held if !held.nil? && cands.any? { |c| c['ref'] == held }
+
+      entry['selected'][req['name']] = cands[0]['ref'] if remember
+      cands[0]['ref']
+    end
+
     def boundproviders(entry)
       out = []
       VoxgigPlugin.requirements(entry['options']).each do |req|
         next unless VoxgigPlugin.restartsonloss(req)
 
-        cands = providersof(req)
-        out << cands[0]['ref'] if !cands.empty? && !out.include?(cands[0]['ref'])
+        ref = chosen(entry, req, false)
+        out << ref if !ref.nil? && !out.include?(ref)
       end
       out
     end
@@ -613,8 +648,7 @@ module VoxgigPlugin
         VoxgigPlugin.requirements(c['options']).any? do |req|
           next false unless VoxgigPlugin.gatesactivation(req)
 
-          cands = providersof(req)
-          !cands.empty? && cands[0]['ref'] == ref
+          chosen(c, req, false) == ref
         end
       end
     end

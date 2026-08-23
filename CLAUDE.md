@@ -19,7 +19,7 @@ Quick reminders (the full rationale is in `AGENTS.md`):
   `make check`.
 
 **Status: P5, two of fourteen.** P0–P4 are done and P5 is under way:
-the corpus is 524 entries across 19 sections, and **five
+the corpus is 527 entries across 19 sections, and **five
 implementations pass every one of them** — `typescript/` (canonical),
 `go/`, `python/`, `javascript/` and `ruby/`. `AGENTS.md` §6 says what to
 pick up; the live per-item state is

@@ -1779,6 +1779,18 @@ because only it knows what it can cope with:
   twenty ports; two are the ones that change what a plugin must be
   written to survive.
 
+  **Reluctance is a REMEMBERED choice, not a re-computation.** The
+  selection is made once, when the consumer activates, and recorded per
+  requirement; every later question — the cascade, `hold`, `unmet` —
+  reads it back. A host that instead re-ranks the candidates each time
+  it is asked has implemented *greedy* while appearing to implement
+  neither: a better-ranked provider arriving later silently becomes
+  "the bound one", so deactivating the provider the consumer was
+  actually activated against restarts nothing, and the consumer keeps
+  using a reference it was never told to stop using. The selection
+  belongs to one activation and is dropped when the instance leaves
+  `live`, so the next activation ranks afresh.
+
 **Requirements are live, not checked once.** A check at the activation
 instant guarantees nothing about the moment that matters, which is the
 arbitrary later moment the consumer actually calls the thing.

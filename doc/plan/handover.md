@@ -909,6 +909,30 @@ change with no `.go` change replays the previous result and reports
 now. Same trap as python's stale `__pycache__`, one directory over.
 
 
+### Reluctance is a remembered choice, not a re-computation
+
+§11.4 takes "always-reluctant: a satisfied requirement is not re-bound
+while it stays satisfied", and every port implemented it as
+`providersof(req)[0]` — re-ranked on every question. That is *greedy*
+wearing reluctance's name: a better-ranked provider arriving later
+silently becomes "the bound one", so deactivating the provider the
+consumer was actually activated against restarts nothing, and the
+consumer keeps using a reference nobody told it to drop.
+
+The selection is now made once, at activate, recorded per requirement,
+and dropped when the instance leaves `live` — one function, `chosen`,
+is the only place a provider is picked, and the questions asked ABOUT an
+instance pass `remember: false` so introspection cannot create a
+binding.
+
+**The statuses are identical under both readings**, which is why no
+existing entry caught it. `depend/select#reluctant` asserts on the
+LOG — under reluctance, deactivating the low-ranked provider produces
+`dep$c:deactivate … dep$c:activate`; under re-ranking the log simply
+ends. Two more pin it through `hold`, which names the holder, and one
+pins that the selection does not survive the consumer's own restart.
+
+
 ## 12. Open, and deliberately so
 
 | | |
