@@ -876,6 +876,45 @@ func (h *Host) consumersof(ref string) []string {
 	return out
 }
 
+// holdersof answers §11.3's `hold` question, which is a DIFFERENT
+// question from the cascade's — and reading it off `consumersof`
+// answered the cascade's.
+//
+// The cascade wants the edges that RESTART (mandatory-static and
+// optional-static), because a restart is what it performs. `hold` says
+// "deactivating a REQUIRED instance is `plugin_dependency_held`", and
+// required is cardinality: GatesActivation, not RestartsOnLoss. The two
+// sets differ in both directions and each difference was a real bug.
+//
+// A MANDATORY-DYNAMIC consumer was excluded, so the strictest policy
+// let a provider go that a live consumer could not do without —
+// `dynamic` promises survival of a SWAP, and under `hold` there is no
+// swap, so the consumer falls back to `pending`.
+//
+// An OPTIONAL-STATIC consumer was included, so `hold` refused a
+// deactivation on behalf of an instance that had said in writing it
+// does not need the thing.
+func (h *Host) holdersof(ref string) []string {
+	out := []string{}
+	for _, r := range sortedkeys(h.inst) {
+		c := h.inst[r]
+		if r == ref || StatusLive != c.Status {
+			continue
+		}
+		for _, req := range Requirements(c.Options) {
+			if !GatesActivation(req) {
+				continue
+			}
+			cands := h.providersof(req)
+			if 0 < len(cands) && cands[0].Ref == ref {
+				out = append(out, r)
+				break
+			}
+		}
+	}
+	return out
+}
+
 func (h *Host) providersof(req Required) []Candidate {
 	cands := []Candidate{}
 	want := canon(req.Name)
@@ -955,7 +994,7 @@ func (h *Host) held(e *Live) error {
 	if h.coordinated {
 		return nil
 	}
-	holders := h.consumersof(e.Ref)
+	holders := h.holdersof(e.Ref)
 	if 0 == len(holders) {
 		return nil
 	}

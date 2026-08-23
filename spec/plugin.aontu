@@ -3515,6 +3515,38 @@ primary: depend: {
       err: true
       match: { err: { message: '/holders=\\["dep\\$c"\\]/' } }
     }
+    # A MANDATORY-DYNAMIC consumer HOLDS. §11.3's word is `required`,
+    # which is cardinality, not policy: `dynamic` promises the consumer
+    # survives a SWAP, and under `hold` there is no swap - the provider
+    # goes and the consumer falls back to `pending`, which is exactly
+    # what the policy exists to prevent. Reading the holders off the
+    # cascade's restart-causing set excluded this consumer entirely.
+    {
+      id: 'depend/hold#mandatory-dynamic-holds', doc: true
+      cmd: [
+        { do: 'host', dependency: 'hold' }
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], policy: 'dynamic' } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      err: 'plugin_dependency_held'
+    }
+    # ...and an OPTIONAL consumer does NOT hold, whatever its policy. It
+    # said in writing that it does not need the thing; `hold` refusing a
+    # deactivation on its behalf is the policy speaking for a plugin
+    # against that plugin's own declaration. Optional-STATIC is the case
+    # that changed: it restarts, so the cascade's set contained it, and
+    # `hold` inherited a holder the design never called required.
+    {
+      id: 'depend/hold#optional-does-not-hold', doc: true
+      cmd: [
+        { do: 'host', dependency: 'hold' }
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], optional: ['clock'] } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'live' } } }
+    }
     # An instance nothing holds deactivates normally under `hold`: the
     # policy is a guard on removing something depended upon, not a
     # freeze.

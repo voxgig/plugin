@@ -4874,6 +4874,91 @@
                 "ref": "dep$p"
               },
               {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "policy": "dynamic",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_dependency_held",
+            "id": "depend/hold#mandatory-dynamic-holds"
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "optional": [
+                    "clock"
+                  ],
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/hold#optional-does-not-hold",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
                 "do": "deactivate",
                 "ref": "dep$p"
               }

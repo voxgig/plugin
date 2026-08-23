@@ -881,6 +881,34 @@ turned out to be describing rather than checking — after `stray` and
 `slow`.
 
 
+### `hold` was asking the cascade's question
+
+§11.3's strict policy computed its holders from `consumersof` — the set
+the CASCADE walks, which is the edges that RESTART. `hold`'s own word is
+`required`, and required is cardinality, not policy. The two sets differ
+in **both** directions, and each difference was a bug:
+
+- a **mandatory-dynamic** consumer was excluded, so the strictest policy
+  let a provider go that a live consumer could not do without. `dynamic`
+  promises the consumer survives a *swap*; under `hold` there is no
+  swap, so it falls back to `pending` — which is the exact outcome the
+  policy exists to prevent.
+- an **optional-static** consumer was included, so `hold` refused a
+  deactivation on behalf of an instance that had said in writing it does
+  not need the thing. Disruptive (it restarts), but the design's word is
+  `required`, and optional is the plugin declaring the provider is not.
+
+`holdersof` is now its own function beside `consumersof`, in all five
+ports, and §11.3 says which set is which and why. Both directions have
+an entry; both failed four ports before the fix.
+
+**And the go test cache hid it for a while.** `spec/plugin.json` lives
+outside the go module, so it is not part of go's cache key: a corpus
+change with no `.go` change replays the previous result and reports
+`ok (cached)` for entries it never ran. `make test` passes `-count=1`
+now. Same trap as python's stale `__pycache__`, one directory over.
+
+
 ## 12. Open, and deliberately so
 
 | | |

@@ -4,7 +4,7 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P5, two of fourteen.** All **19 corpus sections** exist — 522
+**Status: P5, two of fourteen.** All **19 corpus sections** exist — 524
 entries — with the driver contract in `DOCS.md` §4. **Five
 implementations pass every one of them**: `typescript/` (canonical),
 `go/`, `python/`, `javascript/` and `ruby/`, and `make check` is the

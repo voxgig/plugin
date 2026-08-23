@@ -602,6 +602,40 @@ export function makehost(options?: HostOptions) {
     })
   }
 
+  /** §11.3's `hold` asks a DIFFERENT question from the cascade, and
+   * reading it off `consumersof` answered the cascade's.
+   *
+   * The cascade wants the edges that RESTART — mandatory-static and
+   * optional-static — because that is what it has to walk. `hold` says
+   * "deactivating a REQUIRED instance is `plugin_dependency_held`", and
+   * `required` is cardinality: `gatesactivation`, not
+   * `restartsonloss`. The two sets differ in both directions and each
+   * difference was a real bug.
+   *
+   * A MANDATORY-DYNAMIC consumer was excluded, so the strictest policy
+   * let a provider go that a live consumer could not do without —
+   * `dynamic` promises the consumer survives a SWAP, and under `hold`
+   * there is no swap, so it goes back to `pending`, which is precisely
+   * what `hold` exists to prevent.
+   *
+   * An OPTIONAL-STATIC consumer was included, so `hold` refused a
+   * deactivation on behalf of an instance that had said in writing it
+   * does not need the thing. Disruptive, yes — it restarts — but the
+   * policy's word is `required`, and an optional requirement is the
+   * plugin declaring the provider is not. */
+  function holdersof(ref: string): string[] {
+    return Object.keys(inst).sort().filter((r) => {
+      const c = inst[r]
+      if (r === ref || 'live' !== c.status) return false
+      for (const req of requirements(c.options)) {
+        if (!gatesactivation(req)) continue
+        const cands = providersof(req)
+        if (0 < cands.length && cands[0].ref === ref) return true
+      }
+      return false
+    })
+  }
+
   function providersof(req: Required): Candidate[] {
     const cands: Candidate[] = []
     for (const ref of Object.keys(inst).sort()) {
@@ -671,7 +705,7 @@ export function makehost(options?: HostOptions) {
   function held(e: Live): void {
     if ('hold' !== dependency) return
     if (coordinated) return
-    const holders = consumersof(e.ref)
+    const holders = holdersof(e.ref)
     if (0 === holders.length) return
     fail('plugin_dependency_held',
       'instance is required by live consumers: ' + e.ref,

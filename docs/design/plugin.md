@@ -1833,6 +1833,20 @@ For a host that wants the strict reading, `makeHost({dependency:
 a station that cannot swap a provider without a restart has lost the
 argument for having a plugin system.
 
+**A holder is a MANDATORY consumer, and that is a different set from
+the one the cascade walks.** The cascade follows the edges that
+*restart* — mandatory-static and optional-static — because a restart is
+what it has to perform. `hold` asks whether the instance is *required*,
+and required is cardinality: a mandatory-**dynamic** consumer holds,
+because `dynamic` promises it survives a *swap* and under `hold` there
+is no swap — the provider goes and the consumer falls back to
+`pending`, which is what the policy exists to prevent. An **optional**
+consumer does not hold whatever its policy, because it has said in
+writing that it does not need the thing, and a policy that refuses a
+deactivation on its behalf is speaking for a plugin against that
+plugin's own declaration. Reading the holders off the cascade's set gets
+both of these wrong, in opposite directions.
+
 **The hold check is a guard on ad-hoc deactivation, not on coordinated
 teardown.** In a bulk operation that is removing the holders too —
 `host.close()`, or an `apply` plan whose own steps deactivate them —

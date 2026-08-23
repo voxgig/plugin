@@ -84,6 +84,14 @@ goroutine identity to tell it from the reentrant one. The corpus is
 single-threaded and cannot see this either way; it is written down
 because a host that needs the other answer must serialise its own calls.
 
+**The test cache does not know about the corpus.** `spec/plugin.json`
+lives outside this module, so it is not part of go's cache key: change
+the corpus without changing a `.go` file and `go test` replays the
+previous result, reporting `ok (cached)` for entries it never ran.
+`make test` passes `-count=1` for exactly this. It is the same trap as
+python's stale `__pycache__`, and it cost a batch there before it cost
+one here.
+
 **Struct tags are the contract.** The corpus runner decodes entries into
 typed inputs, so a field spelled differently from the corpus arrives
 zero and the entry fails — which is the check a dynamic port gets for

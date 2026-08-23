@@ -587,6 +587,38 @@ module VoxgigPlugin
       end
     end
 
+    # Section 11.3's `hold` asks a DIFFERENT question from the cascade,
+    # and reading it off `consumersof` answered the cascade's.
+    #
+    # The cascade wants the edges that RESTART - mandatory-static and
+    # optional-static - because a restart is what it performs. `hold`
+    # says "deactivating a REQUIRED instance is
+    # `plugin_dependency_held`", and required is cardinality:
+    # `gatesactivation`, not `restartsonloss`. The two sets differ in
+    # both directions and each difference was a real bug.
+    #
+    # A MANDATORY-DYNAMIC consumer was excluded, so the strictest policy
+    # let a provider go that a live consumer could not do without -
+    # `dynamic` promises survival of a SWAP, and under `hold` there is
+    # no swap, so the consumer falls back to `pending`.
+    #
+    # An OPTIONAL-STATIC consumer was included, so `hold` refused a
+    # deactivation on behalf of an instance that had said in writing it
+    # does not need the thing.
+    def holdersof(ref)
+      @inst.keys.sort.select do |r|
+        c = @inst[r]
+        next false if r == ref || c['status'] != 'live'
+
+        VoxgigPlugin.requirements(c['options']).any? do |req|
+          next false unless VoxgigPlugin.gatesactivation(req)
+
+          cands = providersof(req)
+          !cands.empty? && cands[0]['ref'] == ref
+        end
+      end
+    end
+
     def providersof(req)
       cands = []
       want = VoxgigPlugin.canon(req['name'])
@@ -655,7 +687,7 @@ module VoxgigPlugin
       return unless @dependency == 'hold'
       return if @coordinated
 
-      holders = consumersof(entry['ref'])
+      holders = holdersof(entry['ref'])
       return if holders.empty?
 
       VoxgigPlugin.fail_with('plugin_dependency_held',

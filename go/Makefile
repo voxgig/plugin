@@ -10,8 +10,15 @@
 # -race, because `golocal_test.go` asserts §5.2's sequential transitions
 # across goroutines and a data race there is the failure it exists to
 # catch — silent without the detector.
+#
+# -count=1 DEFEATS THE TEST CACHE, and it has to. The corpus lives in
+# `spec/plugin.json`, OUTSIDE this module, so go's cache key does not
+# include it: a corpus change with no go change replays the previous
+# result and reports `(cached) ok` for entries it never ran. The same
+# trap as python's stale `__pycache__`, recorded in the same place
+# (AGENTS.md).
 test:
-	go test -race ./...
+	go test -race -count=1 ./...
 
 build:
 	go build ./...
