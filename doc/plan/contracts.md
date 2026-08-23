@@ -21,8 +21,8 @@ States: `NOT STARTED`, `IN PROGRESS` (a PR is open), `DONE` (merged),
 
 | # | owed by | to | what | due | state | discharged by |
 |---|---|---|---|---|---|---|
-| **C1** | plugin | station | `ref` and `config` corpus sections, as pure data | **before station Stage 2** — earlier than P1's exit | IN PROGRESS | both written — `ref` 93 entries, `config` 58, both pure. **Not `DONE` until merged**, per this file's own rule. |
-| **C2** | plugin | station | `lifecycle` and `order` corpus sections **plus** the draft language-neutral driver contract in `DOCS.md` (§15.2 — probes, command vocabulary, canonical observable) | before P1's exit | IN PROGRESS | all three written and landed together — 53 entries + `DOCS.md` §4. **Not `DONE` until merged.** |
+| **C1** | plugin | station | `ref` and `config` corpus sections, as pure data | **before station Stage 2** — earlier than P1's exit | **DONE** | voxgig/plugin#7 — `ref` 97 entries, `config` 86, both pure. Delivered ahead of station Stage 2, which was the point. |
+| **C2** | plugin | station | `lifecycle` and `order` corpus sections **plus** the draft language-neutral driver contract in `DOCS.md` (§15.2 — probes, command vocabulary, canonical observable) | before P1's exit | **DONE** | voxgig/plugin#7 — 53 entries + `DOCS.md` §4, landed together because a driver section without its contract is not shippable. |
 | **C3** | station | plugin | a working Stages 2–**3b** implementation to extract from, and its own suites as the bar | before plugin P3 | NOT STARTED | — |
 | **C4a** | station | plugin | conformance on the pure sections: station runs C1's `ref` and `config` against its own implementation and reports divergence as a plugin issue rather than absorbing it | **continuous** from Stage 2 | NOT STARTED | — |
 | **C4b** | station | plugin | the same for C2's `lifecycle` and `order` | **continuous** from Stage 3b | NOT STARTED | — |

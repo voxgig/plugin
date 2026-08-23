@@ -288,6 +288,18 @@ Rules, all pinned by the corpus:
    let a re-applied document silently reorder a chain: toggle an early
    instance and its fresh `seq` would sort it behind everything that
    never moved. Neither is part of the address.
+
+   **They are pinned in three different sections, and that is not an
+   accident.** `pos` is assigned by document normalization, so it is
+   `config`'s and stays pure. `seq` is a counter the host holds, and
+   auto-tagging (rule 3) needs to know what is already declared — both
+   are host state, so both belong to the `declare` driver section.
+   `pos` *stability across a redeclaration* is `apply` behaviour and is
+   pinned by `order`'s tie group, which is where getting it wrong
+   actually shows. An earlier draft of §15.3 assigned all of this to
+   `ref` and marked that section pure; nothing in the pure surface —
+   `parseref`, `formatref`, `checkname`, `checktag` — can reach any of
+   it.
 5. **Refs are canonicalized on the way in.** `"stripe$"`, `"stripe"` and
    `{name: 'stripe', tag: ''}` all normalize to `stripe`. Ports must
    canonicalize before comparison; the corpus's `ref` section is the
@@ -2079,15 +2091,15 @@ port-specific:
 
 | section | what it pins | pure? |
 |---|---|---|
-| `ref` | name/tag grammar, parse, format, canonicalization, auto-tag, and `pos` vs `seq` across a redeclaration | yes |
-| `config` | document normalization, array/map forms, profile overlay, precedence, list-replace | yes |
+| `ref` | name/tag grammar, parse, format, canonicalization | yes |
+| `config` | document normalization, array/map forms, profile overlay, precedence, list-replace, and **`pos` assignment** — the array index or the sorted-ref index | yes |
 | `env` | `VOXGIG_PLUGIN_*` parsing, ACTIVE/INACTIVE | yes |
 | `resolve` | name → candidate module ids | yes |
 | `capability` | provides/requires matching: name, `match` against `attrs`, the selection rank (version, `priority`, `pos`), and a `static` consumer restarting when its *selected* provider leaves though another matches (§11.1) | yes |
 | `version` | range grammar, the one satisfaction predicate (provider `version` inside requirer `range`), boundary cases, `plugin_bad_range` | yes |
 | `graph` | whole-graph resolution (§11.4): resolved/blocked sets, and the *explanation* for each blocked instance | yes |
 | `lifecycle` | the state machine, idempotence, illegal transitions, failure paths | driver |
-| `declare` | `declared` costs nothing: introspection without loading, raw-vs-resolved options, `start` eager vs lazy, `ready` walking the staircase, `active: false` barring, callback-free `deactivate(pending)`, and `apply` unloading a toggled instance back to `declared` (§5.1, §9.1, §9.6) | driver |
+| `declare` | `declared` costs nothing: introspection without loading, raw-vs-resolved options, `start` eager vs lazy, `ready` walking the staircase, `active: false` barring, callback-free `deactivate(pending)`, and `apply` unloading a toggled instance back to `declared` (§5.1, §9.1, §9.6). Also **auto-tag** and **`seq`** — both need a host, so neither can live in a pure section (§4 rule 4) | driver |
 | `nest` | an instance that is a host (§6.5): inner lifetime owned by the outer, teardown order, structured trace ancestry, capability isolation, and an inherited capability's loss reaching inner consumers | driver |
 | `state` | persistence across activation cycles, destruction on unload | driver |
 | `resource` | the instance scope: automatic recording of host calls, `release` for foreign ones, reverse unwind, partial-activate rollback, failing release | driver |
