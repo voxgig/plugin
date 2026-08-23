@@ -1437,6 +1437,1690 @@
         ]
       }
     },
+    "lifecycle": {
+      "back": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/back#deactivate",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate",
+                "probe$a:deactivate"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate",
+                "probe$a:deactivate",
+                "probe$a:close"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {}
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$a:activate",
+                  "probe$a:deactivate",
+                  "probe$a:close"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "fail": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "code": "probe_boom",
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/fail#activate",
+            "match": {
+              "out": {
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_bad_state"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "unload",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          }
+        ]
+      },
+      "forward": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/forward#full",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate"
+              ],
+              "open": 1,
+              "result": null,
+              "status": {
+                "probe$a": "live"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1,
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "idem": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/idem#activate",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate"
+              ],
+              "open": 1,
+              "result": null,
+              "status": {
+                "probe$a": "live"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          }
+        ]
+      },
+      "illegal": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_not_loaded",
+            "id": "lifecycle/illegal#activate-absent"
+          },
+          {
+            "cmd": [
+              {
+                "do": "deactivate",
+                "ref": "nope$a"
+              }
+            ],
+            "err": "plugin_not_loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "unload",
+                "ref": "nope$a"
+              }
+            ],
+            "err": "plugin_not_loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "options",
+                "patch": {},
+                "ref": "nope$a"
+              }
+            ],
+            "err": "plugin_not_loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "other"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "other",
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_ref_duplicate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "nosuch$a"
+              }
+            ],
+            "err": "plugin_unknown_definition"
+          }
+        ]
+      },
+      "introspect": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/introspect#free",
+            "out": {
+              "log": [],
+              "open": 0,
+              "result": {
+                "probe$a": "declared"
+              },
+              "status": {
+                "probe$a": "declared"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    },
+                    "probe$b": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "out": {
+              "log": [],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "declared",
+                "probe$b": "declared"
+              }
+            }
+          }
+        ]
+      },
+      "pending": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "dep"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "missing"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/pending#unmet",
+            "out": {
+              "log": [
+                "dep$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "dep$a": "pending"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "dep"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "missing"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "dep$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "dep$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "dep"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "missing"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "dep$a": "pending"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "reentrant": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "reenter": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_reentrant",
+            "id": "lifecycle/reentrant#activate"
+          }
+        ]
+      },
+      "resource": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "greedy",
+                "probe": "greedy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "greedy$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/resource#unwind",
+            "match": {
+              "out": {
+                "open": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "greedy",
+                "probe": "greedy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "order": {
+      "band": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 10
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/band#lower-first",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": -5
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "constraint": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/constraint#after",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "before": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "late"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "definition": "late",
+                "do": "ready",
+                "order": {
+                  "after": "probe"
+                },
+                "ref": "late$x"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b",
+                  "late$x"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "late"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "late",
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "late$x"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "late$x",
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "cycle": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$b"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_order_cycle",
+            "id": "order/cycle#pair"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$c"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$b"
+                },
+                "ref": "probe$c"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_order_cycle"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": "plugin_order_cycle"
+          }
+        ]
+      },
+      "pin": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain",
+                    "pin": {
+                      "adapter": "innermost"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "adapter"
+              },
+              {
+                "definition": "adapter",
+                "do": "ready",
+                "ref": "adapter$x"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "order/pin#innermost",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "adapter$x"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain",
+                    "pin": {
+                      "adapter": "innermost"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "adapter"
+              },
+              {
+                "definition": "adapter",
+                "do": "ready",
+                "ref": "adapter$x"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "adapter$x"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "c"
+              }
+            ],
+            "err": "plugin_order_pinned"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain",
+                    "pin": {
+                      "adapter": "outermost"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "adapter"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "adapter",
+                "do": "ready",
+                "ref": "adapter$x"
+              },
+              {
+                "do": "order",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "adapter$x",
+                  "probe$a"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "precedence": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a",
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/precedence#constraint-wins",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "recompute": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/recompute#reactivate",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          }
+        ]
+      },
+      "tie": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/tie#pos",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$first",
+                  "probe$second",
+                  "probe$third"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first",
+                      "start": "lazy"
+                    },
+                    {
+                      "ref": "probe$second",
+                      "start": "lazy"
+                    },
+                    {
+                      "ref": "probe$third",
+                      "start": "lazy"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$third"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$first"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$second"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$first",
+                  "probe$second",
+                  "probe$third"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "active": false,
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$first",
+                  "probe$second",
+                  "probe$third"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {},
+                    "probe$c": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b",
+                  "probe$c"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "vacuous": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "nosuchthing"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/vacuous#absent",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
     "ref": {
       "bound": {
         "set": [

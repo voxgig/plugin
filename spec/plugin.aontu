@@ -691,3 +691,685 @@ primary: config: {
       err: true, match: { err: { message: '/m/' } } }
   ]
 }
+
+
+# ---------------------------------------------------------------------------
+# lifecycle — the state machine (§5).
+#
+# DRIVER section (§15.3): entries carry `cmd`, and a port needs DOCS.md §4
+# to run them — the probe catalog, the command vocabulary, and the canonical
+# observable {status, open, log, result}. Corpus files alone are not enough,
+# which is why C2 ships both together (doc/plan/contracts.md).
+#
+# `log` order IS the assertion. A set would pass a port that unwinds in the
+# wrong direction, which is the one thing §8.3 exists to guarantee.
+# ---------------------------------------------------------------------------
+
+primary: lifecycle: {
+
+  # The forward path. Each step implies the ones before it (§5.1), so
+  # `activate` on an undeclared ref declares and loads on the way.
+  forward: set: [
+    {
+      id: 'lifecycle/forward#full', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'load', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+      ]
+      out: { status: { 'probe$a': 'live' }, open: 1, log: ['probe$a:define', 'probe$a:activate'], result: null }
+    }
+    # `load` stops at loaded: configured, stateful, INERT. No resource is
+    # held, because capture belongs to activation and nowhere else.
+    {
+      cmd: [ { do: 'define', name: 'probe' }, { do: 'load', ref: 'probe$a' } ]
+      out: { status: { 'probe$a': 'loaded' }, open: 0, log: ['probe$a:define'], result: null }
+    }
+    # `ready` walks the whole staircase in one call (§5.1).
+    {
+      cmd: [ { do: 'define', name: 'probe' }, { do: 'ready', ref: 'probe$a' } ]
+      match: { out: { status: { 'probe$a': 'live' }, open: 1 } }
+    }
+  ]
+
+
+  # The backward path. Plugin state survives every backward step except
+  # unload; the resource does not survive deactivate.
+  back: set: [
+    {
+      id: 'lifecycle/back#deactivate', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'deactivate', ref: 'probe$a' }
+      ]
+      out: { status: { 'probe$a': 'loaded' }, open: 0
+             log: ['probe$a:define', 'probe$a:activate', 'probe$a:deactivate'], result: null }
+    }
+    # unload runs close and removes the entry entirely — an absent
+    # instance is ABSENT from status, not present with a null status.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'unload', ref: 'probe$a' }
+      ]
+      out: { status: {}, open: 0
+             log: ['probe$a:define', 'probe$a:activate', 'probe$a:deactivate', 'probe$a:close'], result: null }
+    }
+    # unload from `live` deactivates first, then closes (§5.2's table) —
+    # the log proves the order rather than just the end state.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'unload', ref: 'probe$a' }
+      ]
+      match: { out: { log: ['probe$a:define', 'probe$a:activate', 'probe$a:deactivate', 'probe$a:close'] } }
+    }
+  ]
+
+
+  # IDEMPOTENT IN THE TRIVIAL DIRECTION (§5.2). activate on a live
+  # instance is a no-op returning success, not an error. This is what
+  # lets declarative config be applied repeatedly (§9.6) without the host
+  # tracking what it already did — and the log is the proof that it is a
+  # no-op rather than a repeat: `activate` fires ONCE.
+  idem: set: [
+    {
+      id: 'lifecycle/idem#activate', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+      ]
+      out: { status: { 'probe$a': 'live' }, open: 1
+             log: ['probe$a:define', 'probe$a:activate'], result: null }
+    }
+    # Likewise load on a loaded instance: `define` fires once.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'load', ref: 'probe$a' }
+        { do: 'load', ref: 'probe$a' }
+      ]
+      out: { status: { 'probe$a': 'loaded' }, open: 0, log: ['probe$a:define'], result: null }
+    }
+    # And deactivate on a loaded instance.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'load', ref: 'probe$a' }
+        { do: 'deactivate', ref: 'probe$a' }
+      ]
+      out: { status: { 'probe$a': 'loaded' }, open: 0, log: ['probe$a:define'], result: null }
+    }
+  ]
+
+
+  # DEACTIVATING A `pending` INSTANCE RUNS NO CALLBACK (§5.2). It never
+  # reached activate, so it holds no scope and no live bindings; running
+  # the definition's deactivate there would be teardown without matching
+  # setup, which plugins are not written to survive and which could fail
+  # an instance that had done nothing wrong.
+  pending: set: [
+    {
+      id: 'lifecycle/pending#unmet', doc: true
+      cmd: [
+        { do: 'define', name: 'dep' }
+        { do: 'load', ref: 'dep$a', options: { requires: ['missing'] } }
+        { do: 'activate', ref: 'dep$a' }
+      ]
+      out: { status: { 'dep$a': 'pending' }, open: 0, log: ['dep$a:define'], result: null }
+    }
+    # The withdrawal is callback-free and CANNOT FAIL: no `deactivate` in
+    # the log, and the instance lands back at `loaded`.
+    {
+      cmd: [
+        { do: 'define', name: 'dep' }
+        { do: 'load', ref: 'dep$a', options: { requires: ['missing'] } }
+        { do: 'activate', ref: 'dep$a' }
+        { do: 'deactivate', ref: 'dep$a' }
+      ]
+      out: { status: { 'dep$a': 'loaded' }, open: 0, log: ['dep$a:define'], result: null }
+    }
+    # `pending` is observably identical to `loaded` — nothing held,
+    # nothing bound — but it is a STATE and not a flag, because it means
+    # something entirely different to whoever reads the status map.
+    {
+      cmd: [
+        { do: 'define', name: 'dep' }
+        { do: 'load', ref: 'dep$a', options: { requires: ['missing'] } }
+        { do: 'activate', ref: 'dep$a' }
+      ]
+      match: { out: { status: { 'dep$a': 'pending' }, open: 0 } }
+    }
+  ]
+
+
+  # ANY failure during a transition lands the instance in `failed` (§5.2).
+  # There is no second, softer failure state: the point of `failed` is
+  # that it is not trustworthy.
+  fail: set: [
+    {
+      id: 'lifecycle/fail#activate', doc: true
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'probe_boom' } }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      match: { out: { status: { 'noisy$a': 'failed' } } }
+    }
+    # A failed instance remains REGISTERED AND INSPECTABLE — that is the
+    # point: a failed plugin must be visible, not vanished.
+    {
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+        { do: 'list' }
+      ]
+      match: { out: { result: { 'noisy$a': 'failed' } } }
+    }
+    # It accepts ONLY unload. Any other transition raises.
+    {
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      err: 'plugin_bad_state'
+    }
+    {
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+        { do: 'unload', ref: 'noisy$a' }
+      ]
+      match: { out: { status: {} } }
+    }
+    # Bindings are ALWAYS removed before the status changes, so a failed
+    # instance never participates in anything, whatever went wrong.
+    {
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: [] } }
+    }
+    # A failing activate must not leak the resource it had acquired: the
+    # instance scope unwinds in reverse on partial activation (§8.3).
+    {
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      match: { out: { open: 0 } }
+    }
+  ]
+
+
+  # Illegal transitions raise rather than silently no-op. The idempotent
+  # cases above are the ONLY exceptions, and they are pinned there rather
+  # than left to the reader.
+  illegal: set: [
+    { id: 'lifecycle/illegal#activate-absent', doc: true
+      cmd: [ { do: 'activate', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
+    { cmd: [ { do: 'deactivate', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
+    { cmd: [ { do: 'unload', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
+    { cmd: [ { do: 'options', ref: 'nope$a', patch: {} } ], err: 'plugin_not_loaded' }
+    # A load onto an OCCUPIED ref is plugin_ref_duplicate (§4 rule 1) —
+    # not a silent overwrite as in seneca, and not an impossibility as in
+    # sdkgen. Note this is `load` twice, which the idem group shows is a
+    # no-op; the duplicate is a SECOND DEFINITION claiming a taken ref.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'other' }
+        { do: 'load', ref: 'probe$a' }
+        { do: 'load', ref: 'probe$a', definition: 'other' }
+      ]
+      err: 'plugin_ref_duplicate'
+    }
+    # An unknown definition, distinct from an unknown ref.
+    { cmd: [ { do: 'load', ref: 'nosuch$a' } ], err: 'plugin_unknown_definition' }
+  ]
+
+
+  # INTROSPECTION NEVER ADVANCES THE STATE (§5.2). A status page must not
+  # be a way to accidentally import twenty packages, so `list` over a
+  # `declared` instance leaves it `declared` and fires no callback.
+  introspect: set: [
+    {
+      id: 'lifecycle/introspect#free', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
+        { do: 'list' }
+      ]
+      out: { status: { 'probe$a': 'declared' }, open: 0, log: []
+             result: { 'probe$a': 'declared' } }
+    }
+    # `declared` costs nothing: twenty lazy instances are twenty map
+    # entries and no executed code, which is the property station needs.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' }, 'probe$b': { start: 'lazy' } } } }
+      ]
+      out: { status: { 'probe$a': 'declared', 'probe$b': 'declared' }, open: 0, log: [], result: null }
+    }
+  ]
+
+
+  # TRANSITIONS ARE SEQUENTIAL (§5.2). A transition triggered from inside
+  # a lifecycle callback is plugin_reentrant. A hard rule, because it is
+  # the only way the semantics can be identical in Go, in Ruby and in
+  # single-threaded JavaScript.
+  reentrant: set: [
+    {
+      id: 'lifecycle/reentrant#activate', doc: true
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { reenter: 'activate' } }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      err: 'plugin_reentrant'
+    }
+  ]
+
+
+  # The synthetic resource counter is the whole test for §8.3's unwind.
+  # `greedy` acquires N and releases some explicitly; the difference is
+  # what the instance scope must unwind by itself.
+  resource: set: [
+    {
+      id: 'lifecycle/resource#unwind', doc: true
+      cmd: [
+        { do: 'define', name: 'greedy', probe: 'greedy' }
+        { do: 'load', ref: 'greedy$a', options: { acquire: 3, release: 1 } }
+        { do: 'activate', ref: 'greedy$a' }
+      ]
+      match: { out: { open: 2 } }
+    }
+    # Deactivation unwinds the rest — the instance scope, not a ledger
+    # the plugin has to remember to keep.
+    {
+      cmd: [
+        { do: 'define', name: 'greedy', probe: 'greedy' }
+        { do: 'load', ref: 'greedy$a', options: { acquire: 3, release: 1 } }
+        { do: 'activate', ref: 'greedy$a' }
+        { do: 'deactivate', ref: 'greedy$a' }
+      ]
+      match: { out: { open: 0 } }
+    }
+    # State survives the cycle unchanged (§5.4): deactivating a rate
+    # limiter and reactivating it must not reset its counters. Pinned
+    # through the probe's COUNTER rather than object identity, so a port
+    # whose language has no stable identity is not failed for it.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 2 } }
+    }
+    # unload destroys it — going back to absent means "as if never
+    # loaded", and close is what properly undoes `define`.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'bump' }
+        { do: 'unload', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'call', ref: 'probe$a', method: 'count' }
+      ]
+      match: { out: { result: 0 } }
+    }
+  ]
+}
+
+
+# ---------------------------------------------------------------------------
+# order — the resolved order of bindings on a point (§7).
+#
+# DRIVER section: needs DOCS.md §4, and §4.4's ordering block in particular.
+#
+# ONE RULE, ONE PLACE. sdkgen grew two special cases in makeOptions (`test`,
+# then `station`) and the third was not far off; this sort is the whole
+# replacement. Three tiers, in this order:
+#
+#   1 constraints   before/after edges, matched by ref or by name
+#   2 bands         integer, lower first, default 0
+#   3 declaration   ties break by `pos`, NOT by load order and NOT by `seq`
+#
+# `result` is the ref list from an `order` command.
+# ---------------------------------------------------------------------------
+
+primary: order: {
+
+  # Constraints are edges, and they win over everything below them.
+  constraint: set: [
+    {
+      id: 'order/constraint#after', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+    # `before` is the mirror, and must not be implemented as "after,
+    # reversed" — a port that does gets this one backwards.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b', order: { before: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+    # Matching BY NAME orders behind every instance of that definition
+    # (§7), which is the whole reason the two spellings exist.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'late' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'ready', ref: 'late$x', definition: 'late', order: { after: 'probe' } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b', 'late$x'] } }
+    }
+    # By REF orders behind exactly one, so the other instance is free to
+    # sort ahead of the constrained binding.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'late' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'late$x', definition: 'late', order: { after: 'probe$a' } }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'late$x', 'probe$b'] } }
+    }
+  ]
+
+
+  # Bands break constraint-free ordering GLOBALLY — what lets a host say
+  # "the base transport wrapper is band 100" once, instead of every
+  # plugin naming it. Lower runs first: outermost for a chain, first for
+  # a hook.
+  band: set: [
+    {
+      id: 'order/band#lower-first', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 10 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1 } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+    # Default band is 0, so an unbanded binding sorts ahead of band 1 —
+    # a port defaulting to 1, or to "no band", gets this backwards.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 1 } }
+        { do: 'ready', ref: 'probe$b' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+    # Negative bands are ordinary integers, not an error: a host adding a
+    # layer BELOW an existing one should not have to renumber.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b', order: { band: -5 } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+  ]
+
+
+  # CONSTRAINTS BEAT BANDS (§7), precisely so that the correct tool wins
+  # when both are present. A band chosen by trial and error to fix an
+  # ordering bug is a bug wearing a number; a constraint says what was
+  # actually meant, so it must not lose to one.
+  precedence: set: [
+    {
+      id: 'order/precedence#constraint-wins', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+  ]
+
+
+  # TIES BREAK BY `pos` — the instance's position in the DECLARATION
+  # order — not by the order instances happened to load, and not by the
+  # incarnation counter `seq` (§4 rule 4). Both distinctions are
+  # load-bearing.
+  tie: set: [
+    {
+      id: 'order/tie#pos', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'apply', doc: { plugin: 1, instance: [
+            { ref: 'probe$first' }, { ref: 'probe$second' }, { ref: 'probe$third' } ] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$first', 'probe$second', 'probe$third'] } }
+    }
+    # LOAD ORDER IS NOT `pos`. With lazy instances, twenty declared in
+    # document order may load in whatever order their first ready() calls
+    # arrive — and the document's order is the one that must decide.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'apply', doc: { plugin: 1, instance: [
+            { ref: 'probe$first', start: 'lazy' }
+            { ref: 'probe$second', start: 'lazy' }
+            { ref: 'probe$third', start: 'lazy' } ] } }
+        { do: 'ready', ref: 'probe$third' }
+        { do: 'ready', ref: 'probe$first' }
+        { do: 'ready', ref: 'probe$second' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$first', 'probe$second', 'probe$third'] } }
+    }
+    # `seq` IS NOT `pos` EITHER. A re-applied document that toggles an
+    # early instance gives it a fresh seq; a counter-based tie-break
+    # would sort it behind everything that never moved, silently
+    # reordering a chain. `pos` is stable across the redeclaration.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'apply', doc: { plugin: 1, instance: [
+            { ref: 'probe$first' }, { ref: 'probe$second' }, { ref: 'probe$third' } ] } }
+        { do: 'apply', doc: { plugin: 1, instance: [
+            { ref: 'probe$first', active: false }, { ref: 'probe$second' }, { ref: 'probe$third' } ] } }
+        { do: 'apply', doc: { plugin: 1, instance: [
+            { ref: 'probe$first' }, { ref: 'probe$second' }, { ref: 'probe$third' } ] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$first', 'probe$second', 'probe$third'] } }
+    }
+    # In the map form, `pos` is the SORTED-ref index, so the tie-break is
+    # byte-stable rather than dependent on the parser's key order.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$c': {}, 'probe$a': {}, 'probe$b': {} } } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b', 'probe$c'] } }
+    }
+  ]
+
+
+  # A CONSTRAINT AGAINST AN ABSENT BINDING IS SATISFIED VACUOUSLY (§7) —
+  # not an error. A plugin ordered `after: 'test'` must load in a host
+  # with no test plugin. This is sdkgen's __after__ behaviour, kept.
+  vacuous: set: [
+    {
+      id: 'order/vacuous#absent', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { after: 'nosuchthing' } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a'] } }
+    }
+    # A constraint against a DEACTIVATED instance is the same case: the
+    # binding is not in the live set, so the edge is vacuous rather than
+    # blocking.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b'] } }
+    }
+  ]
+
+
+  # THE ORDER IS RECOMPUTED ON ANY CHANGE TO THE LIVE SET (§7) — it is
+  # not computed once at startup and cached, which is the bug a host
+  # discovers only when something deactivates in production.
+  recompute: set: [
+    {
+      id: 'order/recompute#reactivate', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
+        { do: 'deactivate', ref: 'probe$a' }
+        { do: 'activate', ref: 'probe$a' }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+    # An empty live set is an empty order, not an error.
+    {
+      cmd: [ { do: 'define', name: 'probe' }, { do: 'order', point: 'p' } ]
+      match: { out: { result: [] } }
+    }
+  ]
+
+
+  # A cycle is plugin_order_cycle, REPORTED WITH THE CYCLE (§7) — a bare
+  # "cycle detected" leaves the author bisecting a twenty-plugin host.
+  cycle: set: [
+    {
+      id: 'order/cycle#pair', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { after: 'probe$b' } }
+        { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      err: 'plugin_order_cycle'
+    }
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { after: 'probe$c' } }
+        { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
+        { do: 'ready', ref: 'probe$c', order: { after: 'probe$b' } }
+        { do: 'order', point: 'p' }
+      ]
+      err: true, match: { err: { code: 'plugin_order_cycle' } }
+    }
+    # A self-edge is a cycle of one, and must not be silently dropped.
+    {
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      err: 'plugin_order_cycle'
+    }
+  ]
+
+
+  # A PIN IS NOT A CONSTRAINT (§7). Constraints and bands are negotiable
+  # by definition — they are what plugins and documents say they WANT,
+  # and the sort's job is to satisfy them all. A pin is the host stating
+  # a structural invariant of its own architecture, so an ordering that
+  # would move it is REJECTED rather than honoured.
+  #
+  # The vocabulary is POSITIONAL, not ordinal: §6.2 composes
+  # b1(b2(b3(base))) with the FIRST binding outermost, so `first` and
+  # `innermost` are opposites. A pin spelled in sort terms would be read
+  # backwards by exactly the people it exists to protect.
+  pin: set: [
+    {
+      id: 'order/pin#innermost', doc: true
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain', pin: { adapter: 'innermost' } } } }
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'adapter' }
+        { do: 'ready', ref: 'adapter$x', definition: 'adapter' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'order', point: 'c' }
+      ]
+      match: { out: { result: ['probe$a', 'adapter$x'] } }
+    }
+    # An ordering that would move the pinned binding is an ERROR, not a
+    # preference honoured into a broken wrap. Station's adapter must sit
+    # immediately outside the base transport; an `order` list that moves
+    # it has to fail.
+    {
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain', pin: { adapter: 'innermost' } } } }
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'adapter' }
+        { do: 'ready', ref: 'adapter$x', definition: 'adapter' }
+        { do: 'ready', ref: 'probe$a', order: { after: 'adapter$x' } }
+        { do: 'order', point: 'c' }
+      ]
+      err: 'plugin_order_pinned'
+    }
+    # `outermost` is the other end, and a hook's vocabulary is
+    # first/last — the same mechanism, named for the shape it applies to.
+    {
+      cmd: [
+        { do: 'host', points: { c: { kind: 'chain', pin: { adapter: 'outermost' } } } }
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'adapter' }
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'ready', ref: 'adapter$x', definition: 'adapter' }
+        { do: 'order', point: 'c' }
+      ]
+      match: { out: { result: ['adapter$x', 'probe$a'] } }
+    }
+  ]
+}

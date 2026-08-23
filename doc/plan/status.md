@@ -23,13 +23,21 @@ The only work in flight is P1's first corpus sections.
 
 ## Pick this up first
 
-**P1 item 1.3 — the draft driver contract in `DOCS.md`** (§15.2:
-probes, command vocabulary, canonical observable), then 1.4's
-`lifecycle` and `order` sections. That is **C2**, and 1.3 must land
-*with* 1.4 rather than before it: they are driver sections, so corpus
-files alone leave every port unable to run them.
+**P1 item 1.5 — `typescript/`, the canonical.** Everything owed
+outward is now written: C1 (`ref` + `config`) and C2 (`lifecycle` +
+`order` + the driver contract), 204 entries across four sections. The
+canonical is the phase's third deliverable by design, and it is next.
 
-C1 (`ref` + `config`, 151 entries) is written and awaiting merge.
+Write it to the portability budget (AGENTS.md §5): no reflection-backed
+APIs, no `Proxy`, no decorators, no meta-level interception, and eager
+lifecycle reconciliation. Every one of those is cheaper to obey now
+than to remove at P4.
+
+**1.6 `tools/check_probes.py` is also unblocked** — the probe catalog
+now exists to check against — and is the cheaper of the two.
+
+Both halves of C1 and all of C2 are written and **awaiting merge**;
+neither row is `DONE` until it lands.
 
 The reason for that ordering is not politeness. Station's Stage 1 lands
 the ref grammar and Stage 2 lands the identity re-key; if `ref` arrives

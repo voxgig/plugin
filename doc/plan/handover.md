@@ -160,7 +160,58 @@ in the meantime, and this row is the reason it looks incomplete against
 §15.3.
 
 
-## 6. Open, and deliberately so
+## 6. The driver vocabulary was missing a verb it requires
+
+Found writing the contract. §15.2 lists the command vocabulary as
+sixteen verbs — `host`, `define`, `load`, `activate`, `deactivate`,
+`unload`, `apply`, `options`, `call`, `emit`, `provider`, `export`,
+`order`, `list`, `env`, `close` — and omits **`ready`**.
+
+But §5.1 defines `ready(ref)` as running the whole forward path in one
+call, §9.1 makes it the thing that walks a `lazy` instance up, and
+§15.3's own `declare` row requires the corpus to pin "`ready` walking
+the staircase". A driver that cannot issue `ready` cannot run a section
+the same table demands.
+
+So the list is **incomplete against the design's own section table**
+rather than deliberately excluding it. `DOCS.md` §4.2 carries seventeen
+verbs and says why; §15.2 is owed the same correction.
+
+Two smaller gaps in the same list, both added and both flagged there:
+`load` needs a `definition` key (a ref whose name differs from its
+catalog entry — required to test `plugin_ref_duplicate` at all, since
+loading the *same* definition twice is a documented no-op), and `host`
+needs `points` (declaring a point's `kind` and `pin`, without which
+§7's pin rules are untestable).
+
+**The pattern worth noting** — this is the second finding of the same
+shape as §5's. A list written in prose drifts from the table beside it,
+and neither is wrong on its own; the disagreement only surfaces when
+something tries to *use* both. Writing the corpus is what uses both.
+
+
+## 7. One ambiguity the corpus had to settle
+
+§7 describes "an integer `order`" for a band. §9.1's document shows
+`"order": {"after": "retry"}` — a map. Both cannot be the spelling.
+
+The corpus is the arbiter (as §4 rule 5 already makes it for
+canonicalization), and it pins **one map**:
+
+```json
+{ "order": { "before": "...", "after": "...", "band": 0 } }
+```
+
+`band` rather than a nested `order`, because `order.order` needs
+explaining every time it is read. Recorded in `DOCS.md` §4.4.
+
+The alternative — accepting either an integer or a map — was rejected
+on the standing rule: two spellings for one behaviour is the defect
+class this repo exists to avoid, and it is the same argument that
+rejected `{"deep": 0}` in §9.4.
+
+
+## 8. Open, and deliberately so
 
 | | |
 |---|---|

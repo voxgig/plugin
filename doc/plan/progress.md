@@ -34,10 +34,10 @@ The four cross-repo obligations have their own register in
 | 1.0 The plan register | DONE | This file and its four companions. §18.1 requires each phase to update the register in the same change that lands the work, so it exists before the work does. |
 | 1.1 `ref` corpus section (**C1**) | DONE | 93 entries, 9 groups, no host. Pure as marked — but §15.3 also lists auto-tag and `pos`/`seq` under `ref`, and neither is reachable from the pure surface; see [`handover.md`](handover.md) §5. |
 | 1.2 `config` corpus section (**C1**) | DONE | 58 entries, 12 groups, no host. All four pinned items covered, plus the partial-array rule and host key renaming. |
-| 1.3 Draft driver contract in `DOCS.md` (**C2**) | NOT STARTED | §15.2 — probes, command vocabulary, canonical observable. Must land *with* 1.4, not after it. |
-| 1.4 `lifecycle` and `order` corpus sections (**C2**) | NOT STARTED | Driver sections: unrunnable by any port without 1.3. |
+| 1.3 Draft driver contract in `DOCS.md` (**C2**) | DONE | `DOCS.md` §4: how an entry runs, 17 verbs, the 6-probe catalog, the ordering block, the observable, and what a port must not do. Landed *with* 1.4. |
+| 1.4 `lifecycle` and `order` corpus sections (**C2**) | DONE | 31 + 22 entries. Driver sections, landed in the same change as the contract that makes them runnable. |
 | 1.5 `typescript/` — the canonical | NOT STARTED | Written to the portability budget (§18, and AGENTS.md "Sharp edges"). |
-| 1.6 `tools/check_probes.py` | NOT STARTED | Needs 1.3 to check against; `make probes` currently reports its own absence rather than passing silently. |
+| 1.6 `tools/check_probes.py` | NOT STARTED | **Unblocked** — 1.3 landed the probe catalog to check against. `make probes` still reports its own absence rather than passing silently. |
 
 ## Phase 2 — the canonical completed
 
