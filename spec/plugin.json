@@ -562,6 +562,215 @@
           }
         ]
       },
+      "nested": {
+        "set": [
+          {
+            "doc": true,
+            "id": "capability/nested#leaf",
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": {
+                        "max": 5,
+                        "min": 1
+                      }
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": {
+                        "max": 9
+                      }
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": {}
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "limits": 5
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "limits": {
+                    "max": 5
+                  }
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "regions": [
+                        "eu",
+                        "us"
+                      ]
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "regions": [
+                    "eu",
+                    "us"
+                  ]
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "regions": [
+                        "eu",
+                        "us"
+                      ]
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "regions": [
+                    "eu"
+                  ]
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "regions": [
+                        "eu",
+                        "us"
+                      ]
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "regions": [
+                    "us",
+                    "eu"
+                  ]
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          }
+        ]
+      },
       "rank": {
         "set": [
           {
@@ -5967,6 +6176,60 @@
             }
           },
           {
+            "id": "graph/blocked#match-nested",
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "attrs": {
+                      "limits": {
+                        "max": 9
+                      }
+                    },
+                    "name": "s"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "match": {
+                      "limits": {
+                        "max": 5
+                      }
+                    },
+                    "name": "s"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "s",
+                  "why": {
+                    "failing": "limits",
+                    "found": {
+                      "max": 9
+                    },
+                    "kind": "match",
+                    "want": {
+                      "max": 5
+                    }
+                  }
+                }
+              ],
+              "resolved": [
+                "p"
+              ]
+            }
+          },
+          {
             "id": "graph/blocked#chain",
             "in": [
               {
@@ -6451,6 +6714,130 @@
             "match": {
               "out": {
                 "open": 0
+              }
+            }
+          }
+        ]
+      },
+      "faildown": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/faildown#deactivate",
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "code": "probe_boom",
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "probe_boom"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "unload",
+                "ref": "noisy$a"
+              }
+            ],
+            "id": "lifecycle/faildown#unload",
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "deactivate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "unload",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "unload",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "fail": "close"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "unload",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "id": "lifecycle/faildown#close-drops",
+            "match": {
+              "out": {
+                "open": 0,
+                "result": {}
               }
             }
           }
@@ -9515,6 +9902,98 @@
               {
                 "do": "ready",
                 "ref": "probe$b"
+              },
+              {
+                "do": "close"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 3
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              },
+              {
+                "do": "call",
+                "method": "unwound",
+                "ref": "greedy$a"
+              }
+            ],
+            "id": "resource/scope#reverse",
+            "match": {
+              "out": {
+                "result": [
+                  2,
+                  1,
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 3
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "id": "resource/scope#release-counts",
+            "match": {
+              "out": {
+                "open": 3
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "mark": 3
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 2,
+                  "mark": 2
+                },
+                "ref": "greedy$a"
               },
               {
                 "do": "close"

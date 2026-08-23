@@ -168,7 +168,15 @@ export function makehost(options?: HostOptions) {
         if (!intransition) {
           fail('plugin_release_scope', 'release called outside activate')
         }
-        e.scope.push(fn)
+        // SYMMETRIC WITH `acquire`, and it has to be: `open` counts the
+        // resources CURRENTLY HELD, so an entry that is registered and
+        // then unwound must leave the count where it found it.
+        // Incrementing on registration and never decrementing made
+        // every `release` a permanent leak in the counter — invisible
+        // only because no corpus entry used `release` at all, which is
+        // the gap `resource/scope#release-counts` now closes.
+        let done = false
+        e.scope.push(() => { if (!done) { done = true; open -= 1; fn() } })
         open += 1
       },
       /** The synthetic counter the driver owns, so "what is open" is
@@ -409,7 +417,21 @@ export function makehost(options?: HostOptions) {
       if ('live' === e.status) {
         held(e)
         cascade(e)
-        run(e, 'deactivate', 'deactivate')
+        try {
+          run(e, 'deactivate', 'deactivate')
+        }
+        catch (err: any) {
+          // §5.2: ANY failure during a transition lands the instance in
+          // `failed`, with the scope STILL FULLY UNWOUND. An earlier
+          // draft let the raise propagate straight out of `unload`,
+          // which left the instance `live` and its scope untouched —
+          // reporting a failure while leaking exactly the resources the
+          // failure was about, and leaving an instance whose bindings
+          // were never removed still participating in every point.
+          unwind(e)
+          e.status = 'failed'
+          throw err
+        }
         unwind(e)
       }
       e.status = 'loaded'

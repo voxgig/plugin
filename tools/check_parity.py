@@ -50,9 +50,10 @@ CANONICAL = [
 ]
 
 # Where each port's library source lives (test code is not scanned).
-# P4 adds go and python; P5 and P6 the rest.
+# P4 adds python next; P5 and P6 the rest.
 PORTS = {
     'typescript': ['typescript/src'],
+    'go': ['go/plugin'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj', '.lake'}

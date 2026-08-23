@@ -78,6 +78,21 @@ export function probes(): Definition[] {
       // scope must unwind by itself (§8.3), and that difference is the
       // whole test.
       for (let k = 0; k < rel; k++) handles[k]()
+
+      // `mark` registers N FOREIGN releases — §8.3's `release`, the
+      // half `acquire` cannot exercise — each recording its own index
+      // as it runs.
+      //
+      // THE RECORDED LIST IS THE ONLY THING THAT DISTINGUISHES A
+      // REVERSE UNWIND FROM A FORWARD ONE. `acquire`'s handles are
+      // idempotent counter decrements, so running them in either
+      // direction leaves the same `open`, and a port unwinding forwards
+      // passed every other entry in this section.
+      const mark = i.options.mark || 0
+      i.state.unwound = []
+      for (let k = 0; k < mark; k++) {
+        i.release(() => { i.state.unwound.push(k) })
+      }
     },
   }
 
@@ -231,6 +246,7 @@ export function drive(cmds: Cmd[]): any {
         if (!e) throw Object.assign(new Error('no such instance'), { code: 'plugin_not_loaded' })
         if ('bump' === c.method) { e.state.count = (e.state.count || 0) + 1; break }
         if ('count' === c.method) { last = e.state.count || 0; break }
+        if ('unwound' === c.method) { last = e.state.unwound || []; break }
         if ('position' === c.method) {
           // Reached through the instance api, which is where §6.6 puts
           // it — a plugin asks about itself.

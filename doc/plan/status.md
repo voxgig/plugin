@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-08-22**. The register in
+Live snapshot, **2026-08-23**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -13,16 +13,30 @@ a wrong status file is worse than none.**
 
 ## In flight
 
+**voxgig/plugin#15** — P3.2 (the sdkgen bridge) and **P4's go port**.
+
 **voxgig/station#9** — Stages 2, 3 and 3b, 11/11 CI ports green, awaiting
 review. **It discharges C3.**
 
-plugin `main` is `8804f82` (P3b merged); station `main` is `600fdfe`
-(Stage 1 merged). C1 and C2 were discharged by voxgig/plugin#7.
+plugin `main` is `090529c`; station `main` is `600fdfe` (Stage 1
+merged). C1 and C2 were discharged by voxgig/plugin#7.
 
 
 ## Pick this up first
 
-**P3, as soon as station#9 merges.** Its acceptance bar is station's own
+**`python/` — P4's other half.** Go landed and changed the canonical
+three times ([`handover.md`](handover.md) §13); Python is "the closest
+dynamic analogue that is not JavaScript" and is the second half of the
+proving pair. Copy `go/`'s layout: library and driver split, all four
+Makefile targets real, and a coverage test asserting every corpus
+section is dispatched.
+
+**Read `handover.md` §13 first if you are porting.** All three defects
+Go found were of two kinds — a rule the design states that no entry can
+distinguish, and a code path no entry enters. Expect more, and fix them
+in the canonical: §18's P4 exit says so in those words.
+
+**P3.1, as soon as station#9 merges.** Its acceptance bar is station's own
 integration test, and the three stages that bar needs are now
 implemented: twenty-plus declared instances with none constructed at
 `open()` (Stage 3), two instances of one api with distinct placeholders

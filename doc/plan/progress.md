@@ -61,9 +61,13 @@ The four cross-repo obligations have their own register in
 
 ## Phase 4 — go and python
 
+Go first, because static-only + typed extension points + explicit
+errors find every TypeScript-shaped assumption in the model (§18, P4).
+It did: see 4.1's note and [`handover.md`](handover.md) §13.
+
 | Item | Status | Notes |
 |---|---|---|
-| 4.1 `go/` | NOT STARTED | Expected to change the canonical. That is the point of running it before P5. |
+| 4.1 `go/` | DONE | 3733 lines of library across 15 files plus a 1235-line driver and runner; all 19 corpus sections green (463 entries). **It changed the canonical four times, which is what P4 is for** — and no design section, because all four were the canonical failing to implement the design. (a) §11.1's `match` is a partial match that recurses; the canonical compared `attrs[k] !== req.match[k]`, which for any compound value is JavaScript reference identity, so `match: {limits:{max:5}}` matched *nothing*. (b) §8.3's reverse unwind was normative and unpinned — an acquired handle is an idempotent decrement, so a port unwinding forwards passed every entry. (c) `inst.release` incremented the open count and never decremented it, so `close()` on a plugin using it could never reach `open: 0`. (d) `unload` on a live instance whose `deactivate` raised let the raise straight out: instance still `live`, scope never unwound, bindings never removed — §5.2 says `failed` and a full unwind. Corpus grew 446 → 463: new `capability/nested` and `lifecycle/faildown` groups, `graph/blocked#match-nested`, four `resource/scope` entries. Eleven mutations, eleven caught. |
 | 4.2 `python/` | NOT STARTED | Pair with station's Stage 5 `py`/`go` tranche. |
 
 ## Phases 5 and 6 — tiers 3 and 4

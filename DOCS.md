@@ -401,7 +401,7 @@ in the same way.
 |---|---|
 | `probe` | The workhorse. Records every callback it receives into the log, binds one hook point (`p`), wraps one chain point (`c`), holds an integer counter in its state, and **acquires exactly one synthetic resource per activation**. |
 | `noisy` | Fails on demand. `options.fail` names the callback that raises — `define`, `activate`, `deactivate` or `close` — and `options.code` the error code. Everything else is `probe`. |
-| `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). |
+| `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). `options.mark` additionally registers that many **foreign** releases through `release`, each recording its own index into `state.unwound` as it runs — which is the only way the *direction* of the unwind is observable, since an acquired handle is an idempotent counter decrement that reads the same either way. |
 | `dep` | Declares requirements. `options.requires` is a list of refs or capability names, `options.optional` those that are optional rather than mandatory. |
 | `provider` | Binds a provider point named by `options.point`, returning `options.value`. `options.version` and `options.priority` feed the selection rank. |
 | `slow` | Where the language has async, every callback yields once before completing; where it does not, it is `probe`. Exists to prove the lifecycle settles **eagerly** — a transition runs the state machine to a fixed point rather than suspending on a promise (§18's portability budget). |

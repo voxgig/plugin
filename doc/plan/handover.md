@@ -11,7 +11,7 @@ on a human, and what to pick up first is [`status.md`](status.md) —
 read that first. Delete a section here once its lesson has been
 absorbed somewhere better.
 
-Last updated: 2026-08-22.
+Last updated: 2026-08-23.
 
 
 ## 1. What has landed
@@ -22,6 +22,7 @@ Last updated: 2026-08-22.
 | voxgig/plugin#5 | P0: the skeleton — `Makefile`, `spec/` with the empty corpus and its aontu format shape, `tools/`, CI. Three review rounds, all of them the same defect class. |
 | voxgig/plugin#6 | The `active` overload settled: the lifecycle status is `live`, the config key stays `active`. |
 | voxgig/omni#36 | Two tooling bugs found while copying omni's `build-spec.js` into this repo, fixed upstream where they also lived. |
+| voxgig/plugin, P4 (go) | The first port. All 19 corpus sections green in a second language, and three canonical defects fixed on the way — §13. |
 
 
 ## 2. `active` vs `live`, and why the framing was the hard part
@@ -349,6 +350,102 @@ other direction, silently refusing to declare a point some feature
 needs. But §17.2's sentence should say "the hooks the SDK and its
 installed features declare" rather than naming a count, and the count
 should come out.
+
+
+## 13. What the go port found, and why a typed port found it
+
+P4 says Go goes first because "static-only + typed extension points and
+explicit errors will find every TypeScript-shaped assumption in the
+model". Four landed, and the shape of each is worth keeping: **none of
+them was a Go problem.** All four were defects in the canonical — the
+canonical failing to implement its own design, not the design being
+wrong — that a dynamically-typed port could hold indefinitely without
+noticing. **No design section changed.**
+
+**1. `match` did not match (§11.1).** The design says `match` is "a
+partial match against `attrs`, with exactly the semantics voxgig/struct
+and the omni corpus already define for `match` — every leaf in the
+requirement must be present and equal in the capability". The canonical
+implemented `attrs[k] !== req.match[k]`. For a scalar that is the rule;
+for a map or a list it is JavaScript **reference identity**, and a
+requirement and a capability are written in different places and are
+never the same object. So `match: { limits: { max: 5 } }` was satisfied
+by no provider at all — including one declaring exactly that.
+
+The reason it survived P2 is the reason it is written down here: **every
+corpus entry was scalar**, and the two readings agree on every scalar.
+Writing the port meant writing `want == got` in a language where that
+does not compile for a map, which is the moment the question gets asked.
+Fixed in the canonical (`matchvalue`, recursing), pinned by
+`capability/nested` and `graph/blocked#match-nested`.
+
+**2. The unwind direction was normative and unpinned (§8.3).** "unwound
+by the host on deactivate, **in reverse registration order**, whether an
+entry came from a host call or from `release`". A mutation reversing the
+loop passed the whole suite. The cause is that `greedy` acquired
+handles, and an acquired handle's release is an idempotent counter
+decrement: run them in any order and `open` lands on the same number.
+The direction was unobservable, so nothing observed it.
+
+The fix is a probe change, not just an entry: `greedy` gained
+`options.mark`, which registers that many **foreign** releases that each
+record their own index as they run. `resource/scope#reverse` pins
+`[2, 1, 0]`.
+
+**3. `release` leaked the open count.** Registering a foreign release
+did `open += 1` and nothing ever decremented it. `acquire` was already
+symmetric; `release` was not. A plugin that used `release` could never
+reach `open: 0`, so `close()` could not be asserted clean. Invisible
+because **no corpus entry used `release` at all** — the driver's `stray`
+method is a deliberate no-op, and nothing else reached it. Adding
+`mark` was what first exercised the path, and the defect fell out
+immediately.
+
+**4. `unload` on a live instance leaked when `deactivate` failed.**
+§5.2: `unload` from `live` is "deactivate first, then close", and "**any**
+failure during a transition — a lifecycle callback raising, or a ledger
+entry raising — lands the instance in `failed`", with the scope still
+fully unwound. The canonical let the raise propagate straight out of
+`unload`: the instance stayed `live`, its scope was never unwound and
+its bindings were never removed. It reported a failure while leaking
+exactly the resources the failure was about, and left a still-live
+instance participating in every point.
+
+The same path through `deactivate` was already correct, which is what
+made this survivable: the two paths share a rule and only one
+implemented it. Nothing exercised **either** — a failing `deactivate`
+had no corpus entry at all. Pinned by a new `lifecycle/faildown` group,
+including the case that distinguishes it from the `unload`-from-`failed`
+row, where §5.2 says the entry is dropped anyway.
+
+The transferable lesson is about *coverage of the mechanism*, not about
+Go. Two of the four were "a rule the design states, that no entry can
+distinguish"; two were "a code path no entry entered". Neither is found
+by reading the canonical, and both are found the moment a second
+implementation has to make the same decision from the same text.
+
+### What the port changed about the model, and what it did not
+
+Go **returns** errors where the canonical throws. That is a signature
+change in every fallible function and it changes nothing else: the
+corpus compares by `code` (§12), so a port that returns a `*PluginError`
+and one that throws a `PluginError` are indistinguishable to it. §12's
+choice to compare by code and not by message paid for itself here.
+
+One thing genuinely does not port, and is stated rather than papered
+over: **a binding cannot raise in Go**. `BindFn` returns `any`, and a
+binding that wants to fail returns an `error` value, which §6.1's
+collecting modes gather. No corpus entry exercises a raising binding, so
+this is a difference in the port's *surface*, not in its behaviour — but
+it is the one place a Go author writes something a TypeScript author
+does not.
+
+`BindFn` is also **one variadic type for all three point kinds**, where
+a typed port would prefer three. It has to be: the `provider` probe
+binds the same function to a hook point in `point/bail` and a provider
+point in `point/provider`, and three distinct func types make that
+unwritable. Recorded because the next static port (rust, swift) will
+reach the same fork and should not re-litigate it.
 
 
 ## 12. Open, and deliberately so

@@ -18,10 +18,11 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 - Build and check with `make spec`, `make spec-check`, `make parity`,
   `make check`.
 
-**Status: P0.** The skeleton turns over on an empty corpus; there is no
-code in any language yet. `AGENTS.md` §6 says what P1 does first, and
-why two of its deliverables are owed to voxgig/station earlier than they
-appear.
+**Status: P4, go landed.** P0–P3 are done: the corpus is 463 entries
+across 19 sections, `typescript/` is the canonical, and `go/` is the
+first port — both pass every section. The remaining P4 half is
+`python/`. `AGENTS.md` §6 says what to pick up; the live per-item state
+is [`doc/plan/status.md`](./doc/plan/status.md).
 
 The design is [`docs/design/plugin.md`](./docs/design/plugin.md). The
 agreement with its first host, and the cross-repo sequencing, live in

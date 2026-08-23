@@ -24,30 +24,38 @@ programmatic API over the same normalized model.
 
 ## Status
 
-**P1 — the contract, in progress.** The design is complete and agreed
-with its first host, the build machinery turns over, and **four corpus
-sections are written**. There is still no code in any language.
+**P4 — the first port.** The design is complete and agreed with its
+first host, the contract is complete (all 19 corpus sections, 463
+entries), `typescript/` is the canonical, and `go/` is the first port.
+**Both pass every section.**
 
-P0's empty corpus was deliberate rather than a gap: `make spec` and
-`make spec-check` were proven *before* there was anything to compile, so
-that when the first sections landed, a failure was about the data rather
-than about the pipeline.
+Go went first on purpose: static-only registration, typed extension
+points and explicit errors find every TypeScript-shaped assumption in
+the model, and running that before fourteen more ports exist is what
+makes fixing one cheap. It found three defects in the canonical — a
+`match` that could not match a nested requirement, an unwind direction
+the design mandated and no entry could distinguish, and a resource
+counter `release` leaked — all fixed in the canonical and pinned by new
+corpus entries. See [`doc/plan/handover.md`](./doc/plan/handover.md)
+§13.
 
 | | |
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | **204 entries** — `ref`, `config`, `lifecycle`, `order`. The rest land per phase. |
-| driver contract | draft — [`DOCS.md`](./DOCS.md) §4 |
-| ports | none — `typescript/` is canonical and is next |
+| corpus | **463 entries across all 19 sections** — the contract is complete |
+| driver contract | [`DOCS.md`](./DOCS.md) §4 |
+| ports | `typescript/` (canonical) and `go/` — both pass every section. `python/` is next. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is
 [`doc/plan/contracts.md`](./doc/plan/contracts.md).
 
-Next is P1, the TypeScript tracer bullet. Its first deliverables are the
-two corpus sections owed to station, not its last — see
-[`AGENTS.md`](./AGENTS.md) §6.
+Next is the second half of P4, the Python port — see
+[`AGENTS.md`](./AGENTS.md) §6. Go went first because static-only, typed
+extension points and explicit errors find TypeScript-shaped assumptions
+in the model, and it found three; what they were is
+[`doc/plan/handover.md`](./doc/plan/handover.md) §13.
 
 The initial use case is [station](https://github.com/voxgig/station)
 loading generated SDKs as plugins: twenty-plus SDK instances declared in

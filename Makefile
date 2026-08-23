@@ -31,8 +31,8 @@
 # Requiring the targets costs a two-line no-op per port and removes the
 # error-swallowing branch entirely. It is free to decide now, with no
 # ports written, and expensive to retrofit across twenty.
-# P4 adds go and python. P5, P6 the rest.
-LANGS = typescript
+# P4 adds python next. P5, P6 the rest.
+LANGS = typescript go
 
 .PHONY: all test build inspect clean parity probes check spec spec-check
 

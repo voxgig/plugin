@@ -1216,6 +1216,69 @@ primary: lifecycle: {
   ]
 
 
+  # A FAILING `deactivate`, which nothing exercised until the go port
+  # went looking. §5.2: "Any failure during a transition — a lifecycle
+  # callback raising, or a ledger entry raising — lands the instance in
+  # `failed`", with the scope still FULLY unwound.
+  #
+  # The `unload` case is the one that was actually broken in the
+  # canonical: the raise propagated straight out, leaving the instance
+  # `live`, its scope untouched and its bindings still live — reporting
+  # a failure while leaking exactly the resources the failure was about.
+  faildown: set: [
+    {
+      id: 'lifecycle/faildown#deactivate', doc: true
+      cmd: [
+        { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate' } }
+        { do: 'deactivate', ref: 'noisy$a', catch: true }
+      ]
+      match: { out: { status: { 'noisy$a': 'failed' }, open: 0 } }
+    }
+    {
+      cmd: [
+        { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate', code: 'probe_boom' } }
+        { do: 'deactivate', ref: 'noisy$a' }
+      ]
+      err: 'probe_boom'
+    }
+    # ...and through `unload`, which §5.2 defines as "deactivate first,
+    # then close". The deactivate half failing is still a transition
+    # failure, so the same three things hold — INCLUDING that the
+    # instance stays registered, because `failed` is a state an operator
+    # has to be able to see.
+    {
+      id: 'lifecycle/faildown#unload'
+      cmd: [
+        { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate' } }
+        { do: 'unload', ref: 'noisy$a', catch: true }
+      ]
+      match: { out: { status: { 'noisy$a': 'failed' }, open: 0 } }
+    }
+    # A second unload then takes it out through the `failed` row, which
+    # runs `close` and drops the entry.
+    {
+      cmd: [
+        { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate' } }
+        { do: 'unload', ref: 'noisy$a', catch: true }
+        { do: 'unload', ref: 'noisy$a' }
+      ]
+      match: { out: { status: {}, open: 0 } }
+    }
+    # A failing `close` still DROPS the registry entry — §5.2's `unload`
+    # row says the error is raised and the entry goes anyway, which is
+    # the one place a failure leaves nothing behind.
+    {
+      id: 'lifecycle/faildown#close-drops'
+      cmd: [
+        { do: 'ready', ref: 'noisy$a', options: { fail: 'close' } }
+        { do: 'unload', ref: 'noisy$a', catch: true }
+        { do: 'list' }
+      ]
+      match: { out: { result: {}, open: 0 } }
+    }
+  ]
+
+
   # Illegal transitions raise rather than silently no-op. The idempotent
   # cases above are the ONLY exceptions, and they are pinned there rather
   # than left to the reader.
@@ -1960,6 +2023,67 @@ primary: capability: {
   ]
 
 
+  # `match` IS A PARTIAL MATCH AND IT RECURSES (§11.1): "every leaf in
+  # the requirement must be present and equal in the capability, keys not
+  # mentioned are not checked" — struct's and omni's `match`, not a flat
+  # key-by-key comparison of top-level values.
+  #
+  # THE DISTINCTION IS INVISIBLE WHILE EVERY ENTRY IS SCALAR, which is
+  # exactly how the canonical came to implement the flat reading: it
+  # compared `attrs[k] !== req.match[k]`, and in JavaScript that is
+  # REFERENCE identity for a map. A requirement and a capability are
+  # written in different places and are never the same object, so
+  # `match: { limits: { max: 5 } }` matched NOTHING — including a
+  # provider declaring exactly that. Found by the go port (§18, P4), and
+  # fixed in the canonical rather than worked around there.
+  nested: set: [
+    {
+      id: 'capability/nested#leaf', doc: true
+      in: { req: { name: 'store', match: { limits: { max: 5 } } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { limits: { max: 5, min: 1 } } } } ] }
+      match: { out: [ { ref: 'a' } ] }
+    }
+    # Keys not mentioned are not checked AT EVERY LEVEL — `min` above is
+    # ignored, not a mismatch.
+    { in: { req: { name: 'store', match: { limits: { max: 5 } } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { limits: { max: 9 } } } } ] }
+      out: [] }
+    # A key the provider never declared is a miss ONE LEVEL DOWN exactly
+    # as it is at the top: asking for `limits.max` must not be satisfied
+    # by a provider that never said what its limits are.
+    { in: { req: { name: 'store', match: { limits: { max: 5 } } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { limits: {} } } } ] }
+      out: [] }
+    # ...and a scalar where the requirement wants a map does not match,
+    # rather than being coerced into one.
+    { in: { req: { name: 'store', match: { limits: { max: 5 } } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { limits: 5 } } } ] }
+      out: [] }
+
+    # A LIST IS COMPARED LEAF-WISE AT THE SAME LENGTH, NOT AS A SUBSET.
+    # "the first two of your three regions" is not something `match` can
+    # say, and giving it a spelling would be inventing the filter
+    # language §11.1 explicitly declines to add.
+    { in: { req: { name: 'store', match: { regions: ['eu', 'us'] } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { regions: ['eu', 'us'] } } } ] }
+      match: { out: [ { ref: 'a' } ] } }
+    { in: { req: { name: 'store', match: { regions: ['eu'] } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { regions: ['eu', 'us'] } } } ] }
+      out: [] }
+    # Order is part of a list, here as everywhere else in the corpus.
+    { in: { req: { name: 'store', match: { regions: ['us', 'eu'] } }
+            candidates: [ { ref: 'a', pos: 0
+                            provides: { name: 'store', attrs: { regions: ['eu', 'us'] } } } ] }
+      out: [] }
+  ]
+
+
   # THE RANK, in order: highest `version`, then LOWEST `priority`
   # (default 0), then declaration position `pos` ascending.
   rank: set: [
@@ -2109,6 +2233,19 @@ primary: graph: {
       out: { resolved: ['p'], blocked: [
         { ref: 'c', unmet: 's'
           why: { kind: 'match', failing: 'transactional', want: true, found: null } } ] }
+    }
+    # A NESTED requirement reports the TOP-LEVEL key that failed, and
+    # `found` is the whole value the provider declared under it — the
+    # reader needs to see what is actually there, not the one leaf the
+    # comparison happened to stop at.
+    {
+      id: 'graph/blocked#match-nested'
+      in: [ { ref: 'p', pos: 0, provides: [ { name: 's', attrs: { limits: { max: 9 } } } ] }
+            { ref: 'c', pos: 1, requires: [ { name: 's', match: { limits: { max: 5 } } } ] } ]
+      out: { resolved: ['p'], blocked: [
+        { ref: 'c', unmet: 's'
+          why: { kind: 'match', failing: 'limits'
+                 want: { max: 5 }, found: { max: 9 } } } ] }
     }
     # A provider that is ITSELF blocked, with the chain — so the reader
     # follows one hop rather than re-deriving the graph.
@@ -3262,6 +3399,55 @@ primary: resource: {
       cmd: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3 } }
         { do: 'ready', ref: 'probe$b' }
+        { do: 'close' }
+      ]
+      match: { out: { open: 0, status: {} } }
+    }
+    # §8.3 unwinds the scope IN REVERSE REGISTRATION ORDER, "whether an
+    # entry came from a host call or from `release`" — and until this
+    # entry, NOTHING PINNED THE DIRECTION. An acquired handle is an
+    # idempotent counter decrement, so unwinding the handles forwards
+    # leaves the same `open` and passes every other entry in this
+    # section; the order is observable only through releases that record
+    # themselves. Found by the go port (§18, P4).
+    {
+      id: 'resource/scope#reverse'
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { mark: 3 } }
+        { do: 'deactivate', ref: 'greedy$a' }
+        { do: 'call', ref: 'greedy$a', method: 'unwound' }
+      ]
+      match: { out: { result: [2, 1, 0] } }
+    }
+    # A `release` ENTRY IS A HELD RESOURCE while it is registered and not
+    # one afterwards, exactly like an acquired handle: `open` counts what
+    # is CURRENTLY held. Registering three and unwinding them must leave
+    # the count where it started.
+    #
+    # The canonical incremented on registration and never decremented,
+    # which made every `release` a permanent leak in the counter — and
+    # `close()` on a plugin that used one could never reach `open: 0`.
+    # Invisible until an entry used `release` at all, which is what these
+    # two do.
+    {
+      id: 'resource/scope#release-counts'
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { mark: 3 } }
+      ]
+      match: { out: { open: 3 } }
+    }
+    {
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { mark: 3 } }
+        { do: 'deactivate', ref: 'greedy$a' }
+      ]
+      match: { out: { open: 0 } }
+    }
+    # ...and a host close unwinds them too, which is the case the leak
+    # made unreachable.
+    {
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 2, mark: 2 } }
         { do: 'close' }
       ]
       match: { out: { open: 0, status: {} } }

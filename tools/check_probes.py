@@ -35,6 +35,7 @@ PROBES = [
 # because the probes are the driver's and not the library's.
 PORTS = {
     'typescript': ['typescript/test'],
+    'go': ['go/test'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj'}
