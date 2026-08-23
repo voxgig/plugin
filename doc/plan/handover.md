@@ -502,6 +502,80 @@ reported one false survivor and one false result and had to be redone
 with the cache cleared around every run.
 
 
+## 14. The bridge's review round: an exemption nobody wrote down
+
+Codex reviewed P3.2 and raised eight things. **Seven were real**, and
+one of them is worth more than the other six put together.
+
+**The portability budget had an exemption nobody had written down.**
+`typescript/AGENTS.md` forbids dynamic property interception. The
+bridge's `utility.fetcher` getter/setter pair is exactly that — and
+`Config.ts` cites the same budget, two files away, as the reason `apply`
+refills an options map instead of installing a getter. Both cannot be
+right without a stated scope, and there was none.
+
+The scope is real and it is defensible: **a bridge to sdkgen cannot be
+ported and is not meant to be.** sdkgen generates SDKs in 23 languages,
+each feature written in that language's idiom; a Go SDK's feature does
+not assign `ctx.utility.fetcher`, so a Go translation of `FeatureHost`
+would have nothing to intercept. Each language that wants the bridge
+writes its own against its own generated code, and what they share is
+the plugin model underneath, not this mechanism.
+
+The lesson is not "the budget was wrong". It is that **an unstated
+exemption is indistinguishable from a violation**, and the next person
+to want one will cite this file. It is now written down in
+`typescript/AGENTS.md`, naming the one file it covers and saying that
+the reasoning does not extend.
+
+The other six, briefly, all now fixed and mutation-checked:
+
+- §17.2 says `init` "splits into `define` (read options, declare
+  bindings) and `activate` (capture)", and only `define` was
+  implemented. An unmodified feature has no such split — which is
+  exactly why the bridge's claim had to be narrowed from "deactivates
+  the feature" to **"makes the feature's bindings reversible"** — but a
+  feature that carries `activate`/`deactivate`/`close` now gets them
+  called in the phase the model puts them in.
+- §17.2 also says "`provider` points for the seams `__replace__`
+  currently serves", and `featurepoints` returned only hooks and the
+  chain. A replacement is a provider and not a chain: at most one wins,
+  the losers are visible, the host keeps a default.
+- The synthetic ctx replaced the SDK's real `client` and `utility`, so a
+  feature reading `ctx.utility.log` broke and one reading `ctx.client`
+  got the plugin instance. The trap now layers onto the SDK's own ctx.
+- A hook name repeated between the core list and an SDK's extras bound
+  the same method twice, and one `emit` fired it twice.
+- A feature whose own `name` differed from the definition it was
+  registered as was accepted silently, leaving configuration addressed
+  by the SDK's feature name unable to resolve it.
+- The live status file was left describing the previous commit — which
+  `AGENTS.md` explicitly forbids, and which the register's own rule is
+  supposed to prevent.
+
+### The one that is stated rather than fixed
+
+The bridge holds ONE shared `next` slot per feature instance, because
+an sdkgen feature stashes `inner` once at init. §6.2 already names that
+pattern: "a plugin that stashes `next` and calls it after deactivation
+is a bug the host cannot prevent, and this says so rather than
+pretending otherwise."
+
+Every synchronous and nested path is correct — the binding sets the slot
+immediately before the wrap runs, and a test pins it. The residual is an
+**awaiting** wrap overtaken by a second request: both share the slot, and
+the resumed wrap calls through the second request's chain.
+
+Restoring the previous value in a `finally` makes it strictly worse: the
+finally runs when the wrap returns its promise, before the feature ever
+calls `inner`. A real fix needs either a per-invocation channel the
+feature would have to be modified to accept — which is the thing the
+bridge exists to prove unnecessary — or async-context storage, which the
+portability budget forbids and which does not exist in most of the 23
+languages. So it is bounded, tested where it can be, and written down in
+the file.
+
+
 ## 12. Open, and deliberately so
 
 | | |
