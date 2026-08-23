@@ -3909,6 +3909,79 @@
                 }
               }
             }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_inactive",
+            "id": "declare/free#barred-stays-barred"
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_inactive"
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
           }
         ]
       },
@@ -7151,6 +7224,68 @@
                   "probe$a:deactivate",
                   "probe$a:close"
                 ]
+              }
+            }
+          }
+        ]
+      },
+      "bindscope": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bind": "activate"
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "greedy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_bind_scope",
+            "id": "lifecycle/bindscope#activate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "bind": "deactivate"
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "err": "plugin_bind_scope"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "bind": "activate"
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "greedy$a": "failed"
+                }
               }
             }
           }

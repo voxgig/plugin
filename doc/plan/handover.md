@@ -847,6 +847,40 @@ demonstrate a truncated callback. So DOCS.md now says what `slow` is,
 callback is written down as open** rather than guessed at.
 
 
+### Two rules the design stated and nothing implemented
+
+Both came in as go findings and neither was go's:
+
+**`plugin_bind_scope` had been in §12's table since before anything
+raised it.** §8.1 splits binding DECLARATION (in `define`) from
+INSERTION (at a successful activate); the guard was the half nobody
+wrote, in all five ports. A binding added from `activate` went live
+without being part of the loaded definition, and each
+deactivate/activate cycle appended another copy. `greedy.bind` is
+`early`'s counterpart — it names the callback, because the guard is on
+the phase and an entry exercising only `activate` leaves `deactivate`'s
+mutation alive.
+
+**`active: false` barred nothing past the apply that set it.** §9.6 is
+explicit — "`activate` and `ready` on it fail rather than quietly doing
+nothing" — and `wantlive` was a local in `apply`, so a later direct
+`ready` brought the instance live. The config switch §17.1 exists for
+(`stripe$test` off in prod) could be turned back on by anything.
+
+The bar is now a field on the instance, reasserted on every apply in
+both directions. `plugin_inactive` is new in §12: the design settled the
+behaviour and left the code unnamed, and `plugin_bad_state` would have
+been a lie — the status is `declared` and activating from `declared` is
+perfectly legal; it is the bar that refuses.
+
+**The old entry is the lesson.** `declare/free#barred`'s comment said
+"`ready` on it fails rather than quietly doing nothing" and the entry
+only ever called `apply`. The comment described the rule; the assertion
+covered the first half of it. Third time this round that a green row
+turned out to be describing rather than checking — after `stray` and
+`slow`.
+
+
 ## 12. Open, and deliberately so
 
 | | |

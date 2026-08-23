@@ -56,6 +56,13 @@ type Live = {
   options: any
   state: any
   order?: OrderBlock
+  /** §9.6's `active: false` — "declares it and bars it: it appears in
+   * `host.list()`, and `activate` and `ready` on it fail rather than
+   * quietly doing nothing". THE BAR OUTLIVES THE APPLY THAT SET IT: a
+   * flag consulted only while `apply` ran let a later direct `ready`
+   * bring the instance live, which is the config-switch it exists to
+   * be silently ignored. */
+  barred?: boolean
   /** Requirements this instance declared but has not been given. */
   unmet: string[]
   /** Resources the instance scope holds, newest last — unwound in
@@ -228,6 +235,17 @@ export function makehost(options?: HostOptions) {
        * it only after `activate` returns successfully (§8.1), which is
        * why a failing activate leaves no live binding behind. */
       bind: (point: string, fn: any, band?: number) => {
+        // §12's `plugin_bind_scope`: "binding declared outside
+        // `define`". §8.1 puts binding declaration in `define` and
+        // insertion at a SUCCESSFUL activate, and the guard was the
+        // half that never got written — so a binding added from
+        // `activate` went live without being part of the loaded
+        // definition, and a deactivate/activate cycle appended it
+        // again. The code was in the table before anything raised it.
+        if ('define' !== phase) {
+          fail('plugin_bind_scope', 'bind called outside define: ' + point,
+            { ref: e.ref, point })
+        }
         if (undefined === points[point]) {
           fail('plugin_point_unknown', 'no such point: ' + point, { point })
         }
@@ -386,6 +404,14 @@ export function makehost(options?: HostOptions) {
     if ('live' === e.status) return e        // no-op returning success
     if ('failed' === e.status) {
       fail('plugin_bad_state', 'instance has failed: ' + e.ref, { ref: e.ref })
+    }
+    // §9.6: `active: false` bars the instance from running, and the bar
+    // is on the INSTANCE rather than on the apply that set it. `ready`
+    // reaches this through `activate`, which is why one guard covers
+    // both verbs the design names.
+    if (e.barred) {
+      fail('plugin_inactive', 'instance is barred by active: false: ' + e.ref,
+        { ref: e.ref })
     }
     if ('declared' === e.status) load(e.ref)
 
@@ -878,6 +904,10 @@ export function makehost(options?: HostOptions) {
     for (const ref of want) {
       const ent: Instance = norm.instance[ref]
       declare(ref, { options: optionsof[ref], order: ent.order, pos: ent.pos })
+      // The bar is REASSERTED ON EVERY APPLY, in both directions — a
+      // document that turns the instance back on clears it, which is
+      // the whole point of a config switch.
+      inst[ref].barred = !ent.active
       // REFILL rather than REBIND. A definition's callbacks close over
       // the options map they were handed at `define`; replacing the
       // reference here would leave every binding reading the values the

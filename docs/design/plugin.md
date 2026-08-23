@@ -1071,7 +1071,13 @@ the same question:
 
 - **`active`** (default `true`) — *may* this instance run at all?
   `false` declares it and bars it: it appears in `host.list()`, and
-  `activate` and `ready` on it fail rather than quietly doing nothing.
+  `activate` and `ready` on it fail with `plugin_inactive` rather than
+  quietly doing nothing. **The bar lives on the instance, not on the
+  apply that set it** — a host that only skipped the barred ref while
+  `apply` ran would let the next direct `ready` bring it live, which is
+  the config switch being silently ignored. Every apply reasserts it in
+  both directions, so a document that turns the instance back on clears
+  it.
   That is how a profile switches an integration off without deleting
   its configuration (§17.1's `stripe$test` in prod).
 - **`start`** (default `"eager"`) — *when* does it run? `eager` means
@@ -1934,6 +1940,7 @@ in a handful of places is both cheap and sufficient.
 | `plugin_dynamic_unsupported` | dynamic load attempted in a static-only port |
 | `plugin_not_loaded` | transition or query on an absent ref |
 | `plugin_bad_state` | transition illegal from the current status |
+| `plugin_inactive` | `activate` or `ready` on an instance a document barred with `active: false` (§9.6) |
 | `plugin_reentrant` | transition attempted from inside a lifecycle callback |
 | `plugin_option_invalid` | options failed the definition's shape |
 | `plugin_point_unknown` | binding to an undeclared point |

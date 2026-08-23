@@ -172,6 +172,16 @@ function makehost(options) {
        * it only after `activate` returns successfully (§8.1), which is
        * why a failing activate leaves no live binding behind. */
       bind: (point, fn, band) => {
+        // §12's `plugin_bind_scope`: "binding declared outside
+        // `define`". §8.1 puts binding DECLARATION in `define` and
+        // INSERTION at a successful activate, and the guard was the half
+        // nobody wrote — so a binding added from `activate` went live
+        // without being part of the loaded definition, and a
+        // deactivate/activate cycle appended it again.
+        if ('define' !== phase) {
+          fail('plugin_bind_scope', 'bind called outside define: ' + point,
+            { ref: e.ref, point })
+        }
         if (undefined === points[point]) {
           fail('plugin_point_unknown', 'no such point: ' + point, { point })
         }
@@ -300,6 +310,14 @@ function makehost(options) {
     if ('live' === e.status) return e        // no-op returning success
     if ('failed' === e.status) {
       fail('plugin_bad_state', 'instance has failed: ' + e.ref, { ref: e.ref })
+    }
+    // §9.6: `active: false` bars the instance from running, and the bar
+    // is on the INSTANCE rather than on the apply that set it. `ready`
+    // reaches this through `activate`, so one guard covers both verbs
+    // the design names.
+    if (e.barred) {
+      fail('plugin_inactive', 'instance is barred by active: false: ' + e.ref,
+        { ref: e.ref })
     }
     if ('declared' === e.status) load(e.ref)
 
@@ -736,6 +754,10 @@ function makehost(options) {
     for (const ref of want) {
       const ent = norm.instance[ref]
       declare(ref, { options: optionsof[ref], order: ent.order, pos: ent.pos })
+      // The bar is REASSERTED ON EVERY APPLY, in both directions — a
+      // document that turns the instance back on clears it, which is
+      // the whole point of a config switch.
+      inst[ref].barred = !ent.active
       // REFILL rather than REBIND. A definition's callbacks close over
       // the options map they were handed at `define`; replacing the
       // reference here would leave every binding reading the values the

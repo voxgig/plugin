@@ -94,6 +94,11 @@ function probes() {
       // `acquire` cannot exercise — each recording its own index as it
       // runs. THE RECORDED LIST IS THE ONLY THING THAT DISTINGUISHES A
       // REVERSE UNWIND FROM A FORWARD ONE.
+      // `bind` is `early`'s counterpart for §8.1's OTHER half. Binding
+      // declaration belongs in `define`; this names the callback that
+      // tries it from somewhere else.
+      if ('activate' === i.options.bind) i.bind('p', () => undefined)
+
       const mark = i.options.mark || 0
       i.state.unwound = []
       for (let k = 0; k < mark; k++) {
@@ -105,6 +110,12 @@ function probes() {
           i.state.unwound.push(k)
         })
       }
+    },
+    // `deactivate` completes the pair: the guard is on the PHASE, not on
+    // "not define", and an entry exercising only one leaves the other's
+    // mutation alive.
+    deactivate: (i) => {
+      if (i.options && 'deactivate' === i.options.bind) i.bind('p', () => undefined)
     },
   }
 

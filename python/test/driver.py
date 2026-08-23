@@ -97,6 +97,12 @@ def probes():
         # counter decrement, so running them in either direction leaves
         # the same `open`.
         i.state['unwound'] = []
+        # `bind` is `early`'s counterpart for section 8.1's OTHER half.
+        # Binding declaration belongs in `define`; this names the callback
+        # that tries it from somewhere else.
+        if 'activate' == i.options.get('bind'):
+            i.bind('p', lambda *_a: None)
+
         for k in range(i.options.get('mark') or 0):
             i.release(lambda k=k: markrelease(i, k))
 
@@ -110,10 +116,18 @@ def probes():
         if 'release' == i.options.get('early'):
             i.release(lambda: None)
 
+    def greedy_deactivate(i):
+        # `deactivate` completes the pair: the guard is on the PHASE, not
+        # on "not define", and an entry exercising only one leaves the
+        # other's mutation alive.
+        if 'deactivate' == i.options.get('bind'):
+            i.bind('p', lambda *_a: None)
+
     greedy = {
         'name': 'greedy',
         'define': greedy_define,
         'activate': greedy_activate,
+        'deactivate': greedy_deactivate,
     }
 
     def dep_define(i):

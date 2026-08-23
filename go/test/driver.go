@@ -170,6 +170,15 @@ func Probes() []plugin.Definition {
 			// either direction leaves the same `open`, and a port
 			// unwinding forwards passed every other entry in this
 			// section.
+			// `bind` is `early`'s counterpart for §8.1's OTHER half.
+			// Binding declaration belongs in `define`; this names the
+			// callback that tries it from somewhere else.
+			if "activate" == tostr(i.Options()["bind"]) {
+				if err := i.Bind("p", func(args ...any) any { return nil }, 0); nil != err {
+					return err
+				}
+			}
+
 			mark := intopt(i, "mark")
 			unwound := []any{}
 			i.State()["unwound"] = unwound
@@ -190,6 +199,15 @@ func Probes() []plugin.Definition {
 				}); nil != err {
 					return err
 				}
+			}
+			return nil
+		},
+		// `deactivate` completes the pair: the guard is on the PHASE,
+		// not on "not define", and an entry exercising only one leaves
+		// the other's mutation alive.
+		Deactivate: func(i *plugin.Inst) error {
+			if "deactivate" == tostr(i.Options()["bind"]) {
+				return i.Bind("p", func(args ...any) any { return nil }, 0)
 			}
 			return nil
 		},

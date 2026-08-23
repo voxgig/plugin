@@ -103,6 +103,14 @@ export function probes(): Definition[] {
       // idempotent counter decrements, so running them in either
       // direction leaves the same `open`, and a port unwinding forwards
       // passed every other entry in this section.
+      // `bind` is `early`'s counterpart for §8.1's OTHER half. Binding
+      // declaration belongs in `define`; this names the callback that
+      // tries it from somewhere else, because §12 has carried
+      // `plugin_bind_scope` since before anything raised it and a
+      // binding added in `activate` went live without being part of the
+      // loaded definition.
+      if ('activate' === i.options.bind) i.bind('p', () => undefined)
+
       const mark = i.options.mark || 0
       i.state.unwound = []
       for (let k = 0; k < mark; k++) {
@@ -116,6 +124,13 @@ export function probes(): Definition[] {
         })
       }
     },
+  }
+
+  // `deactivate` completes the pair: the guard is on the phase, not on
+  // "not define", and an entry exercising only one leaves the other's
+  // mutation alive.
+  greedy.deactivate = (i: any) => {
+    if (i.options && 'deactivate' === i.options.bind) i.bind('p', () => undefined)
   }
 
   const dep: Definition = {

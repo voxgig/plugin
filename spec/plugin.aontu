@@ -1481,6 +1481,42 @@ primary: lifecycle: {
   # The synthetic resource counter is the whole test for §8.3's unwind.
   # `greedy` acquires N and releases some explicitly; the difference is
   # what the instance scope must unwind by itself.
+  # §12 has carried `plugin_bind_scope` - "binding declared outside
+  # `define`" - since before anything raised it. §8.1 puts binding
+  # DECLARATION in `define` and INSERTION at a successful activate; the
+  # guard was the half nobody wrote, so a binding added from `activate`
+  # went live without being part of the loaded definition and every
+  # deactivate/activate cycle appended another copy.
+  bindscope: set: [
+    {
+      id: 'lifecycle/bindscope#activate', doc: true
+      cmd: [
+        { do: 'load', ref: 'greedy$a', options: { bind: 'activate' } }
+        { do: 'activate', ref: 'greedy$a' }
+      ]
+      err: 'plugin_bind_scope'
+    }
+    # ...and from `deactivate` too. The guard is on the PHASE, not on
+    # "not define", and an entry exercising only one callback leaves the
+    # other's mutation alive.
+    {
+      cmd: [
+        { do: 'ready', ref: 'greedy$a', options: { bind: 'deactivate' } }
+        { do: 'deactivate', ref: 'greedy$a' }
+      ]
+      err: 'plugin_bind_scope'
+    }
+    # ...and the failure lands the instance in `failed` like any other
+    # callback raise, with nothing left behind.
+    {
+      cmd: [
+        { do: 'load', ref: 'greedy$a', options: { bind: 'activate' } }
+        { do: 'activate', ref: 'greedy$a', catch: true }
+      ]
+      match: { out: { status: { 'greedy$a': 'failed' }, open: 0 } }
+    }
+  ]
+
   resource: set: [
     {
       id: 'lifecycle/resource#unwind', doc: true
@@ -3616,6 +3652,32 @@ primary: declare: {
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
       ]
       match: { out: { status: { 'probe$a': 'declared' }, log: [] } }
+    }
+    # ...AND THE ENTRY ABOVE NEVER CALLED `ready`. Its comment claimed
+    # the bar held and only asserted that one apply skipped the ref, so
+    # a host keeping the flag nowhere passed it — and the config switch
+    # §17.1 exists for (stripe$test off in prod) could be turned back on
+    # by any later `ready`.
+    {
+      id: 'declare/free#barred-stays-barred', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+        { do: 'ready', ref: 'probe$a' }
+      ]
+      err: 'plugin_inactive'
+    }
+    { cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+        { do: 'activate', ref: 'probe$a' }
+      ], err: 'plugin_inactive' }
+    # ...and a document that turns it back on clears the bar. A bar that
+    # could not be lifted would be a worse bug than one that never held.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+      ]
+      match: { out: { status: { 'probe$a': 'live' } } }
     }
   ]
 

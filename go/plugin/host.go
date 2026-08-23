@@ -57,6 +57,12 @@ type Live struct {
 
 	def   Definition
 	order *OrderBlock
+	// barred is §9.6's `active: false` — "declares it and bars it: it
+	// appears in `host.list()`, and `activate` and `ready` on it fail
+	// rather than quietly doing nothing". THE BAR OUTLIVES THE APPLY
+	// THAT SET IT: a flag consulted only while `apply` ran let a later
+	// direct `Ready` bring the instance live.
+	barred bool
 	// unmet holds requirements this instance declared but has not been
 	// given.
 	unmet []string
@@ -351,6 +357,16 @@ func (i *Inst) Acquire() (func(), error) {
 // host inserts it only after `activate` returns successfully (§8.1),
 // which is why a failing activate leaves no live binding behind.
 func (i *Inst) Bind(point string, fn BindFn, band int) error {
+	// §12's `plugin_bind_scope`: "binding declared outside `define`".
+	// §8.1 puts binding DECLARATION in `define` and INSERTION at a
+	// successful activate, and the guard was the half nobody wrote — so
+	// a binding added from `activate` went live without being part of
+	// the loaded definition, and a deactivate/activate cycle appended
+	// it again. The code was in the table before anything raised it.
+	if "define" != i.h.phase {
+		return Fail("plugin_bind_scope", "bind called outside define: "+point,
+			map[string]any{"ref": i.e.Ref, "point": point})
+	}
 	if _, ok := i.h.points[point]; !ok {
 		return Fail("plugin_point_unknown", "no such point: "+point,
 			map[string]any{"point": point})
@@ -596,6 +612,15 @@ func (h *Host) activate(ref string) (*Live, error) {
 	}
 	if StatusFailed == e.Status {
 		return nil, Fail("plugin_bad_state", "instance has failed: "+e.Ref,
+			map[string]any{"ref": e.Ref})
+	}
+	// §9.6: `active: false` bars the instance from running, and the bar
+	// is on the INSTANCE rather than on the apply that set it. `Ready`
+	// reaches this through `activate`, so one guard covers both verbs
+	// the design names.
+	if e.barred {
+		return nil, Fail("plugin_inactive",
+			"instance is barred by active: false: "+e.Ref,
 			map[string]any{"ref": e.Ref})
 	}
 	if StatusDeclared == e.Status {
@@ -1298,6 +1323,10 @@ func (h *Host) apply(doc any, profile string) error {
 			Options: optionsof[ref], Order: ent.Order, Pos: &pos}); nil != err {
 			return err
 		}
+		// The bar is REASSERTED ON EVERY APPLY, in both directions — a
+		// document that turns the instance back on clears it, which is
+		// the whole point of a config switch.
+		h.inst[ref].barred = !ent.Active
 		// REFILL rather than REBIND. A definition's callbacks close over
 		// the options map they were handed at `define`; replacing the
 		// reference here would leave every binding reading the values the

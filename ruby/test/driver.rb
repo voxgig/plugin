@@ -98,6 +98,11 @@ module Driver
         # the half `acquire` cannot exercise - each recording its own
         # index as it runs. THE RECORDED LIST IS THE ONLY THING THAT
         # DISTINGUISHES A REVERSE UNWIND FROM A FORWARD ONE.
+        # `bind` is `early`'s counterpart for section 8.1's OTHER half.
+        # Binding declaration belongs in `define`; this names the callback
+        # that tries it from somewhere else.
+        i.bind('p', ->(*_a) { nil }) if i.options['bind'] == 'activate'
+
         i.state['unwound'] = []
         (i.options['mark'] || 0).times do |k|
           i.release do
@@ -109,6 +114,12 @@ module Driver
             i.state['unwound'] << k
           end
         end
+      end,
+      # `deactivate` completes the pair: the guard is on the PHASE, not
+      # on "not define", and an entry exercising only one leaves the
+      # other's mutation alive.
+      'deactivate' => lambda do |i|
+        i.bind('p', ->(*_a) { nil }) if i.options['bind'] == 'deactivate'
       end
     }
 

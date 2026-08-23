@@ -104,7 +104,17 @@ class Inst:
     def bind(self, point, fn, band=None):
         """Bind into a host point. Declared in `define`; the host inserts
         it only after `activate` returns successfully (section 8.1), which
-        is why a failing activate leaves no live binding behind."""
+        is why a failing activate leaves no live binding behind.
+
+        Section 12 has carried `plugin_bind_scope` - "binding declared
+        outside `define`" - since before anything raised it. The guard
+        was the half nobody wrote, so a binding added from `activate`
+        went live without being part of the loaded definition, and a
+        deactivate/activate cycle appended it again.
+        """
+        if 'define' != self._host._phase:
+            fail('plugin_bind_scope', 'bind called outside define: ' + point,
+                 {'ref': self.ref, 'point': point})
         if point not in self._host._points:
             fail('plugin_point_unknown', 'no such point: ' + point,
                  {'point': point})
@@ -366,6 +376,14 @@ class Host:
             return entry                  # no-op returning success
         if 'failed' == entry['status']:
             fail('plugin_bad_state', 'instance has failed: ' + entry['ref'],
+                 {'ref': entry['ref']})
+        # Section 9.6: `active: false` bars the instance from running, and
+        # the bar is on the INSTANCE rather than on the apply that set it.
+        # `ready` reaches this through `activate`, so one guard covers
+        # both verbs the design names.
+        if entry.get('barred'):
+            fail('plugin_inactive',
+                 'instance is barred by active: false: ' + entry['ref'],
                  {'ref': entry['ref']})
         if 'declared' == entry['status']:
             self.load(entry['ref'])
@@ -856,6 +874,10 @@ class Host:
             ent = norm['instance'][ref]
             self.declare(ref, {'options': optionsof[ref],
                                'order': ent.get('order'), 'pos': ent['pos']})
+            # The bar is REASSERTED ON EVERY APPLY, in both directions - a
+            # document that turns the instance back on clears it, which is
+            # the whole point of a config switch.
+            self._inst[ref]['barred'] = not ent['active']
             # REFILL rather than REBIND. A definition's callbacks close
             # over the options map they were handed at `define`.
             refill(self._inst[ref]['options'], optionsof[ref])
