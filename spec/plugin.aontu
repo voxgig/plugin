@@ -526,6 +526,16 @@ primary: config: {
     }
     # The same rule one level down, for a host nesting an instance map
     # inside an option (§6.5) — the identical defect with a different key.
+    #
+    # NOTE WHAT THIS ASSERTS AND WHAT IT CANNOT. normalizeconfig does not
+    # merge options, so it does not apply the rule to the NESTED map —
+    # the nested host does, when it normalizes that map in turn. What
+    # this pins is that the information the nested host needs SURVIVES:
+    # both layers present, in ladder order, with the base's `active:
+    # false` intact and the overlay carrying only what it authored. A
+    # normalizer that flattened them here would hand the nested host a
+    # single pre-merged map and the one-level-down defect would be
+    # unavoidable rather than merely possible.
     {
       in: {
         profile: 'prod'
@@ -535,7 +545,10 @@ primary: config: {
           profile: { prod: { instance: { outer: { options: { instance: { inner: { options: { x: 1 } } } } } } } }
         }
       }
-      match: { out: { instance: { outer: { optionlayers: [ { instance: { inner: { active: false } } } ] } } } }
+      match: { out: { instance: { outer: { optionlayers: [
+        { instance: { inner: { active: false } } }
+        { instance: { inner: { options: { x: 1 } } } }
+      ] } } } }
     }
   ]
 
@@ -1118,14 +1131,29 @@ primary: lifecycle: {
   # There is no second, softer failure state: the point of `failed` is
   # that it is not trustworthy.
   fail: set: [
+    # `catch: true` (DOCS.md §4.1) records the raise and lets the run
+    # continue. Without it this whole group is unwritable: §5.2's claim
+    # is that a failed instance REMAINS REGISTERED AND INSPECTABLE, and
+    # a run that stops at the raise can never see it. The corpus could
+    # pin that activation raises, or that the instance survives, but not
+    # both — and it is the pair that matters.
     {
       id: 'lifecycle/fail#activate', doc: true
       cmd: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'probe_boom' } }
-        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a', catch: true }
       ]
       match: { out: { status: { 'noisy$a': 'failed' } } }
+    }
+    # The raise itself, uncaught, so the code is pinned too.
+    {
+      cmd: [
+        { do: 'define', name: 'noisy', probe: 'noisy' }
+        { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'probe_boom' } }
+        { do: 'activate', ref: 'noisy$a' }
+      ]
+      err: 'probe_boom'
     }
     # A failed instance remains REGISTERED AND INSPECTABLE — that is the
     # point: a failed plugin must be visible, not vanished.
@@ -1133,7 +1161,7 @@ primary: lifecycle: {
       cmd: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
-        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'list' }
       ]
       match: { out: { result: { 'noisy$a': 'failed' } } }
@@ -1143,7 +1171,7 @@ primary: lifecycle: {
       cmd: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
-        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'activate', ref: 'noisy$a' }
       ]
       err: 'plugin_bad_state'
@@ -1152,7 +1180,7 @@ primary: lifecycle: {
       cmd: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
-        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'unload', ref: 'noisy$a' }
       ]
       match: { out: { status: {} } }
@@ -1163,18 +1191,20 @@ primary: lifecycle: {
       cmd: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
-        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'order', point: 'p' }
       ]
       match: { out: { result: [] } }
     }
     # A failing activate must not leak the resource it had acquired: the
     # instance scope unwinds in reverse on partial activation (§8.3).
+    # The probe acquires BEFORE it raises, so a port that unwinds only
+    # on a clean path leaves this at 1.
     {
       cmd: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
-        { do: 'activate', ref: 'noisy$a' }
+        { do: 'activate', ref: 'noisy$a', catch: true }
       ]
       match: { out: { open: 0 } }
     }

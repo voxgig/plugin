@@ -86,6 +86,15 @@ A driver entry carries **`cmd`**, a list of commands, in place of the
 `err` matches the code of the raise that stopped the run. `err` beside
 `out` is invalid, exactly as for a pure entry.
 
+**A command may carry `catch: true`, and §5.2 forces it.** That section's
+central claim is that a failed instance *remains registered and
+inspectable* — "the point is that a failed plugin must be visible, not
+vanished" — and a run that stops at the raise can never observe it. A
+command marked `catch` records its raise and the run continues, so the
+observable afterwards shows `failed` in `status` and whatever the scope
+unwound in `open`. Without it the corpus could pin that activation
+raises, or that the instance survives, but never both.
+
 A command is a **map with a `do` key** naming the verb, plus that verb's
 own keys:
 
@@ -133,6 +142,10 @@ needs it present, because the next section will.
 | `list` | — | the status map; the value becomes `result` |
 | `env` | `vars` | set `VOXGIG_PLUGIN_*` for subsequent commands |
 | `close` | — | tear the host down, unwinding every instance |
+
+Any command may additionally carry **`catch: true`** (§4.1): its raise
+is recorded and the run continues, which is the only way to observe a
+`failed` instance at all.
 
 A command naming a ref that does not exist, or a verb that does not
 apply in the instance's current state, raises the §12 code for that
