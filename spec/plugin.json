@@ -504,6 +504,106 @@
                 {
                   "pos": 0,
                   "provides": {
+                    "attrs": {
+                      "transactional": 1
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": true
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": 1
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "transactional": 0
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "transactional": false
+                },
+                "name": "store"
+              }
+            },
+            "out": []
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
+                    "attrs": {
+                      "n": 1,
+                      "transactional": true
+                    },
+                    "name": "store"
+                  },
+                  "ref": "a"
+                }
+              ],
+              "req": {
+                "match": {
+                  "n": 1,
+                  "transactional": true
+                },
+                "name": "store"
+              }
+            },
+            "match": {
+              "out": [
+                {
+                  "ref": "a"
+                }
+              ]
+            }
+          },
+          {
+            "in": {
+              "candidates": [
+                {
+                  "pos": 0,
+                  "provides": {
                     "name": "store",
                     "version": "2.3"
                   },
@@ -8979,6 +9079,87 @@
               "out": {
                 "result": [
                   "provider$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "id": "point/provider#tie-by-ref",
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "shadowed",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "provider$b"
                 ]
               }
             }

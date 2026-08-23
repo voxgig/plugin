@@ -87,14 +87,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # P4 adds python next; P5 and P6 the rest.
-        port: [typescript, go]
+        # P4 is complete; P5 and P6 add the rest.
+        port: [typescript, go, python]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         if: matrix.port == 'typescript'
         with:
           node-version: '24'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        if: matrix.port == 'python'
+        with:
+          python-version: '3.12'
       # NO setup-go STEP, DELIBERATELY. Every action here is pinned to a
       # SHA rather than a tag, and this workflow cannot resolve one for an
       # action it does not already use; an unpinned action would be a

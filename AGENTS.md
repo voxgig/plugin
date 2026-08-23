@@ -4,10 +4,10 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P4, go landed.** All **19 corpus sections** exist — 463
-entries — with the driver contract in `DOCS.md` §4. `typescript/` is the
-canonical and `go/` is the first port; **both pass every section**, and
-`make check` is the whole gate. The remaining P4 half is `python/`. What
+**Status: P4 complete.** All **19 corpus sections** exist — 469 entries
+— with the driver contract in `DOCS.md` §4. Three implementations pass
+every one of them: `typescript/` (canonical), `go/` and `python/`, and
+`make check` is the whole gate. Next is P5's fourteen tier-3 ports. What
 that means for you is in "Where to start" at the bottom, and the live
 per-item state is [`doc/plan/status.md`](doc/plan/status.md).
 
@@ -70,7 +70,8 @@ plugin/
 │   ├── check_parity.py          every port defines the canonical API
 │   └── check_probes.py          every port implements every probe
 ├── typescript/                  CANONICAL — src/ and test/
-├── go/                          the first port — plugin/ (library) and test/ (driver + runner)
+├── go/                          port — plugin/ (library) and test/ (driver + runner)
+├── python/                      port — voxgig_plugin/ (library) and test/
 └── <lang>/                      one per port: src, driver, test, Makefile, README, AGENTS
 ```
 
@@ -204,28 +205,28 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0–P3 are done, and P4's first half is: `typescript/` is the canonical,
-`go/` is the first port, and both pass all 19 corpus sections.
+P0–P4 are done: `typescript/` is the canonical, `go/` and `python/` are
+the proving pair, and all three pass all 19 corpus sections.
 
-**Next is `python/`** — P4's other half, "the closest dynamic analogue
-that is not JavaScript". Then P5's fourteen tier-3 ports, at which point
-a model change costs fifteen ports rather than two, which is exactly why
-P4 runs first.
+**Next is P5, the fourteen tier-3 ports.** From here a model change
+costs fifteen ports rather than three, which is exactly why P4 ran
+first.
 
-**If you are writing a port**, read §18's P4 note and
-[`doc/plan/handover.md`](doc/plan/handover.md) §13 before you start. Go
-found three defects in the canonical, and all three were of two kinds:
-*a rule the design states that no corpus entry can distinguish*, and *a
-code path no corpus entry enters*. Both are found by making a second
-implementation decide from the same text, and neither is found by
-reading the canonical. Expect to find more, and **fix them in the
-canonical** — §18's exit for P4 says so in those words.
+**If you are writing a port, read
+[`doc/plan/handover.md`](doc/plan/handover.md) §13 before you start.**
+The pair found six defects in the canonical, and every one was of two
+kinds: *a rule the design states that no corpus entry can distinguish*,
+and *a code path no corpus entry enters*. Both are found by making
+another implementation decide from the same text, and neither is found
+by reading the canonical. Expect to find more, and **fix them in the
+canonical** — §18's exit for P4 says so in those words, and it does not
+stop applying at P5.
 
-The layout to copy is `go/`: the library under `go/plugin`, the driver
-and corpus runner under `go/test`, all four Makefile targets (`test`,
-`build`, `inspect`, `clean`) real rather than tolerant, and a coverage
-test asserting that every corpus section is actually dispatched. A
-section silently not run is worse than a failing one.
+The layout to copy is `go/` or `python/`: the library in one directory,
+the driver and corpus runner in `test/`, all four Makefile targets
+(`test`, `build`, `inspect`, `clean`) real rather than tolerant, and a
+coverage test asserting that every corpus section is actually
+dispatched. A section silently not run is worse than a failing one.
 
 What this repo owes station, and what has actually landed, is
 [`doc/plan/contracts.md`](doc/plan/contracts.md).

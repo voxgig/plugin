@@ -22,7 +22,7 @@ Last updated: 2026-08-23.
 | voxgig/plugin#5 | P0: the skeleton — `Makefile`, `spec/` with the empty corpus and its aontu format shape, `tools/`, CI. Three review rounds, all of them the same defect class. |
 | voxgig/plugin#6 | The `active` overload settled: the lifecycle status is `live`, the config key stays `active`. |
 | voxgig/omni#36 | Two tooling bugs found while copying omni's `build-spec.js` into this repo, fixed upstream where they also lived. |
-| voxgig/plugin, P4 (go) | The first port. All 19 corpus sections green in a second language, and three canonical defects fixed on the way — §13. |
+| voxgig/plugin, P4 (go, python) | The proving pair. All 19 corpus sections green in three languages, and six canonical defects fixed on the way — §13. |
 
 
 ## 2. `active` vs `live`, and why the framing was the hard part
@@ -352,15 +352,16 @@ installed features declare" rather than naming a count, and the count
 should come out.
 
 
-## 13. What the go port found, and why a typed port found it
+## 13. What the proving pair found, and why a second implementation found it
 
-P4 says Go goes first because "static-only + typed extension points and
+P4 is a PAIR — go, "because static-only + typed extension points and
 explicit errors will find every TypeScript-shaped assumption in the
-model". Four landed, and the shape of each is worth keeping: **none of
-them was a Go problem.** All four were defects in the canonical — the
+model", then python, "the closest dynamic analogue that is not
+JavaScript". Six defects landed between them, four from go and two from
+python, and the shape of each is worth keeping: **none of them was a Go
+or a Python problem.** All six were defects in the canonical — the
 canonical failing to implement its own design, not the design being
-wrong — that a dynamically-typed port could hold indefinitely without
-noticing. **No design section changed.**
+wrong. **No design section changed.**
 
 **1. `match` did not match (§11.1).** The design says `match` is "a
 partial match against `attrs`, with exactly the semantics voxgig/struct
@@ -418,13 +419,48 @@ had no corpus entry at all. Pinned by a new `lifecycle/faildown` group,
 including the case that distinguishes it from the `unload`-from-`failed`
 row, where §5.2 says the entry is dropped anyway.
 
-The transferable lesson is about *coverage of the mechanism*, not about
-Go. Two of the four were "a rule the design states, that no entry can
-distinguish"; two were "a code path no entry entered". Neither is found
-by reading the canonical, and both are found the moment a second
-implementation has to make the same decision from the same text.
+**5. `match` compared by value and not by type.** Python's `==` says
+`True == 1`. The canonical uses `===`, under which they are different,
+and JSON gives them distinct types — so a requirement for
+`transactional: true` must not be satisfied by a provider advertising
+`transactional: 1`. Nothing in the corpus said so, and half the ports
+are written in languages whose default comparison agrees with Python's:
+php's `==`, perl, lua. A port taking its language's default passes every
+other entry in `capability/match` and silently satisfies a requirement
+nobody asked for.
 
-### What the port changed about the model, and what it did not
+Found by a mutation deleting the port's `isinstance(x, bool)` guard,
+which survived the whole suite. Four entries now pin it, including the
+`false`/`0` half — a port that special-cased only `true` still gets that
+one wrong — and a matching pair, so the guard cannot be written as
+"compound values never match".
+
+**6. §6.3's provider tie at equal bands.** The winner is "the highest
+band, ties broken by ref sort", and no entry had two provider bindings
+at the same band. Ref sort is the one place §6.3 does not fall through
+to `pos`, because a provider is picked from a set rather than composed
+into a sequence and "whichever loaded first wins" is not a rule anyone
+can reason about across twenty ports. Two entries now pin it, with the
+*higher* ref declared first, so a port breaking the tie by declaration
+order fails rather than coincidentally agreeing.
+
+### The pattern, and what it tells the next fourteen ports
+
+The transferable lesson is about *coverage of the mechanism*, not about
+either language. Every one of the six was one of two kinds:
+
+- **a rule the design states, that no corpus entry can distinguish** —
+  the unwind direction, the nested `match`, the type-strict `match`, the
+  provider tie;
+- **a code path no corpus entry enters** — `release`'s counter, and
+  `unload`'s failing `deactivate`.
+
+Neither is found by reading the canonical. Both are found the moment a
+second implementation has to make the same decision from the same text —
+which is the entire argument for running the proving pair before P5's
+fourteen, and for reading this section before writing the fifteenth.
+
+### What the ports changed about the model, and what they did not
 
 Go **returns** errors where the canonical throws. That is a signature
 change in every fallible function and it changes nothing else: the
@@ -446,6 +482,24 @@ binds the same function to a hook point in `point/bail` and a provider
 point in `point/provider`, and three distinct func types make that
 unwritable. Recorded because the next static port (rust, swift) will
 reach the same fork and should not re-litigate it.
+
+**Python changed nothing at all**, which is the other half of the
+result: it raises where the canonical raises, has ordered dicts, stable
+sorts and first-class closures, so the translation is close to
+line-for-line. That is also why it is the more dangerous port to write —
+no compiler stops you, and every remaining difference is silent. The
+four that bit are in `python/AGENTS.md`: `True == 1`,
+`isinstance(True, int)`, late binding in closures, and `dict.get`
+collapsing absent into `None` where JavaScript has both `undefined` and
+`null`.
+
+One process note that cost a whole mutation batch: **a stale
+`__pycache__` makes a mutation run test nothing.** Bytecode is keyed on
+source mtime and size, so restoring a mutated file can land on the same
+pair and re-execute the old `.pyc` — a "caught" that is a mismatch
+artifact, and a "survived" that never saw the mutation. The first batch
+reported one false survivor and one false result and had to be redone
+with the cache cleared around every run.
 
 
 ## 12. Open, and deliberately so

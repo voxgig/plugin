@@ -2008,6 +2008,33 @@ primary: capability: {
             candidates: [ { ref: 'x', pos: 0, provides: { name: 'store', attrs: { a: 1, b: 3 } } } ] }
       out: [] }
 
+    # EQUALITY IS BY JSON TYPE AS WELL AS VALUE, and this is the entry
+    # that says so. The canonical compares with `===`, under which `true`
+    # and `1` are different values — but half the ports are written in
+    # languages where the default comparison says they are the same
+    # (python's `True == 1`, php's `==`, perl, lua), so a port taking its
+    # language's `==` passes every other entry in this section and
+    # silently satisfies a requirement no one asked for.
+    #
+    # Found by the python port (§18, P4): a mutation deleting its
+    # bool/int guard survived the whole suite.
+    { in: { req: { name: 'store', match: { transactional: true } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: 1 } } } ] }
+      out: [] }
+    { in: { req: { name: 'store', match: { n: 1 } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { n: true } } } ] }
+      out: [] }
+    # ...and the false/zero half, which a port that special-cased only
+    # `true` would still get wrong.
+    { in: { req: { name: 'store', match: { transactional: false } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: 0 } } } ] }
+      out: [] }
+    # The matching pairs still match, so the guard cannot have been
+    # written as "compound values never match".
+    { in: { req: { name: 'store', match: { transactional: true, n: 1 } }
+            candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: true, n: 1 } } } ] }
+      match: { out: [ { ref: 'a' } ] } }
+
     # The range participates in matching, not only in diagnosis.
     { in: { req: { name: 'store', range: '2.1' }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', version: '2.3' } } ] }
@@ -2521,6 +2548,34 @@ primary: point: {
         { do: 'shadowed', point: 'v' }
       ]
       match: { out: { result: ['provider$a'] } }
+    }
+    # AT EQUAL BANDS THE TIE BREAKS BY REF SORT, NOT BY DECLARATION
+    # ORDER — the one place §6.3 does not fall through to `pos`, because
+    # a provider is picked from a set rather than composed into a
+    # sequence, and "whichever loaded first wins" is not a rule anyone
+    # can reason about across twenty ports.
+    #
+    # `provider$b` is declared FIRST here on purpose: a port breaking the
+    # tie by declaration order answers 'B' and passes every other entry
+    # in this group. Found by the python port (§18, P4).
+    {
+      id: 'point/provider#tie-by-ref'
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider' } } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
+        { do: 'provider', point: 'v' }
+      ]
+      match: { out: { result: 'A' } }
+    }
+    {
+      cmd: [
+        { do: 'host', points: { v: { kind: 'provider' } } }
+        { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
+        { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
+        { do: 'shadowed', point: 'v' }
+      ]
+      match: { out: { result: ['provider$b'] } }
     }
     # With no binding the host's default answers.
     {

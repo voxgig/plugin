@@ -36,6 +36,7 @@ PROBES = [
 PORTS = {
     'typescript': ['typescript/test'],
     'go': ['go/test'],
+    'python': ['python/test'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj'}
