@@ -154,10 +154,23 @@ be noticed.
   natural home, since both are declaration behaviour.
 - §15.3's `ref` row is corrected to match.
 
-Doing that properly means editing the design, which is a larger change
-than the corpus section it blocks; the section ships pure and correct
-in the meantime, and this row is the reason it looks incomplete against
-§15.3.
+**RESOLVED.** §15.3 now reads:
+
+| behaviour | section | pure? |
+|---|---|---|
+| `pos` assignment | `config` | yes |
+| `seq` | `declare` | driver |
+| auto-tag | `declare` | driver |
+| `pos` stability across a redeclaration | `order`'s tie group | driver |
+
+`ref` keeps grammar, parse, format and canonicalization — exactly what
+the four pure functions can reach. §4 rule 4 now says where each half
+is pinned, so the next reader does not have to rediscover that the
+table and the surface disagreed.
+
+**What is still owed:** `seq` and auto-tag have nowhere to be *run*
+until the `declare` driver section exists, which is P2. `pos` is
+covered now. The corpus header records the split.
 
 
 ## 6. The driver vocabulary was missing a verb it requires

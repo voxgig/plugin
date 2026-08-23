@@ -83,6 +83,40 @@
             }
           },
           {
+            "id": "config/normarray#pos",
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "ref": "zeta"
+                  },
+                  {
+                    "ref": "alpha"
+                  },
+                  {
+                    "ref": "retry"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "pos": 1
+                  },
+                  "retry": {
+                    "pos": 2
+                  },
+                  "zeta": {
+                    "pos": 0
+                  }
+                }
+              }
+            }
+          },
+          {
             "id": "config/normarray#mapkey-canon",
             "in": {
               "doc": {
@@ -578,6 +612,34 @@
               "out": {
                 "instance": {},
                 "order": []
+              }
+            }
+          },
+          {
+            "id": "config/normmap#pos",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "pos": 0
+                  },
+                  "retry": {
+                    "pos": 1
+                  },
+                  "zeta": {
+                    "pos": 2
+                  }
+                }
               }
             }
           }

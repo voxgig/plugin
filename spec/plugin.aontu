@@ -87,15 +87,22 @@ PLUGIN: version: 1
 #
 # 2. The empty string is plugin_bad_name, not a name with an empty tag.
 #
-# WHAT THIS SECTION DOES NOT PIN, and why it is not an oversight:
-# §15.3 lists `ref` as also covering **auto-tag** and **`pos` vs `seq`
-# across a redeclaration**. Neither is reachable from the canonical pure
-# surface — there is no `autotag` function, `seq` is by definition a
-# counter held by the host, and `pos` is assigned by document
-# normalization. Pinning them here would make a section marked `pure`
-# require a driver, which would put C1 behind C2 and break the ordering
-# station's Stage 2 depends on. They are tracked in
-# doc/plan/handover.md §6 and belong to `config` and the driver sections.
+# WHAT THIS SECTION DOES NOT PIN, and where those things now live.
+# An earlier §15.3 assigned **auto-tag** and **`pos` vs `seq`** to `ref`
+# as well, and marked the section pure. Nothing in the pure surface —
+# parseref, formatref, checkname, checktag — can reach any of them, so
+# §15.3 was corrected rather than this section stretched:
+#
+#   pos        `config`, assigned by document normalization  (pure)
+#   seq        `declare`, a counter the host holds           (driver)
+#   auto-tag   `declare`, since it must know what is already
+#              declared                                      (driver)
+#   pos STABILITY across a redeclaration — `order`'s tie group, which
+#              is where getting it wrong actually shows      (driver)
+#
+# Keeping them here would have made a section marked `pure` require a
+# driver, putting C1 behind C2 and inverting the ordering station's
+# Stage 2 depends on. See doc/plan/handover.md §5.
 # ---------------------------------------------------------------------------
 
 primary: ref: {
@@ -368,6 +375,16 @@ primary: config: {
       in: { doc: { plugin: 1 } }
       match: { out: { order: [], instance: {} } }
     }
+    # `pos` ITSELF, not only its effect on `order` (§4 rule 4). For the
+    # map form it is the SORTED-ref index, so it does not depend on the
+    # parser's key order. Asserting only `order` would let a port derive
+    # the list correctly while carrying a `pos` that disagrees with it —
+    # and `pos` is what breaks ordering ties (§7), so the two must agree.
+    {
+      id: 'config/normmap#pos'
+      in: { doc: { plugin: 1, instance: { retry: {}, alpha: {}, zeta: {} } } }
+      match: { out: { instance: { alpha: { pos: 0 }, retry: { pos: 1 }, zeta: { pos: 2 } } } }
+    }
   ]
 
 
@@ -389,6 +406,15 @@ primary: config: {
     {
       in: { doc: { plugin: 1, instance: [ { ref: 'stripe$' } ] } }
       match: { out: { order: ['stripe'] } }
+    }
+    # `pos` in the ARRAY form is the array INDEX, a different rule from
+    # the map form's sorted index — a port implementing one and reusing
+    # it for the other gets this backwards, and the two entries disagree
+    # by construction: the same three refs, opposite orders.
+    {
+      id: 'config/normarray#pos'
+      in: { doc: { plugin: 1, instance: [ { ref: 'zeta' }, { ref: 'alpha' }, { ref: 'retry' } ] } }
+      match: { out: { instance: { zeta: { pos: 0 }, alpha: { pos: 1 }, retry: { pos: 2 } } } }
     }
     # And in the MAP form, where refs arrive as keys through a different
     # code path — a port can canonicalize array `ref` fields while

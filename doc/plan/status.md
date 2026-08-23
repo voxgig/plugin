@@ -13,41 +13,29 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**Nothing open, in either repo.** plugin `main` is `56f48e1` (every PR
-through #6 merged); station `main` is `088f204`, which carries station's
-half of the `active`/`live` decision and pins `P§n` to plugin's
-`56f48e1`.
-
-The only work in flight is P1's first corpus sections.
+**Nothing open.** plugin `main` is `e8ca92c`; station `main` is
+`088f204`. **C1 and C2 are both discharged** — voxgig/plugin#7, 234
+entries across four sections plus the driver contract.
 
 
 ## Pick this up first
 
-**P1 item 1.5 — `typescript/`, the canonical.** Everything owed
-outward is now written: C1 (`ref` + `config`) and C2 (`lifecycle` +
-`order` + the driver contract), 204 entries across four sections. The
-canonical is the phase's third deliverable by design, and it is next.
+**P1 item 1.5 — `typescript/`, the canonical.** Everything owed outward
+has landed, and 1.7 has corrected §15.3 ahead of it, so the canonical
+will not pin a classification the design got wrong.
 
 Write it to the portability budget (AGENTS.md §5): no reflection-backed
 APIs, no `Proxy`, no decorators, no meta-level interception, and eager
 lifecycle reconciliation. Every one of those is cheaper to obey now
 than to remove at P4.
 
-**1.6 `tools/check_probes.py` is also unblocked** — the probe catalog
-now exists to check against — and is the cheaper of the two.
+**1.6 `tools/check_probes.py`** is the cheaper of the two and also
+ready — the probe catalog exists to check against.
 
-Both halves of C1 and all of C2 are written and **awaiting merge**;
-neither row is `DONE` until it lands.
-
-The reason for that ordering is not politeness. Station's Stage 1 lands
-the ref grammar and Stage 2 lands the identity re-key; if `ref` arrives
-after Stage 2, station has already written ref parsing and the corpus
-becomes a retrofit audit rather than a contract. Both sections are pure
-data (§15.3) — the files *are* the deliverable — so this is cheap for
-plugin and only cheap if it is early.
-
-Do **not** start `typescript/` (1.5) first because it feels like the
-real work. It is the phase's third deliverable by design.
+One thing to carry into the canonical, from `handover.md` §8: **a
+corpus entry is worth exactly what it can falsify.** Three of the
+entries written for C1 passed for every implementation, correct or not,
+and review had to find them.
 
 
 ## Blocked on a human
