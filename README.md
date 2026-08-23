@@ -24,21 +24,26 @@ programmatic API over the same normalized model.
 
 ## Status
 
-**P0 — the repository skeleton.** The design is complete and agreed with
-its first host; the build machinery exists and turns over; there is no
-code in any language yet, and the corpus is empty.
+**P1 — the contract, in progress.** The design is complete and agreed
+with its first host, the build machinery turns over, and **four corpus
+sections are written**. There is still no code in any language.
 
-That last part is deliberate rather than a gap: `make spec` and
-`make spec-check` are proven against an empty corpus *before* there is
-anything to compile, so that when the first sections land, a failure is
-about the data rather than about the pipeline.
+P0's empty corpus was deliberate rather than a gap: `make spec` and
+`make spec-check` were proven *before* there was anything to compile, so
+that when the first sections landed, a failure was about the data rather
+than about the pipeline.
 
 | | |
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | empty — `ref` and `config` land first, in P1 |
-| ports | none — `typescript/` is canonical and arrives with P1 |
+| corpus | **204 entries** — `ref`, `config`, `lifecycle`, `order`. The rest land per phase. |
+| driver contract | draft — [`DOCS.md`](./DOCS.md) §4 |
+| ports | none — `typescript/` is canonical and is next |
+
+Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
+what this repo owes station, and what has actually landed, is
+[`doc/plan/contracts.md`](./doc/plan/contracts.md).
 
 Next is P1, the TypeScript tracer bullet. Its first deliverables are the
 two corpus sections owed to station, not its last — see

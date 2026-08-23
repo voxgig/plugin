@@ -1,5 +1,4494 @@
 {
   "PLUGIN": {
     "version": 1
+  },
+  "primary": {
+    "config": {
+      "normarray": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normarray#order",
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "ref": "retry"
+                  },
+                  {
+                    "ref": "alpha"
+                  },
+                  {
+                    "ref": "memcache$hot"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "retry",
+                  "alpha",
+                  "memcache$hot"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "options": {
+                      "retries": 3
+                    },
+                    "ref": "retry"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "optionlayers": [
+                      {
+                        "retries": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": [
+                  {
+                    "ref": "stripe$"
+                  }
+                ],
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stripe"
+                ]
+              }
+            }
+          },
+          {
+            "id": "config/normarray#mapkey-canon",
+            "in": {
+              "doc": {
+                "instance": {
+                  "stripe$": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "stripe": "__EXISTS__"
+                },
+                "order": [
+                  "stripe"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "normdefaultmap": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normdefaultmap#inert",
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {},
+                "order": []
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "nobody": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "instance": {
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "a": 1
+                    }
+                  }
+                },
+                "instance": {
+                  "stripe": {},
+                  "stripe$test": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stripe",
+                  "stripe$test"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "normdefaults": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normdefaults#bar",
+            "in": {
+              "doc": {
+                "instance": {
+                  "pad$a": {
+                    "active": false
+                  }
+                },
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "pad$a": {
+                        "options": {
+                          "base": "https://prod.example"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "pad$a": {
+                    "active": false,
+                    "optionlayers": [
+                      {
+                        "base": "https://prod.example"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "active": true,
+                    "start": "eager"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "retry": {
+                    "active": false,
+                    "start": "lazy"
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "active": false,
+                    "start": "lazy"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "outer": {
+                    "options": {
+                      "instance": {
+                        "inner": {
+                          "active": false
+                        }
+                      }
+                    }
+                  }
+                },
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "outer": {
+                        "options": {
+                          "instance": {
+                            "inner": {
+                              "options": {
+                                "x": 1
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "outer": {
+                    "optionlayers": [
+                      {
+                        "instance": {
+                          "inner": {
+                            "active": false
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "normkeys": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normkeys#root",
+            "in": {
+              "doc": {
+                "api": {
+                  "retry": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "plugin": 1,
+                "sdk": {
+                  "retry": {}
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              }
+            },
+            "match": {
+              "out": {
+                "default": {
+                  "retry": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "order": [
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "api": {
+                  "retry": {
+                    "options": {
+                      "t": 9
+                    }
+                  }
+                },
+                "plugin": 1,
+                "sdk": {
+                  "retry$a": {}
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              }
+            },
+            "match": {
+              "out": {
+                "default": {
+                  "retry": {
+                    "options": {
+                      "t": 9
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "sdk": {
+                      "retry": {
+                        "options": {
+                          "t": 2
+                        }
+                      }
+                    }
+                  }
+                },
+                "sdk": {
+                  "retry": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "optionlayers": [
+                      {
+                        "t": 1
+                      },
+                      {
+                        "t": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "plugin": 1,
+                "sdk": {
+                  "retry": {
+                    "options": {
+                      "sdk": "untouched"
+                    }
+                  }
+                }
+              },
+              "keys": {
+                "default": "api",
+                "instance": "sdk"
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "retry": {
+                    "optionlayers": [
+                      {
+                        "sdk": "untouched"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "normmap": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normmap#order",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "memcache$hot": {},
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "alpha",
+                  "memcache$hot",
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "stripe": {},
+                  "stripe$eu": {},
+                  "stripe$test": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stripe",
+                  "stripe$eu",
+                  "stripe$test"
+                ]
+              }
+            }
+          },
+          {
+            "id": "config/normmap#bytewise",
+            "in": {
+              "doc": {
+                "instance": {
+                  "@scope/x": {},
+                  "A": {},
+                  "B": {},
+                  "a": {},
+                  "b": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "@scope/x",
+                  "A",
+                  "B",
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {},
+                "order": []
+              }
+            }
+          }
+        ]
+      },
+      "normpartial": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normpartial#keep",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1,
+                "profile": {
+                  "dev": {
+                    "instance": [
+                      {
+                        "ref": "zeta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "profile": "dev"
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "zeta",
+                  "alpha",
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {},
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1,
+                "profile": {
+                  "dev": {
+                    "instance": [
+                      {
+                        "ref": "zeta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "profile": "dev"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": "__EXISTS__",
+                  "retry": "__EXISTS__",
+                  "zeta": "__EXISTS__"
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normpartial#introduce",
+            "in": {
+              "doc": {
+                "instance": {
+                  "retry": {}
+                },
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "audit$eu": {
+                        "options": {
+                          "region": "eu"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "audit$eu": {
+                    "optionlayers": [
+                      {
+                        "region": "eu"
+                      }
+                    ]
+                  }
+                },
+                "order": [
+                  "audit$eu",
+                  "retry"
+                ]
+              }
+            }
+          },
+          {
+            "id": "config/normpartial#arrayoptions",
+            "in": {
+              "doc": {
+                "instance": {
+                  "zeta": {
+                    "options": {
+                      "a": 1
+                    }
+                  }
+                },
+                "plugin": 1,
+                "profile": {
+                  "dev": {
+                    "instance": [
+                      {
+                        "active": false,
+                        "options": {
+                          "b": 2
+                        },
+                        "ref": "zeta"
+                      }
+                    ]
+                  }
+                }
+              },
+              "profile": "dev"
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "zeta": {
+                    "active": false,
+                    "optionlayers": [
+                      {
+                        "a": 1
+                      },
+                      {
+                        "b": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "normreserved": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_ref_reserved",
+            "id": "config/normreserved#doc",
+            "in": {
+              "doc": {
+                "instance": {
+                  "station": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "doc": {
+                "instance": {
+                  "station$eu": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "doc": {
+                "default": {
+                  "station": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "err": "plugin_ref_reserved",
+            "in": {
+              "doc": {
+                "plugin": 1,
+                "profile": {
+                  "prod": {
+                    "instance": {
+                      "station": {}
+                    }
+                  }
+                }
+              },
+              "profile": "prod",
+              "reserved": [
+                "station"
+              ]
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "stationary": {}
+                },
+                "plugin": 1
+              },
+              "reserved": [
+                "station"
+              ]
+            },
+            "match": {
+              "out": {
+                "order": [
+                  "stationary"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "optdefault": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optdefault#byname",
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "stripe$eu"
+            },
+            "out": {
+              "t": 5000
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "stripe$test"
+            },
+            "out": {
+              "t": 5000
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "stripe"
+            },
+            "out": {
+              "t": 5000
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "t": 5000
+                    }
+                  }
+                }
+              },
+              "ref": "other"
+            },
+            "out": {}
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-default",
+                      "b": 1
+                    }
+                  }
+                },
+                "instance": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-instance"
+                    }
+                  }
+                }
+              },
+              "ref": "stripe"
+            },
+            "out": {
+              "a": "from-instance",
+              "b": 1
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-default"
+                    }
+                  }
+                },
+                "instance": {
+                  "stripe": {
+                    "options": {
+                      "a": "from-untagged"
+                    }
+                  }
+                }
+              },
+              "ref": "stripe$test"
+            },
+            "out": {
+              "a": "from-default"
+            }
+          }
+        ]
+      },
+      "optladder": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optladder#1",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 1
+            }
+          },
+          {
+            "in": {
+              "hostdefaults": {
+                "t": 2
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 2
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                }
+              },
+              "hostdefaults": {
+                "t": 2
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 3
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 4
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 5
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    },
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 6
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "t": 7
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 8
+            }
+          },
+          {
+            "in": {
+              "hostoptions": {
+                "t": 8
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 9
+            }
+          },
+          {
+            "in": {
+              "loadoptions": {
+                "t": 9
+              },
+              "patch": {
+                "t": 10
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 10
+            }
+          },
+          {
+            "id": "config/optladder#7-beats-6",
+            "in": {
+              "doc": {
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "in": {
+              "patch": {
+                "t": 10
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 10
+            }
+          },
+          {
+            "in": {
+              "hostdefaults": {
+                "t": 2
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 8
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                }
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 9
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "t": 6
+            }
+          },
+          {
+            "in": {
+              "env": {
+                "t": 7
+              },
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 7
+            }
+          },
+          {
+            "id": "config/optladder#all-ten",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    },
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "hostdefaults": {
+                "t": 2
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "patch": {
+                "t": 10
+              },
+              "profile": "p",
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 10
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "t": 3
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 4
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "default": {
+                      "r": {
+                        "options": {
+                          "t": 5
+                        }
+                      }
+                    },
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "t": 7
+              },
+              "hostdefaults": {
+                "t": 2
+              },
+              "hostoptions": {
+                "t": 8
+              },
+              "loadoptions": {
+                "t": 9
+              },
+              "profile": "p",
+              "ref": "r",
+              "shape": {
+                "t": 1
+              }
+            },
+            "out": {
+              "t": 9
+            }
+          }
+        ]
+      },
+      "optlist": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optlist#replace",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x",
+                        "y",
+                        "z"
+                      ]
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "a"
+                      ]
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "p": [
+                "a"
+              ]
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x",
+                        "y"
+                      ]
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "p": []
+              },
+              "ref": "r"
+            },
+            "out": {
+              "p": []
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": 1
+                      },
+                      "p": [
+                        "x"
+                      ]
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "b": 2
+                      },
+                      "p": [
+                        "a"
+                      ]
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "m": {
+                "a": 1,
+                "b": 2
+              },
+              "p": [
+                "a"
+              ]
+            }
+          }
+        ]
+      },
+      "optmerge": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optmerge#replace",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "b.example"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x"
+                      ]
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "y"
+                      ]
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "p": {
+                  "$MERGE": "append"
+                }
+              }
+            },
+            "out": {
+              "p": [
+                "x",
+                "y"
+              ]
+            }
+          },
+          {
+            "id": "config/optmerge#deep2",
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "feature": {
+                        "retry": {
+                          "headers": {
+                            "a": 1,
+                            "b": 2
+                          },
+                          "n": 3
+                        }
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "feature": {
+                        "retry": {
+                          "headers": {
+                            "c": 3
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "feature": {
+                  "$MERGE": {
+                    "deep": 2
+                  }
+                }
+              }
+            },
+            "out": {
+              "feature": {
+                "retry": {
+                  "headers": {
+                    "c": 3
+                  },
+                  "n": 3
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "x": 1
+                        },
+                        "b": 2
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "y": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 1
+                  }
+                }
+              }
+            },
+            "out": {
+              "m": {
+                "a": {
+                  "y": 2
+                },
+                "b": 2
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "default": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "x": 1
+                        },
+                        "b": 2
+                      }
+                    }
+                  }
+                },
+                "instance": {
+                  "r": {
+                    "options": {
+                      "m": {
+                        "a": {
+                          "y": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "m": {
+                "a": {
+                  "x": 1,
+                  "y": 2
+                },
+                "b": 2
+              }
+            }
+          },
+          {
+            "id": "config/optmerge#replace-at-patch",
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "env": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "hostoptions": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "policy": {
+                        "hosts": [
+                          "a.example"
+                        ],
+                        "strict": true
+                      }
+                    }
+                  }
+                }
+              },
+              "loadoptions": {
+                "policy": {
+                  "hosts": [
+                    "b.example"
+                  ]
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "policy": {
+                  "$MERGE": "replace"
+                }
+              }
+            },
+            "out": {
+              "policy": {
+                "hosts": [
+                  "b.example"
+                ]
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x"
+                      ]
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "p": [
+                  "y"
+                ]
+              },
+              "ref": "r",
+              "shape": {
+                "p": {
+                  "$MERGE": "append"
+                }
+              }
+            },
+            "out": {
+              "p": [
+                "x",
+                "y"
+              ]
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "feature": {
+                        "retry": {
+                          "headers": {
+                            "a": 1
+                          },
+                          "n": 3
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "feature": {
+                  "retry": {
+                    "headers": {
+                      "c": 3
+                    }
+                  }
+                }
+              },
+              "ref": "r",
+              "shape": {
+                "feature": {
+                  "$MERGE": {
+                    "deep": 2
+                  }
+                }
+              }
+            },
+            "out": {
+              "feature": {
+                "retry": {
+                  "headers": {
+                    "c": 3
+                  },
+                  "n": 3
+                }
+              }
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "p": [
+                        "x",
+                        "y",
+                        "z"
+                      ]
+                    }
+                  }
+                }
+              },
+              "patch": {
+                "p": [
+                  "a"
+                ]
+              },
+              "ref": "r"
+            },
+            "out": {
+              "p": [
+                "a"
+              ]
+            }
+          }
+        ]
+      },
+      "optmergebad": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_shape_invalid",
+            "id": "config/optmergebad#zero",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": -1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 1.5
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": "two"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": null
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": "merge"
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": "REPLACE"
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": true
+                }
+              }
+            }
+          },
+          {
+            "err": "plugin_shape_invalid",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {}
+                }
+              }
+            }
+          },
+          {
+            "err": true,
+            "id": "config/optmergebad#names-key",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 0
+                  }
+                }
+              }
+            },
+            "match": {
+              "err": {
+                "message": "/m/"
+              }
+            }
+          },
+          {
+            "err": true,
+            "id": "config/optmergebad#names-directive",
+            "in": {
+              "ref": "r",
+              "shape": {
+                "m": {
+                  "$MERGE": {
+                    "deep": 0
+                  }
+                }
+              }
+            },
+            "match": {
+              "err": {
+                "message": "/\\$MERGE/"
+              }
+            }
+          }
+        ]
+      },
+      "optprofile": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/optprofile#specificity",
+            "in": {
+              "doc": {
+                "instance": {
+                  "stripe$test": {
+                    "options": {
+                      "t": "base-instance"
+                    }
+                  }
+                },
+                "profile": {
+                  "prod": {
+                    "default": {
+                      "stripe": {
+                        "options": {
+                          "t": "prod-default"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod",
+              "ref": "stripe$test"
+            },
+            "out": {
+              "t": "prod-default"
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "profile": {
+                  "prod": {
+                    "default": {
+                      "stripe": {
+                        "options": {
+                          "t": "prod-default"
+                        }
+                      }
+                    },
+                    "instance": {
+                      "stripe$test": {
+                        "options": {
+                          "t": "prod-instance"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "prod",
+              "ref": "stripe$test"
+            },
+            "out": {
+              "t": "prod-instance"
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "a": 1,
+                      "b": 1
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "b": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "profile": "p",
+              "ref": "r"
+            },
+            "out": {
+              "a": 1,
+              "b": 2
+            }
+          },
+          {
+            "in": {
+              "doc": {
+                "instance": {
+                  "r": {
+                    "options": {
+                      "t": 1
+                    }
+                  }
+                },
+                "profile": {
+                  "p": {
+                    "instance": {
+                      "r": {
+                        "options": {
+                          "t": 99
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "ref": "r"
+            },
+            "out": {
+              "t": 1
+            }
+          }
+        ]
+      }
+    },
+    "lifecycle": {
+      "back": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/back#deactivate",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate",
+                "probe$a:deactivate"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate",
+                "probe$a:deactivate",
+                "probe$a:close"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {}
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$a:activate",
+                  "probe$a:deactivate",
+                  "probe$a:close"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "fail": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "code": "probe_boom",
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/fail#activate",
+            "match": {
+              "out": {
+                "status": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "noisy$a": "failed"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_bad_state"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "unload",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          }
+        ]
+      },
+      "forward": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/forward#full",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate"
+              ],
+              "open": 1,
+              "result": null,
+              "status": {
+                "probe$a": "live"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1,
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "idem": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/idem#activate",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate"
+              ],
+              "open": 1,
+              "result": null,
+              "status": {
+                "probe$a": "live"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "probe$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "loaded"
+              }
+            }
+          }
+        ]
+      },
+      "illegal": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_not_loaded",
+            "id": "lifecycle/illegal#activate-absent"
+          },
+          {
+            "cmd": [
+              {
+                "do": "deactivate",
+                "ref": "nope$a"
+              }
+            ],
+            "err": "plugin_not_loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "unload",
+                "ref": "nope$a"
+              }
+            ],
+            "err": "plugin_not_loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "options",
+                "patch": {},
+                "ref": "nope$a"
+              }
+            ],
+            "err": "plugin_not_loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "other"
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "other",
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_ref_duplicate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "nosuch$a"
+              }
+            ],
+            "err": "plugin_unknown_definition"
+          }
+        ]
+      },
+      "introspect": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/introspect#free",
+            "out": {
+              "log": [],
+              "open": 0,
+              "result": {
+                "probe$a": "declared"
+              },
+              "status": {
+                "probe$a": "declared"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    },
+                    "probe$b": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "out": {
+              "log": [],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "declared",
+                "probe$b": "declared"
+              }
+            }
+          }
+        ]
+      },
+      "pending": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "dep"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "missing"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/pending#unmet",
+            "out": {
+              "log": [
+                "dep$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "dep$a": "pending"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "dep"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "missing"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              }
+            ],
+            "out": {
+              "log": [
+                "dep$a:define"
+              ],
+              "open": 0,
+              "result": null,
+              "status": {
+                "dep$a": "loaded"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "dep"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "missing"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "dep$a": "pending"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "reentrant": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "noisy",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "reenter": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_reentrant",
+            "id": "lifecycle/reentrant#activate"
+          }
+        ]
+      },
+      "resource": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "greedy",
+                "probe": "greedy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "greedy$a"
+              }
+            ],
+            "doc": true,
+            "id": "lifecycle/resource#unwind",
+            "match": {
+              "out": {
+                "open": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "greedy",
+                "probe": "greedy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "order": {
+      "band": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 10
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/band#lower-first",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": -5
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "constraint": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/constraint#after",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "before": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "late"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "definition": "late",
+                "do": "ready",
+                "order": {
+                  "after": "probe"
+                },
+                "ref": "late$x"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b",
+                  "late$x"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "late"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "late",
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "late$x"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "late$x",
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "cycle": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$b"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_order_cycle",
+            "id": "order/cycle#pair"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$c"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$b"
+                },
+                "ref": "probe$c"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_order_cycle"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": "plugin_order_cycle"
+          }
+        ]
+      },
+      "pin": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain",
+                    "pin": {
+                      "adapter": "innermost"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "adapter"
+              },
+              {
+                "definition": "adapter",
+                "do": "ready",
+                "ref": "adapter$x"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "order/pin#innermost",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "adapter$x"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain",
+                    "pin": {
+                      "adapter": "innermost"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "adapter"
+              },
+              {
+                "definition": "adapter",
+                "do": "ready",
+                "ref": "adapter$x"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "adapter$x"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "c"
+              }
+            ],
+            "err": "plugin_order_pinned"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain",
+                    "pin": {
+                      "adapter": "outermost"
+                    }
+                  }
+                }
+              },
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "adapter"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "adapter",
+                "do": "ready",
+                "ref": "adapter$x"
+              },
+              {
+                "do": "order",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "adapter$x",
+                  "probe$a"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "precedence": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a",
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/precedence#constraint-wins",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "recompute": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/recompute#reactivate",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          }
+        ]
+      },
+      "tie": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/tie#pos",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$first",
+                  "probe$second",
+                  "probe$third"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first",
+                      "start": "lazy"
+                    },
+                    {
+                      "ref": "probe$second",
+                      "start": "lazy"
+                    },
+                    {
+                      "ref": "probe$third",
+                      "start": "lazy"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$third"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$first"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$second"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$first",
+                  "probe$second",
+                  "probe$third"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "active": false,
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$first"
+                    },
+                    {
+                      "ref": "probe$second"
+                    },
+                    {
+                      "ref": "probe$third"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$first",
+                  "probe$second",
+                  "probe$third"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {},
+                    "probe$c": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b",
+                  "probe$c"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "vacuous": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "nosuchthing"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/vacuous#absent",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "ref": {
+      "bound": {
+        "set": [
+          {
+            "doc": true,
+            "id": "ref/bound#name-max",
+            "in": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "out": true
+          },
+          {
+            "in": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "out": false
+          }
+        ]
+      },
+      "boundtag": {
+        "set": [
+          {
+            "doc": true,
+            "id": "ref/boundtag#max",
+            "in": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "out": true
+          },
+          {
+            "in": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "out": false
+          }
+        ]
+      },
+      "canon": {
+        "set": [
+          {
+            "doc": true,
+            "id": "ref/canon#trailing",
+            "in": "stripe$",
+            "out": "stripe"
+          },
+          {
+            "in": "stripe",
+            "out": "stripe"
+          },
+          {
+            "in": "stripe$test",
+            "out": "stripe$test"
+          },
+          {
+            "in": "@voxgig/plugin-retry$",
+            "out": "@voxgig/plugin-retry"
+          },
+          {
+            "in": "a.b.c$1",
+            "out": "a.b.c$1"
+          }
+        ]
+      },
+      "format": {
+        "set": [
+          {
+            "args": [
+              "stripe",
+              ""
+            ],
+            "doc": true,
+            "id": "ref/format#bare",
+            "out": "stripe"
+          },
+          {
+            "args": [
+              "stripe",
+              "test"
+            ],
+            "out": "stripe$test"
+          },
+          {
+            "args": [
+              "@voxgig/plugin-retry",
+              "eu"
+            ],
+            "out": "@voxgig/plugin-retry$eu"
+          },
+          {
+            "args": [
+              "stripe",
+              "1"
+            ],
+            "out": "stripe$1"
+          },
+          {
+            "args": [
+              "a.b.c",
+              "x~y"
+            ],
+            "out": "a.b.c$x~y"
+          },
+          {
+            "args": [
+              "stripe",
+              ""
+            ],
+            "out": "stripe"
+          }
+        ]
+      },
+      "formatbad": {
+        "set": [
+          {
+            "args": [
+              "",
+              ""
+            ],
+            "doc": true,
+            "err": "plugin_bad_name",
+            "id": "ref/formatbad#emptyname"
+          },
+          {
+            "args": [
+              "",
+              "test"
+            ],
+            "err": "plugin_bad_name"
+          },
+          {
+            "args": [
+              "1abc",
+              ""
+            ],
+            "err": "plugin_bad_name"
+          },
+          {
+            "args": [
+              "a$b",
+              ""
+            ],
+            "err": "plugin_bad_name"
+          },
+          {
+            "args": [
+              "stripe",
+              "a/b"
+            ],
+            "err": "plugin_bad_tag"
+          },
+          {
+            "args": [
+              "stripe",
+              "a$b"
+            ],
+            "err": "plugin_bad_tag"
+          },
+          {
+            "args": [
+              "stripe",
+              "@x"
+            ],
+            "err": "plugin_bad_tag"
+          },
+          {
+            "args": [
+              "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              ""
+            ],
+            "err": "plugin_bad_name",
+            "id": "ref/formatbad#name-overlong"
+          },
+          {
+            "args": [
+              "x",
+              "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ],
+            "err": "plugin_bad_tag",
+            "id": "ref/formatbad#tag-overlong"
+          }
+        ]
+      },
+      "name": {
+        "set": [
+          {
+            "doc": true,
+            "id": "ref/name#simple",
+            "in": "stripe",
+            "out": true
+          },
+          {
+            "in": "a",
+            "out": true
+          },
+          {
+            "in": "A",
+            "out": true
+          },
+          {
+            "in": "@scope/pkg",
+            "out": true
+          },
+          {
+            "in": "@voxgig/plugin-retry",
+            "out": true
+          },
+          {
+            "in": "a.b.c",
+            "out": true
+          },
+          {
+            "in": "a_b",
+            "out": true
+          },
+          {
+            "in": "a-b",
+            "out": true
+          },
+          {
+            "in": "a~b",
+            "out": true
+          },
+          {
+            "in": "a/b",
+            "out": true
+          },
+          {
+            "in": "a1",
+            "out": true
+          },
+          {
+            "in": "a123._~-/",
+            "out": true
+          },
+          {
+            "in": "",
+            "out": false
+          },
+          {
+            "in": "1a",
+            "out": false
+          },
+          {
+            "in": "-a",
+            "out": false
+          },
+          {
+            "in": ".a",
+            "out": false
+          },
+          {
+            "in": "_a",
+            "out": false
+          },
+          {
+            "in": "~a",
+            "out": false
+          },
+          {
+            "in": "/a",
+            "out": false
+          },
+          {
+            "in": "a$b",
+            "out": false
+          },
+          {
+            "in": "a b",
+            "out": false
+          },
+          {
+            "in": "a!b",
+            "out": false
+          },
+          {
+            "in": "a%b",
+            "out": false
+          }
+        ]
+      },
+      "parse": {
+        "set": [
+          {
+            "doc": true,
+            "id": "ref/parse#bare",
+            "in": "stripe",
+            "out": {
+              "name": "stripe",
+              "tag": ""
+            }
+          },
+          {
+            "in": "stripe$test",
+            "out": {
+              "name": "stripe",
+              "tag": "test"
+            }
+          },
+          {
+            "in": "retry$fast",
+            "out": {
+              "name": "retry",
+              "tag": "fast"
+            }
+          },
+          {
+            "in": "stripe$",
+            "out": {
+              "name": "stripe",
+              "tag": ""
+            }
+          },
+          {
+            "in": "@voxgig/plugin-retry",
+            "out": {
+              "name": "@voxgig/plugin-retry",
+              "tag": ""
+            }
+          },
+          {
+            "in": "@voxgig/plugin-retry$eu",
+            "out": {
+              "name": "@voxgig/plugin-retry",
+              "tag": "eu"
+            }
+          },
+          {
+            "in": "a.b.c",
+            "out": {
+              "name": "a.b.c",
+              "tag": ""
+            }
+          },
+          {
+            "in": "a_b-c~d",
+            "out": {
+              "name": "a_b-c~d",
+              "tag": ""
+            }
+          },
+          {
+            "in": "a/b/c$x",
+            "out": {
+              "name": "a/b/c",
+              "tag": "x"
+            }
+          },
+          {
+            "in": "A",
+            "out": {
+              "name": "A",
+              "tag": ""
+            }
+          },
+          {
+            "in": "a1",
+            "out": {
+              "name": "a1",
+              "tag": ""
+            }
+          },
+          {
+            "in": "stripe$1",
+            "out": {
+              "name": "stripe",
+              "tag": "1"
+            }
+          },
+          {
+            "in": "stripe$0",
+            "out": {
+              "name": "stripe",
+              "tag": "0"
+            }
+          },
+          {
+            "in": "stripe$99",
+            "out": {
+              "name": "stripe",
+              "tag": "99"
+            }
+          },
+          {
+            "in": "x$a.b",
+            "out": {
+              "name": "x",
+              "tag": "a.b"
+            }
+          },
+          {
+            "in": "x$a_b-c~d",
+            "out": {
+              "name": "x",
+              "tag": "a_b-c~d"
+            }
+          }
+        ]
+      },
+      "parsebad": {
+        "set": [
+          {
+            "doc": true,
+            "err": "plugin_bad_name",
+            "id": "ref/parsebad#empty",
+            "in": ""
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "$test"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "$"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "1abc"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "-abc"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": ".abc"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "/abc"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "~abc"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "_abc"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "a b"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "a!b"
+          },
+          {
+            "err": "plugin_bad_name",
+            "in": "a#b"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$b$c"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$b/c"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$@b"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$b c"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "in": "a$b!c"
+          },
+          {
+            "err": "plugin_bad_name",
+            "id": "ref/parsebad#name-overlong",
+            "in": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "err": "plugin_bad_tag",
+            "id": "ref/parsebad#tag-overlong",
+            "in": "x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ]
+      },
+      "tag": {
+        "set": [
+          {
+            "doc": true,
+            "id": "ref/tag#empty",
+            "in": "",
+            "out": true
+          },
+          {
+            "in": "test",
+            "out": true
+          },
+          {
+            "in": "1",
+            "out": true
+          },
+          {
+            "in": "0",
+            "out": true
+          },
+          {
+            "in": "99",
+            "out": true
+          },
+          {
+            "in": "a.b",
+            "out": true
+          },
+          {
+            "in": "a_b",
+            "out": true
+          },
+          {
+            "in": "a-b",
+            "out": true
+          },
+          {
+            "in": "a~b",
+            "out": true
+          },
+          {
+            "in": "A1._~-",
+            "out": true
+          },
+          {
+            "in": "@x",
+            "out": false
+          },
+          {
+            "in": "a/b",
+            "out": false
+          },
+          {
+            "in": "a$b",
+            "out": false
+          },
+          {
+            "in": "a b",
+            "out": false
+          },
+          {
+            "in": "a!b",
+            "out": false
+          }
+        ]
+      }
+    }
   }
 }
