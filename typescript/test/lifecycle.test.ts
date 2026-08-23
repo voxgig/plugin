@@ -6,7 +6,10 @@ import * as Assert from 'node:assert'
 import { section, check, label, Entry } from './corpus'
 import { drive } from './driver'
 
-for (const name of ['lifecycle', 'order']) {
+for (const name of [
+  'lifecycle', 'order', 'point', 'export', 'depend',
+  'declare', 'state', 'resource', 'nest', 'trace', 'apply', 'error',
+]) {
   const groups = section(name)
 
   test(name + ': every entry carries cmd', () => {

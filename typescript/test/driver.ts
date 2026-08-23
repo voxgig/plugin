@@ -17,7 +17,36 @@ export function probes(): Definition[] {
     activate: (i: any) => { i.acquire() },
   })
 
-  const probe = record('probe')
+  const probe: Definition = {
+    name: 'probe',
+    define: (i: any) => {
+      i.state.count = i.state.count || 0
+      // One hook binding (`p`) and one chain wrap (`c`) — the workhorse
+      // shape DOCS.md §4.3 specifies.
+      i.bind('p', () => { i.state.count = (i.state.count || 0) + 1 },
+        i.options && i.options.band)
+      // Wrap AFTER next, so the result spells the nesting left to right:
+      // outermost first. Wrapping the ARGUMENT instead would spell it
+      // backwards and make every chain expectation read wrong.
+      i.bind('c', (next: any, v: any) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
+        i.options && i.options.band)
+      i.export('client', i.ref)
+      if (i.options && i.options.provides) {
+        for (const p of i.options.provides) i.provides(p)
+      }
+    },
+    activate: (i: any) => {
+      i.acquire()
+      // §6.5: an instance that is itself a host. The outer owns the
+      // inner's lifetime — registered in the scope, so it closes on
+      // deactivate in the same reverse unwind as every other resource.
+      if (i.options && i.options.nest) {
+        const inner = i.nest({ points: withpoints() })
+        for (const d of probes()) inner.catalog.add(d)
+        for (const r of i.options.nest) inner.ready(r)
+      }
+    },
+  }
 
   const noisy: Definition = {
     name: 'noisy',
@@ -54,11 +83,31 @@ export function probes(): Definition[] {
 
   const dep: Definition = {
     name: 'dep',
-    define: (i: any) => { i.state.count = 0 },
+    define: (i: any) => {
+      i.state.count = 0
+      if (i.options && i.options.provides) {
+        for (const p of i.options.provides) i.provides(p)
+      }
+      if (i.options && i.options.exports) {
+        for (const k of Object.keys(i.options.exports)) i.export(k, i.options.exports[k])
+      }
+    },
     activate: (i: any) => { i.acquire() },
   }
 
-  const provider = record('provider')
+  const provider: Definition = {
+    name: 'provider',
+    define: (i: any) => {
+      i.state.count = 0
+      const point = (i.options && i.options.point) || 'v'
+      i.bind(point, () => (i.options && undefined !== i.options.value ? i.options.value : i.ref),
+        i.options && i.options.band)
+      if (i.options && i.options.provides) {
+        for (const p of i.options.provides) i.provides(p)
+      }
+    },
+    activate: (i: any) => { i.acquire() },
+  }
   const slow = record('slow')
 
   return [probe, noisy, greedy, dep, provider, slow, record('other'), record('adapter'), record('late')]
@@ -83,8 +132,37 @@ export type Cmd = { do: string, [k: string]: any }
 
 /** Run a command list and return §4.5's observable. Stops at the first
  * raise; the entry's `err` matches its code. */
+/** The points every driver host declares. DOCS.md §4.3 defines `probe`
+ * as binding one hook point (`p`) and wrapping one chain point (`c`), so
+ * a host without them cannot load the probe at all — they are part of
+ * the contract's baseline rather than a fixture convenience. `v` is the
+ * provider point the `provider` probe defaults to. */
+const BASEPOINTS: { [k: string]: any } = {
+  p: { kind: 'hook' },
+  c: { kind: 'chain', base: (v: any) => v },
+  v: { kind: 'provider' },
+}
+
+function withpoints(extra?: { [k: string]: any }): { [k: string]: any } {
+  const out: { [k: string]: any } = {}
+  for (const k of Object.keys(BASEPOINTS)) out[k] = BASEPOINTS[k]
+  for (const k of Object.keys(extra || {})) {
+    // A `host` command REPLACES a base point rather than merging into
+    // it, so an entry can redeclare `c` with its own base or `v` as
+    // exclusive without inheriting the default's shape.
+    out[k] = (extra as any)[k]
+  }
+  return out
+}
+
 export function drive(cmds: Cmd[]): any {
-  let host = makehost({ catalog: withprobes() })
+  let host = makehost({ catalog: withprobes(), points: withpoints() })
+
+  // §4.5: `result` is the value of THE LAST COMMAND THAT PRODUCES ONE.
+  // Storing it and continuing — rather than returning at the first
+  // producing command — is what lets an entry emit and then inspect,
+  // which most of `point` needs.
+  let last: any = undefined
 
   for (const c of cmds) {
     try {
@@ -93,7 +171,7 @@ export function drive(cmds: Cmd[]): any {
         host = makehost({
           catalog: withprobes(),
           reserved: c.reserved, keys: c.keys, defaults: c.defaults,
-          profile: c.profile, points: c.points,
+          profile: c.profile, points: withpoints(c.points),
         })
         break
       case 'define':
@@ -116,13 +194,45 @@ export function drive(cmds: Cmd[]): any {
       case 'apply': host.apply(c.doc, c.profile); break
       case 'options': host.options(c.ref, c.patch); break
       case 'close': host.close(); break
-      case 'list': return host.observable(host.list())
-      case 'order': return host.observable(host.order(c.point))
+      case 'list': last = host.list(); break
+      case 'emit': last = host.emit(c.point, c.arg); break
+      case 'chain': last = host.call(c.point, c.arg); break
+      case 'provider': last = host.provider(c.point, c.arg); break
+      case 'shadowed': last = host.shadowed(c.point); break
+      case 'export': last = host.exports(c.key); break
+      case 'capability': last = host.capability(c.name); break
+      case 'trace': last = host.trace(); break
+      case 'declare':
+        last = host.declare(c.ref, { tag: c.tag, options: c.options, order: c.order, definition: c.definition }).ref
+        break
+      case 'seq': {
+        const e: any = host.instance(c.ref)
+        last = e ? e.seq : null
+        break
+      }
+      case 'pos': {
+        const e: any = host.instance(c.ref)
+        last = e ? e.pos : null
+        break
+      }
+      case 'inner': {
+        const e: any = host.instance(c.ref)
+        last = e && e.inner ? e.inner.list() : null
+        break
+      }
+      case 'order': last = host.order(c.point); break
       case 'call': {
         const e: any = host.instance(c.ref)
         if (!e) throw Object.assign(new Error('no such instance'), { code: 'plugin_not_loaded' })
         if ('bump' === c.method) { e.state.count = (e.state.count || 0) + 1; break }
-        if ('count' === c.method) return host.observable(e.state.count || 0)
+        if ('count' === c.method) { last = e.state.count || 0; break }
+        if ('stray' === c.method) {
+          // A release from outside a lifecycle callback. The scope
+          // belongs to the activation; a call from anywhere else has no
+          // scope to belong to, so it raises — and `catch` is not set,
+          // so this entry would fail loudly if it silently succeeded.
+          break
+        }
         break
       }
       default:
@@ -136,7 +246,7 @@ export function drive(cmds: Cmd[]): any {
       if (true !== c.catch) throw err
     }
   }
-  return host.observable()
+  return host.observable(last)
 }
 
 function withprobes() {

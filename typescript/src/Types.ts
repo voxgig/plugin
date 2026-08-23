@@ -40,20 +40,52 @@ export type Normalized = {
   default: { [name: string]: any }
 }
 
-/** Every error carries a §12 code. Ports compare by code and never by
- * message: wording is a port's own business, and pinning it would make
- * every translation a corpus change. */
+/** §12's detail fields, IN THIS FIXED ORDER.
+ *
+ * The order is part of the contract, not a formatting preference. An
+ * earlier draft named six fields while other sections promised
+ * diagnostics that had nowhere to go, which would have left each port
+ * inventing its own order and breaking message parity. */
+export const DETAIL_ORDER = [
+  'host', 'ref', 'name', 'tag', 'point', 'key', 'capability',
+  'range', 'version', 'match', 'candidates', 'cycle', 'holders',
+  'refs', 'path', 'cause',
+]
+
+/** `plugin/<code>: <text> [<key>=<value> …]`
+ *
+ * Values render as COMPACT JSON, so a value containing a space or a
+ * bracket cannot break the parse, and a list renders as a JSON array.
+ * The bracket is absent entirely when no field applies. */
+export function formaterror(code: string, text: string, details?: { [k: string]: any }): string {
+  const d = details || {}
+  const parts: string[] = []
+  for (const k of DETAIL_ORDER) {
+    if (undefined === d[k]) continue
+    parts.push(k + '=' + JSON.stringify(d[k]))
+  }
+  const tail = 0 === parts.length ? '' : ' [' + parts.join(' ') + ']'
+  return 'plugin/' + code + ': ' + text + tail
+}
+
+/** Every error carries a §12 code. Ports compare by CODE and never by
+ * message: wording is a port's own business, and pinning the words
+ * would make every translation a corpus change. The FORMAT, however, is
+ * pinned — a parseable message is what makes a log searchable across
+ * twenty languages. */
 export class PluginError extends Error {
   code: string
+  text: string
   details: { [k: string]: any }
-  constructor(code: string, message: string, details?: { [k: string]: any }) {
-    super(message)
+  constructor(code: string, text: string, details?: { [k: string]: any }) {
+    super(formaterror(code, text, details))
     this.name = 'PluginError'
     this.code = code
+    this.text = text
     this.details = details || {}
   }
 }
 
-export function fail(code: string, message: string, details?: any): never {
-  throw new PluginError(code, message, details)
+export function fail(code: string, text: string, details?: any): never {
+  throw new PluginError(code, text, details)
 }

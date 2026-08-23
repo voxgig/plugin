@@ -3,6 +3,335 @@
     "version": 1
   },
   "primary": {
+    "apply": {
+      "change": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {},
+                    "probe$b": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/change#add",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live",
+                  "probe$b": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "A"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "Z"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "Zx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/change#toggle-off",
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "log": [
+                  "probe$a:define",
+                  "probe$a:activate",
+                  "probe$a:deactivate",
+                  "probe$a:close"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "apply/change#toggle-back",
+            "match": {
+              "out": {
+                "open": 1,
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "idempotent": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "apply/idempotent#twice",
+            "out": {
+              "log": [
+                "probe$a:define",
+                "probe$a:activate"
+              ],
+              "open": 1,
+              "result": null,
+              "status": {
+                "probe$a": "live"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "log": []
+              }
+            }
+          }
+        ]
+      },
+      "profile": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1,
+                  "profile": {
+                    "prod": {
+                      "instance": {
+                        "probe$a": {
+                          "options": {
+                            "wrap": "P"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "profile": "prod"
+              }
+            ],
+            "doc": true,
+            "id": "apply/profile#bar-survives",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
     "capability": {
       "match": {
         "set": [
@@ -2792,6 +3121,829 @@
         ]
       }
     },
+    "declare": {
+      "autotag": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "doc": true,
+            "id": "declare/autotag#first",
+            "match": {
+              "out": {
+                "result": "probe$1"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              },
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$2"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$1"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$3"
+              },
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "id": "declare/autotag#fills-gap",
+            "match": {
+              "out": {
+                "result": "probe$2"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$1"
+              },
+              {
+                "do": "declare",
+                "ref": "probe",
+                "tag": "?"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$2"
+              }
+            }
+          }
+        ]
+      },
+      "free": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "start": "lazy"
+                    },
+                    "probe$b": {
+                      "start": "lazy"
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "doc": true,
+            "id": "declare/free#nothing-runs",
+            "out": {
+              "log": [],
+              "open": 0,
+              "result": null,
+              "status": {
+                "probe$a": "declared",
+                "probe$b": "declared"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "probe$a": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "active": false
+                    }
+                  },
+                  "plugin": 1
+                }
+              }
+            ],
+            "id": "declare/free#barred",
+            "match": {
+              "out": {
+                "log": [],
+                "status": {
+                  "probe$a": "declared"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "seq": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$b"
+              },
+              {
+                "do": "seq",
+                "ref": "probe$b"
+              }
+            ],
+            "doc": true,
+            "id": "declare/seq#advances",
+            "match": {
+              "out": {
+                "result": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "seq",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$b"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "declare",
+                "ref": "probe$a"
+              },
+              {
+                "do": "seq",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "declare/seq#fresh-on-reload",
+            "match": {
+              "out": {
+                "result": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "active": false,
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": [
+                    {
+                      "ref": "probe$a"
+                    },
+                    {
+                      "ref": "probe$b"
+                    }
+                  ],
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "pos",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "declare/seq#pos-stable",
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "depend": {
+      "arrive": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/arrive#auto",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "b"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "b"
+                    }
+                  ],
+                  "requires": [
+                    "a"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "a"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              }
+            ],
+            "id": "depend/arrive#chain",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live",
+                  "dep$b": "live",
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "lost": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "doc": true,
+            "id": "depend/lost#back-to-pending",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "a"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "b"
+                    }
+                  ],
+                  "requires": [
+                    "a"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "b"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              }
+            ],
+            "id": "depend/lost#recursive",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$b": "pending",
+                  "dep$c": "pending"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "a"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "b"
+                    }
+                  ],
+                  "requires": [
+                    "a"
+                  ]
+                },
+                "ref": "dep$b"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "b"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "id": "depend/lost#recovers",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live",
+                  "dep$b": "live",
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "policy": "dynamic",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "id": "depend/lost#dynamic-stays",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "optional": [
+                    "clock"
+                  ],
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "pending": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "doc": true,
+            "id": "depend/pending#unmet",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "pending"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "load",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$c"
+              }
+            ],
+            "id": "depend/pending#capability",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "optional": [
+                    "clock"
+                  ],
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "do": "activate",
+                "ref": "dep$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "select": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.1"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "s",
+                      "version": "2.9"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "capability",
+                "name": "s"
+              }
+            ],
+            "doc": true,
+            "id": "depend/select#rank",
+            "match": {
+              "out": {
+                "result": [
+                  "dep$hi",
+                  "dep$lo"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p1"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p2"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p1"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
     "env": {
       "ambiguous": {
         "set": [
@@ -3324,6 +4476,405 @@
                     "n": "__NULL__"
                   }
                 }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "error": {
+      "codes": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_not_loaded",
+            "id": "error/codes#not-loaded"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "nosuch$a"
+              }
+            ],
+            "err": "plugin_unknown_definition"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "definition": "other",
+                "do": "load",
+                "ref": "probe$a"
+              }
+            ],
+            "err": "plugin_ref_duplicate"
+          },
+          {
+            "cmd": [
+              {
+                "do": "emit",
+                "point": "nope"
+              }
+            ],
+            "err": "plugin_point_unknown"
+          },
+          {
+            "cmd": [
+              {
+                "do": "chain",
+                "point": "p"
+              }
+            ],
+            "err": "plugin_point_kind"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": "plugin_order_cycle"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_bad_state"
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "reenter": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "err": "plugin_reentrant"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "err": "plugin_export_ambiguous"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "exclusive": true,
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "err": "plugin_point_exclusive"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "reserved": [
+                  "station"
+                ]
+              },
+              {
+                "do": "declare",
+                "ref": "station$a"
+              }
+            ],
+            "err": "plugin_ref_reserved"
+          }
+        ]
+      },
+      "format": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "doc": true,
+            "err": true,
+            "id": "error/format#prefix",
+            "match": {
+              "err": {
+                "message": "/^plugin\\/plugin_not_loaded: /"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "activate",
+                "ref": "nope$a"
+              }
+            ],
+            "err": true,
+            "match": {
+              "err": {
+                "message": "/\\[ref=\"nope\\$a\"\\]/"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "emit",
+                "point": "nope"
+              }
+            ],
+            "err": true,
+            "id": "error/format#json-values",
+            "match": {
+              "err": {
+                "message": "/\\[point=\"nope\"\\]/"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$b"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": "probe$a"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "err": true,
+            "id": "error/format#list-field",
+            "match": {
+              "err": {
+                "message": "/cycle=\\[/"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "export": {
+      "alias": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "doc": true,
+            "id": "export/alias#untagged-wins",
+            "match": {
+              "out": {
+                "result": "probe"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$a"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "err": "plugin_export_ambiguous",
+            "id": "export/alias#ambiguous"
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "export",
+                "key": "probe/client"
+              }
+            ],
+            "err": true,
+            "match": {
+              "err": {
+                "message": "/probe\\$a/"
+              }
+            }
+          }
+        ]
+      },
+      "key": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/client"
+              }
+            ],
+            "doc": true,
+            "id": "export/key#qualified",
+            "match": {
+              "out": {
+                "result": "probe$a"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/nope"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/client"
+              }
+            ],
+            "id": "export/key#loaded-visible",
+            "match": {
+              "out": {
+                "result": "probe$a"
               }
             }
           }
@@ -4554,6 +6105,86 @@
         ]
       }
     },
+    "nest": {
+      "lifetime": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              },
+              {
+                "do": "inner",
+                "ref": "probe$outer"
+              }
+            ],
+            "doc": true,
+            "id": "nest/lifetime#inner-live",
+            "match": {
+              "out": {
+                "result": {
+                  "probe$inner": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$outer"
+              },
+              {
+                "do": "inner",
+                "ref": "probe$outer"
+              }
+            ],
+            "id": "nest/lifetime#outer-closes-inner",
+            "match": {
+              "out": {
+                "result": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              }
+            ],
+            "id": "nest/lifetime#isolated",
+            "match": {
+              "out": {
+                "status": {
+                  "probe$outer": "live"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
     "order": {
       "band": {
         "set": [
@@ -5405,6 +7036,607 @@
         ]
       }
     },
+    "point": {
+      "bail": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "doc": true,
+            "id": "point/bail#stops",
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "hook",
+                    "mode": "bail"
+                  }
+                }
+              },
+              {
+                "do": "emit",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          }
+        ]
+      },
+      "chain": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "point/chain#outermost",
+            "match": {
+              "out": {
+                "result": "ABx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "order": {
+                  "band": 10
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "point/chain#band",
+            "match": {
+              "out": {
+                "result": "BAx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "x"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "A"
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "options": {
+                  "wrap": "B"
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "point/chain#recompose",
+            "match": {
+              "out": {
+                "result": "Bx"
+              }
+            }
+          }
+        ]
+      },
+      "hook": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "emit",
+                "point": "p"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "point/hook#fanout",
+            "match": {
+              "out": {
+                "result": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "emit",
+                "point": "p"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "point/hook#deactivated",
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {}
+              },
+              {
+                "do": "emit",
+                "point": "nope"
+              }
+            ],
+            "err": "plugin_point_unknown"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "c": {
+                    "kind": "chain"
+                  }
+                }
+              },
+              {
+                "do": "emit",
+                "point": "c"
+              }
+            ],
+            "err": "plugin_point_kind"
+          }
+        ]
+      },
+      "insert": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "load",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "point/insert#loaded-not-bound",
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "p": {
+                    "kind": "hook"
+                  }
+                }
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "provider": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "doc": true,
+            "id": "point/provider#one",
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "order": {
+                  "band": 1
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "order": {
+                  "band": 9
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "id": "point/provider#highest",
+            "match": {
+              "out": {
+                "result": "B"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "order": {
+                  "band": 1
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "order": {
+                  "band": 9
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "shadowed",
+                "point": "v"
+              }
+            ],
+            "id": "point/provider#shadowed",
+            "match": {
+              "out": {
+                "result": [
+                  "provider$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "default": "D",
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "D"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "exclusive": true,
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "B"
+                },
+                "ref": "provider$b"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "err": "plugin_point_exclusive",
+            "id": "point/provider#exclusive"
+          },
+          {
+            "cmd": [
+              {
+                "do": "host",
+                "points": {
+                  "v": {
+                    "exclusive": true,
+                    "kind": "provider"
+                  }
+                }
+              },
+              {
+                "definition": "provider",
+                "do": "ready",
+                "options": {
+                  "point": "v",
+                  "value": "A"
+                },
+                "ref": "provider$a"
+              },
+              {
+                "do": "provider",
+                "point": "v"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "A"
+              }
+            }
+          }
+        ]
+      }
+    },
     "ref": {
       "bound": {
         "set": [
@@ -6077,6 +8309,373 @@
             "out": [
               "@acme/thing"
             ]
+          }
+        ]
+      }
+    },
+    "resource": {
+      "scope": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              }
+            ],
+            "doc": true,
+            "id": "resource/scope#difference",
+            "match": {
+              "out": {
+                "open": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 3,
+                  "release": 1
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 2,
+                  "release": 2
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "greedy$a"
+              }
+            ],
+            "id": "resource/scope#double-release",
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "load",
+                "options": {
+                  "fail": "activate"
+                },
+                "ref": "noisy$a"
+              },
+              {
+                "catch": true,
+                "do": "activate",
+                "ref": "noisy$a"
+              }
+            ],
+            "id": "resource/scope#partial-rollback",
+            "match": {
+              "out": {
+                "open": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "greedy",
+                "do": "ready",
+                "options": {
+                  "acquire": 3
+                },
+                "ref": "greedy$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "close"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 0,
+                "status": {}
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "stray",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "state": {
+      "survive": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "doc": true,
+            "id": "state/survive#cycle",
+            "match": {
+              "out": {
+                "result": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "activate",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 2
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$a"
+              }
+            ],
+            "id": "state/survive#unload-destroys",
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$b"
+              },
+              {
+                "do": "call",
+                "method": "bump",
+                "ref": "probe$a"
+              },
+              {
+                "do": "call",
+                "method": "count",
+                "ref": "probe$b"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "trace": {
+      "record": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "trace"
+              }
+            ],
+            "doc": true,
+            "id": "trace/record#forward",
+            "match": {
+              "out": {
+                "result": [
+                  {
+                    "event": "define",
+                    "ref": "probe$a"
+                  },
+                  {
+                    "event": "activate",
+                    "ref": "probe$a"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "unload",
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "trace"
+              }
+            ],
+            "id": "trace/record#seq",
+            "match": {
+              "out": {
+                "result": [
+                  {
+                    "event": "define",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "activate",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "deactivate",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "close",
+                    "ref": "probe$a",
+                    "seq": 0
+                  },
+                  {
+                    "event": "define",
+                    "ref": "probe$a",
+                    "seq": 1
+                  },
+                  {
+                    "event": "activate",
+                    "ref": "probe$a",
+                    "seq": 1
+                  }
+                ]
+              }
+            }
           }
         ]
       }
