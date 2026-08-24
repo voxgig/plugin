@@ -23,9 +23,9 @@ States: `NOT STARTED`, `IN PROGRESS` (a PR is open), `DONE` (merged),
 |---|---|---|---|---|---|---|
 | **C1** | plugin | station | `ref` and `config` corpus sections, as pure data | **before station Stage 2** — earlier than P1's exit | **DONE** | voxgig/plugin#7 — `ref` 97 entries, `config` 86, both pure. Delivered ahead of station Stage 2, which was the point. |
 | **C2** | plugin | station | `lifecycle` and `order` corpus sections **plus** the draft language-neutral driver contract in `DOCS.md` (§15.2 — probes, command vocabulary, canonical observable) | before P1's exit | **DONE** | voxgig/plugin#7 — 53 entries + `DOCS.md` §4, landed together because a driver section without its contract is not shippable. |
-| **C3** | station | plugin | a working Stages 2–**3b** implementation to extract from, and its own suites as the bar | before plugin P3 | **IN REVIEW** | voxgig/station#9 — Stages 2, 3 and 3b, 11/11 ports green. P3 unblocks when it merges. |
-| **C4a** | station | plugin | conformance on the pure sections: station runs C1's `ref` and `config` against its own implementation and reports divergence as a plugin issue rather than absorbing it | **continuous** from Stage 2 | NOT STARTED | — |
-| **C4b** | station | plugin | the same for C2's `lifecycle` and `order` | **continuous** from Stage 3b | NOT STARTED | — |
+| **C3** | station | plugin | a working Stages 2–**3b** implementation to extract from, and its own suites as the bar | before plugin P3 | **DONE** | voxgig/station#9 — Stages 2, 3 and 3b, 11/11 ports green — merged as `f7656aa`; review follow-ups in voxgig/station#10 (`2036cd6`). **P3 is unblocked.** |
+| **C4a** | station | plugin | conformance on the pure sections: station runs C1's `ref` and `config` against its own implementation and reports divergence as a plugin issue rather than absorbing it | **continuous** from Stage 2 | NOT STARTED | — the wiring is in flight: station is landing a plugin-corpus conformance suite in its own test suite (2026-08-24). This row turns `DONE` when that suite merges and runs in station's CI. |
+| **C4b** | station | plugin | the same for C2's `lifecycle` and `order` | **continuous** from Stage 3b | NOT STARTED | — same wiring, same suite (2026-08-24); station's `feature.test.ts` already holds its resolver to plugin's `order` semantics by construction, but that is not the corpus running. |
 
 
 ## What each row is actually for

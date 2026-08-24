@@ -2398,7 +2398,7 @@ version of the problem, and station's review supplied the large one.
 
 **Station has sixteen written ports** — `c`, `cpp`, `csharp`, `dart`,
 `elixir`, `go`, `java`, `javascript`, `lua`, `perl`, `php`, `python`,
-`ruby`, `rust`, `swift`, `typescript` — thirteen of them running a full
+`ruby`, `rust`, `swift`, `typescript` — eleven of them running a full
 suite in CI. This library has **none**, and §16.1 rolls out in four
 tiers. A station port cannot depend on a plugin library that does not
 exist in its language, so adopting this library as a *dependency* means,
