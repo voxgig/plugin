@@ -56,7 +56,7 @@ in the canonical and pinned by new entries — see
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
 | corpus | **527 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
-| ports | `typescript/` (canonical), `go/` and `python/` — **all three pass every section**. P5's fourteen are next. |
+| ports | `typescript/` (canonical), `go/`, `python/`, `javascript/` and `ruby/` — **all five pass every section**. P5's remaining twelve are next. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is
@@ -81,7 +81,7 @@ requirements — see the design's §17.1.
   corpus, the port layout, host adoption for station and sdkgen, and the
   phased delivery plan.
 
-## Structure (planned)
+## Structure
 
 The multi-port layout of [`voxgig/struct`](https://github.com/voxgig/struct)
 and [`voxgig/omni`](https://github.com/voxgig/omni): `typescript/` is
