@@ -56,13 +56,15 @@ in the canonical and pinned by new entries — see
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
 | corpus | **527 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
-| ports | `typescript/` (canonical), `go/`, `python/`, `javascript/` and `ruby/` — **all five pass every section**. P5's remaining twelve are next. |
+| ports | `typescript/` (canonical), `go/`, `python/`, `javascript/` and `ruby/` — **all five pass every section**. Two tracks run in parallel: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P5's remaining twelve ports. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is
 [`doc/plan/contracts.md`](./doc/plan/contracts.md).
 
-Next is the rest of P5 — see
+Next are two parallel tracks: **P3.1**, the extraction against
+station's merged Stages 2–3b (unblocked by C3, and the proof that P3
+is not a thought experiment), and the rest of **P5** — see
 [`AGENTS.md`](./AGENTS.md) §6. Read
 [`doc/plan/handover.md`](./doc/plan/handover.md) §13 before writing one:
 the six defects the proving pair found were all of two kinds, and both

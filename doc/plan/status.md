@@ -79,18 +79,21 @@ The corpus carries both grammars until those five cross; see station
 
 ## Blocked on a human
 
-**Three decisions**, none the implementer's to make, and each has a row in [`progress.md`](progress.md) — this
-table is the summary, that file is the authority. None blocks P1.
+**Two decisions**, neither the implementer's to make, and each has a row in [`progress.md`](progress.md) — this
+table is the summary, that file is the authority. Neither blocks P1.
 
 | Decision | Register row | Gates |
 |---|---|---|
-| **Does station hold Stage 5 after ts/js until P4?** | 5.3 | station's fourteen remaining ports. P4 is scheduled early to make model changes cheap; porting first makes them expensive again, in the other repo. The alternative is to accept divergence and budget a migration pass — said out loud rather than discovered. |
 | **Does station take the library as a dependency?** | 5.2 | Only whether station's ports later *replace* their native implementation, and the +800-lines-per-port trade. Deferred to P5 by design and **non-blocking** for the native rollout. |
 | **Does sdkgen adopt plugin?** (§17.2) | 6.2 | Nested hosts natively, `transport`'s deletion, the seventeen-model change. Uncommitted. If it never adopts, station is a sixteen-language library carrying a generic abstraction for a single consumer — the risk that invalidates the plan rather than delaying it. |
 
 
 ## Recently settled
 
+- **Does station hold Stage 5 until P4?** (register 5.3) — **moot: the
+  hold expired rather than being decided.** P4 merged 2026-08-23, so
+  station's remaining Stage 5 work carries no divergence risk from this
+  repo's canonical and needs no decision here.
 - **`active` vs `live`** — settled before P1 wrote a fixture, which was
   the point of dating it. voxgig/plugin#6. See
   [`handover.md`](handover.md) §1.
