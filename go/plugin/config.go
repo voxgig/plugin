@@ -591,23 +591,28 @@ func asorderref(v any, stated bool) OrderRef {
 		return OrderRef{}
 	}
 
-	out := OrderRef{raw: v, set: true, List: []string{}}
+	out := OrderRef{raw: v, set: true, list: []string{}}
 
+	// Slices are COPIED into `raw`. A caller that keeps its own handle on
+	// the slice it passed in must not be able to change what this ref
+	// marshals afterwards, while the parsed form stays as it was.
 	switch list := v.(type) {
 	case string:
 		if "" != list {
-			out.List = append(out.List, list)
+			out.list = append(out.list, list)
 		}
 	case []string:
+		out.raw = append([]string{}, list...)
 		for _, one := range list {
 			if "" != one {
-				out.List = append(out.List, one)
+				out.list = append(out.list, one)
 			}
 		}
 	case []any:
+		out.raw = append([]any{}, list...)
 		for _, item := range list {
 			if one, ok := item.(string); ok && "" != one {
-				out.List = append(out.List, one)
+				out.list = append(out.list, one)
 			}
 		}
 	}

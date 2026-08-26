@@ -87,13 +87,31 @@ func (block OrderBlock) MarshalJSON() ([]byte, error) {
 // authored null - and the corpus could see none of them until
 // `config/normorder` was written to assert the block's own shape.
 //
-// `set` is deliberately not `0 < len(List)`: an authored `[]` states a
+// `set` is deliberately not `0 < len(list)`: an authored `[]` states a
 // constraint that names nothing, which is NOT the same document as an
 // absent key.
+//
+// `raw` is the ONE source of truth and `list` is a derived cache, both
+// unexported. An earlier round exported `List`, which made the value
+// mutable from outside and gave it two sources that could disagree: a
+// caller mutating the slice it passed in changed what marshalled while
+// ResolveOrder kept the old constraint, and editing `List` directly did
+// the reverse. A persisted-then-reloaded config could then order
+// differently from the live one. NewOrderRef is now the only way to build
+// one, it copies what it is given, and Refs() hands back a copy.
 type OrderRef struct {
-	List []string
 	raw  any
+	list []string
 	set  bool
+}
+
+// Refs is the parsed spellings this ref names, as a copy. Callers get no
+// handle on the ref's own state.
+func (ref OrderRef) Refs() []string {
+	out := make([]string, len(ref.list))
+	copy(out, ref.list)
+
+	return out
 }
 
 // UnmarshalJSON decodes to `any` first and then goes through the SAME
@@ -124,7 +142,7 @@ func (ref *OrderRef) UnmarshalJSON(data []byte) error {
 // names nothing, and an absent key states nothing, and those are
 // different documents.
 func (ref OrderRef) Stated() bool {
-	return ref.set || 0 < len(ref.List)
+	return ref.set
 }
 
 // MarshalJSON replays the authored value, or falls back to `List` for a
@@ -139,10 +157,6 @@ func (ref OrderRef) Stated() bool {
 func (ref OrderRef) MarshalJSON() ([]byte, error) {
 	if ref.set {
 		return json.Marshal(ref.raw)
-	}
-
-	if 0 < len(ref.List) {
-		return json.Marshal(ref.List)
 	}
 
 	return []byte("null"), nil

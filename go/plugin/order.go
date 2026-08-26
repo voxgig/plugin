@@ -140,7 +140,7 @@ func targets(spec OrderRef, nodes []Binding) []string {
 	// A list fans out to the UNION of what each spelling names, so
 	// `after: ['a','b']` means after BOTH, and the same instance named
 	// twice - once by name, once by ref - is one edge, not two.
-	for _, one := range spec.List {
+	for _, one := range spec.list {
 		for _, b := range nodes {
 			if seen(hit, b.Ref) {
 				continue
@@ -159,7 +159,7 @@ func targets(spec OrderRef, nodes []Binding) []string {
 
 // declared: was a constraint actually stated? An empty list is not one.
 func declared(spec OrderRef) bool {
-	for _, one := range spec.List {
+	for _, one := range spec.list {
 		if "" != one {
 			return true
 		}
