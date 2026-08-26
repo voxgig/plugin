@@ -1699,6 +1699,96 @@ primary: order: {
   ]
 
 
+  # `before`/`after` take ONE spelling or a LIST of them. plugin typed this
+  # as a bare string and matched with `===`, so a list matched nothing and
+  # was SILENTLY DROPPED - the sort came out as if no constraint had been
+  # declared, with nothing raised. station has declared and validated the
+  # list form since Stage 3b, so the two levels of one rule disagreed about
+  # what the rule accepts. Every entry here carries a band that CONTRADICTS
+  # the constraint: without one, `pos` alone would produce the wanted order
+  # and the entry would pass whether or not the list was read.
+  list: set: [
+    {
+      id: 'order/list#after-one', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['probe$a'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+    # A list means after ALL of them, not after the first one read.
+    {
+      id: 'order/list#after-many', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$c', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['probe$a', 'probe$c'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$c', 'probe$b'] } }
+    }
+    # The `before` spelling takes a list on the same terms.
+    {
+      id: 'order/list#before-many', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99, before: ['probe$b', 'probe$c'] } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1 } }
+        { do: 'ready', ref: 'probe$c', order: { band: 1 } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b', 'probe$c'] } }
+    }
+    # An EMPTY list declares no constraint. It must not be read as one -
+    # and a truthiness test gets this wrong in every language where an
+    # empty array is truthy, which is most of them.
+    {
+      id: 'order/list#empty-is-no-constraint', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: [] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+    # A list may name the same instance twice - once by NAME, once by REF.
+    # That is one edge, not two, and must not deadlock or double-count.
+    #
+    # The declaring instance is deliberately a DIFFERENT definition. A bare
+    # name fans out to every instance of that definition, so a member naming
+    # the declarer's own definition would include the declarer itself - a
+    # self-edge, which is a cycle of one and correctly raises. That is §7
+    # working, not a list defect, and it cost this entry one rewrite.
+    {
+      id: 'order/list#name-and-ref-are-one-edge', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'other' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'other$b', order: { band: 1, after: ['probe', 'probe$a'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'other$b'] } }
+    }
+    # A vacuous member does not poison the rest: an absent name is
+    # satisfied vacuously (§7) and the real constraint still holds.
+    {
+      id: 'order/list#vacuous-member', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['nosuchthing', 'probe$a'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+  ]
+
+
   # TIES BREAK BY `pos` — the instance's position in the DECLARATION
   # order — not by the order instances happened to load, and not by the
   # incarnation counter `seq` (§4 rule 4). Both distinctions are

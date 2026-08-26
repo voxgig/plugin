@@ -53,12 +53,13 @@ func ResolveOrder(bindings []Binding, pin Pin) ([]string, error) {
 		if nil == b.Order {
 			continue
 		}
-		if "" != b.Order.After {
+		// An ABSENT constraint and an EMPTY LIST are both "no constraint".
+		if declared(b.Order.After) {
 			for _, t := range targets(b.Order.After, nodes) {
 				edges[t] = append(edges[t], b.Ref)
 			}
 		}
-		if "" != b.Order.Before {
+		if declared(b.Order.Before) {
 			for _, t := range targets(b.Order.Before, nodes) {
 				edges[b.Ref] = append(edges[b.Ref], t)
 			}
@@ -134,18 +135,45 @@ func band(b Binding) int {
 // targets: matching is by REF, or by NAME across all of that
 // definition's instances (§7) — which is the whole reason the two
 // spellings exist.
-func targets(spec string, nodes []Binding) []string {
+func targets(spec OrderRef, nodes []Binding) []string {
 	hit := []string{}
-	for _, b := range nodes {
-		if b.Ref == spec {
-			hit = append(hit, b.Ref)
-			continue
-		}
-		if refname(b.Ref) == spec {
-			hit = append(hit, b.Ref)
+	// A list fans out to the UNION of what each spelling names, so
+	// `after: ['a','b']` means after BOTH, and the same instance named
+	// twice - once by name, once by ref - is one edge, not two.
+	for _, one := range spec {
+		for _, b := range nodes {
+			if seen(hit, b.Ref) {
+				continue
+			}
+			if b.Ref == one {
+				hit = append(hit, b.Ref)
+				continue
+			}
+			if refname(b.Ref) == one {
+				hit = append(hit, b.Ref)
+			}
 		}
 	}
 	return hit
+}
+
+// declared: was a constraint actually stated? An empty list is not one.
+func declared(spec OrderRef) bool {
+	for _, one := range spec {
+		if "" != one {
+			return true
+		}
+	}
+	return false
+}
+
+func seen(hit []string, ref string) bool {
+	for _, h := range hit {
+		if h == ref {
+			return true
+		}
+	}
+	return false
 }
 
 /* A PIN IS NOT A CONSTRAINT (§7).

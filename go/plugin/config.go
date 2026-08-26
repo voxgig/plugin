@@ -569,6 +569,39 @@ func isposint(v any) bool {
 
 // orderblock decodes an `order` entry off a document. The canonical
 // stores the raw value and reads `.before`, `.after`, `.band` off it
+// asorderref reads ONE spelling or a LIST of them into an OrderRef.
+//
+// This used to be a bare asstring(), so a list decoded to "" and the
+// constraint was SILENTLY DROPPED - the sort ran as if nothing had been
+// declared. Anything that is neither a string nor a list of them yields
+// no constraint, which is what the previous code did for a list.
+func asorderref(v any) OrderRef {
+	if nil == v {
+		return nil
+	}
+
+	if one, ok := v.(string); ok {
+		if "" == one {
+			return nil
+		}
+		return OrderRef{one}
+	}
+
+	list, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+
+	out := OrderRef{}
+	for _, item := range list {
+		if one, ok := item.(string); ok && "" != one {
+			out = append(out, one)
+		}
+	}
+
+	return out
+}
+
 // wherever it lands; a typed port decodes once, here.
 func orderblock(v any) *OrderBlock {
 	m, ok := v.(map[string]any)
@@ -576,8 +609,8 @@ func orderblock(v any) *OrderBlock {
 		return nil
 	}
 	out := &OrderBlock{}
-	out.Before = asstring(m["before"], "")
-	out.After = asstring(m["after"], "")
+	out.Before = asorderref(m["before"])
+	out.After = asorderref(m["after"])
 	if f, ok := tonumber(m["band"]); ok {
 		n := int(f)
 		out.Band = &n

@@ -9087,6 +9087,266 @@
           }
         ]
       },
+      "list": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "probe$a"
+                  ],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#after-one",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$c"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "probe$a",
+                    "probe$c"
+                  ],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#after-many",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$c",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99,
+                  "before": [
+                    "probe$b",
+                    "probe$c"
+                  ]
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$c"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#before-many",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b",
+                  "probe$c"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#empty-is-no-constraint",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "other"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "probe",
+                    "probe$a"
+                  ],
+                  "band": 1
+                },
+                "ref": "other$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#name-and-ref-are-one-edge",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "other$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "nosuchthing",
+                    "probe$a"
+                  ],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#vacuous-member",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "pin": {
         "set": [
           {

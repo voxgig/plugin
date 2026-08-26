@@ -33,10 +33,11 @@ module VoxgigPlugin
 
     nodes.each do |b|
       block = b['order'] || {}
-      if block['after']
+      # An ABSENT constraint and an EMPTY LIST are both "no constraint".
+      if order_declared(block['after'])
         order_targets(block['after'], nodes).each { |t| edges[t] << b['ref'] }
       end
-      if block['before']
+      if order_declared(block['before'])
         order_targets(block['before'], nodes).each { |t| edges[b['ref']] << t }
       end
     end
@@ -80,9 +81,30 @@ module VoxgigPlugin
   # Matching is by REF, or by NAME across all of that definition's
   # instances (section 7) - which is the whole reason the two spellings
   # exist.
+  # Was a constraint stated? An absent value and an EMPTY LIST are both
+  # no-constraint - and [] is truthy in Ruby, which is exactly how this
+  # class of bug survives a reading.
+  def self.order_declared(spec)
+    return false if spec.nil?
+    return spec.any? { |one| '' != one } if spec.is_a?(Array)
+
+    '' != spec
+  end
+
+  # One spelling or a LIST of them. A list fans out to the UNION of what
+  # each names, so after: ['a','b'] means after BOTH, and the same
+  # instance named twice - once by name, once by ref - is one edge.
   def self.order_targets(spec, nodes)
-    nodes.select { |b| b['ref'] == spec || refname(b['ref']) == spec }
-         .map { |b| b['ref'] }
+    specs = spec.is_a?(Array) ? spec : [spec]
+    hit = []
+    specs.each do |one|
+      nodes.each do |b|
+        next if hit.include?(b['ref'])
+
+        hit << b['ref'] if b['ref'] == one || refname(b['ref']) == one
+      end
+    end
+    hit
   end
 
   # A PIN IS NOT A CONSTRAINT (section 7).

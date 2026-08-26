@@ -44,9 +44,37 @@ const (
 // OrderBlock is §4.4 of DOCS.md — `band` rather than a nested `order`,
 // because `order.order` needs explaining every time it is read.
 type OrderBlock struct {
-	Before string `json:"before,omitempty"`
-	After  string `json:"after,omitempty"`
-	Band   *int   `json:"band,omitempty"`
+	Before OrderRef `json:"before,omitempty"`
+	After  OrderRef `json:"after,omitempty"`
+	Band   *int     `json:"band,omitempty"`
+}
+
+// OrderRef is ONE spelling or a LIST of them. Both forms normalize to a
+// list here, so the rest of the sort has a single shape to read.
+//
+// plugin used to type this as a bare string, so a list matched nothing and
+// was SILENTLY DROPPED - the sort came out as if no constraint had been
+// declared. Go could not even represent the input.
+type OrderRef []string
+
+// UnmarshalJSON accepts a bare string or an array of them. Anything else
+// is an error rather than a silent empty, which is the failure this type
+// exists to end.
+func (ref *OrderRef) UnmarshalJSON(data []byte) error {
+	var one string
+	if err := json.Unmarshal(data, &one); nil == err {
+		*ref = OrderRef{one}
+		return nil
+	}
+
+	var many []string
+	if err := json.Unmarshal(data, &many); nil != err {
+		return err
+	}
+
+	*ref = OrderRef(many)
+
+	return nil
 }
 
 // Instance is a normalized instance entry. Option data is NOT merged
