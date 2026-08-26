@@ -14,7 +14,7 @@
  * a band chosen by trial and error to fix an ordering bug is a bug
  * wearing a number. */
 
-import { OrderBlock, fail } from './Types'
+import { OrderBlock, OrderRef, fail } from './Types'
 import { parseref } from './Ref'
 
 export type Binding = {
@@ -43,8 +43,9 @@ export function resolveorder(bindings: Binding[], pin?: Pin): string[] {
 
   for (const b of nodes) {
     const o = b.order || {}
-    if (o.after) for (const t of targets(o.after, nodes)) edges[t].push(b.ref)
-    if (o.before) for (const t of targets(o.before, nodes)) edges[b.ref].push(t)
+    // An empty list declares no constraint, so it must not be treated as one.
+    if (declared(o.after)) for (const t of targets(o.after!, nodes)) edges[t].push(b.ref)
+    if (declared(o.before)) for (const t of targets(o.before!, nodes)) edges[b.ref].push(t)
   }
 
   // Stable topological sort. Among ready nodes, band first (lower runs
@@ -89,13 +90,25 @@ function band(b: Binding): number {
   return 'number' === typeof o.band ? o.band : 0
 }
 
+/** Was a constraint actually declared? An ABSENT one and an EMPTY LIST
+ * are both "no constraint"; only a non-empty spelling is an edge. */
+function declared(spec?: OrderRef): boolean {
+  return Array.isArray(spec) ? 0 < spec.length : null != spec && '' !== spec
+}
+
 /** Matching is by REF, or by NAME across all of that definition's
  * instances (§7) — which is the whole reason the two spellings exist. */
-function targets(spec: string, nodes: Binding[]): string[] {
+function targets(spec: OrderRef, nodes: Binding[]): string[] {
   const hit: string[] = []
-  for (const b of nodes) {
-    if (b.ref === spec) { hit.push(b.ref); continue }
-    if (parseref(b.ref).name === spec) hit.push(b.ref)
+  // One spelling or a list of them; a list fans out to the union of what
+  // each names, so `after: ['a', 'b']` means after BOTH.
+  const specs = Array.isArray(spec) ? spec : [spec]
+  for (const one of specs) {
+    for (const b of nodes) {
+      if (hit.includes(b.ref)) continue
+      if (b.ref === one) { hit.push(b.ref); continue }
+      if (parseref(b.ref).name === one) hit.push(b.ref)
+    }
   }
   return hit
 }

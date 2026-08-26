@@ -32,7 +32,15 @@ export type Instance = {
 
 /** §4.4 of DOCS.md — `band` rather than a nested `order`, because
  * `order.order` needs explaining every time it is read. */
-export type OrderBlock = { before?: string, after?: string, band?: number }
+/** `before`/`after` accept ONE spelling or a LIST of them. The list form
+ * is not decoration: a host may need a binding after two unrelated others,
+ * and station's per-feature `order` has carried string lists since Stage 3b.
+ * Plugin typed this as a bare string and matched with `===`, so a list was
+ * SILENTLY DROPPED - the sort came out exactly as if no constraint had been
+ * declared, with nothing raised. */
+export type OrderRef = string | string[]
+
+export type OrderBlock = { before?: OrderRef, after?: OrderRef, band?: number }
 
 export type Normalized = {
   instance: { [ref: string]: Instance }
