@@ -25,7 +25,7 @@ programmatic API over the same normalized model.
 ## Status
 
 **P5 — two of fourteen.** The design is complete and agreed with its
-first host, the contract is complete (all 19 corpus sections, 527
+first host, the contract is complete (all 19 corpus sections, 533
 entries), and there are five implementations: `typescript/` the
 canonical, plus `go/`, `python/`, `javascript/` and `ruby/`. **All five
 pass every section.**
