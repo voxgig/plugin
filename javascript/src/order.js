@@ -33,8 +33,8 @@ function resolveorder(bindings, pin) {
 
   for (const b of nodes) {
     const o = b.order || {}
-    if (o.after) for (const t of targets(o.after, nodes)) edges[t].push(b.ref)
-    if (o.before) for (const t of targets(o.before, nodes)) edges[b.ref].push(t)
+    if (declared(o.after)) for (const t of targets(o.after, nodes)) edges[t].push(b.ref)
+    if (declared(o.before)) for (const t of targets(o.before, nodes)) edges[b.ref].push(t)
   }
 
   // Stable topological sort. Among ready nodes, band first (lower runs
@@ -81,11 +81,23 @@ function band(b) {
 
 /** Matching is by REF, or by NAME across all of that definition's
  * instances (§7) — which is the whole reason the two spellings exist. */
+/** Was a constraint stated? An absent value and an EMPTY LIST are both
+ * no-constraint - and [] is truthy, which is how this bug survives. */
+function declared(spec) {
+  return Array.isArray(spec) ? spec.some(one => '' !== one) : null != spec && '' !== spec
+}
+
 function targets(spec, nodes) {
   const hit = []
-  for (const b of nodes) {
-    if (b.ref === spec) { hit.push(b.ref); continue }
-    if (parseref(b.ref).name === spec) hit.push(b.ref)
+  // One spelling or a LIST of them; a list fans out to the UNION of what
+  // each names, so after: ['a','b'] means after BOTH.
+  const specs = Array.isArray(spec) ? spec : [spec]
+  for (const one of specs) {
+    for (const b of nodes) {
+      if (hit.includes(b.ref)) continue
+      if (b.ref === one) { hit.push(b.ref); continue }
+      if (parseref(b.ref).name === one) hit.push(b.ref)
+    }
   }
   return hit
 }

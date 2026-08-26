@@ -44,9 +44,137 @@ const (
 // OrderBlock is §4.4 of DOCS.md — `band` rather than a nested `order`,
 // because `order.order` needs explaining every time it is read.
 type OrderBlock struct {
-	Before string `json:"before,omitempty"`
-	After  string `json:"after,omitempty"`
-	Band   *int   `json:"band,omitempty"`
+	Before OrderRef `json:"before,omitempty"`
+	After  OrderRef `json:"after,omitempty"`
+	Band   *int     `json:"band,omitempty"`
+}
+
+// MarshalJSON omits an unstated constraint entirely.
+//
+// `omitempty` does not apply to a struct, so without this an absent
+// `before` serialized as `"before": null` while canonical simply has no
+// key - the same language-dependent shape divergence as emitting a list
+// for an authored scalar, one level up.
+func (block OrderBlock) MarshalJSON() ([]byte, error) {
+	out := map[string]any{}
+	if block.Before.Stated() {
+		out["before"] = block.Before
+	}
+	if block.After.Stated() {
+		out["after"] = block.After
+	}
+	if nil != block.Band {
+		out["band"] = *block.Band
+	}
+
+	// `marshal` for the same reason as OrderRef.MarshalJSON above.
+	return marshal(out)
+}
+
+// OrderRef is ONE spelling or a LIST of them.
+//
+// plugin used to type this as a bare string, so a list matched nothing and
+// was SILENTLY DROPPED - the sort came out as if no constraint had been
+// declared. Go could not even represent the input.
+//
+// `raw` is THE AUTHORED VALUE, kept so normalization can hand the block
+// back exactly as written; `List` is the parsed form the sort consumes,
+// and `set` says whether the key was stated at all. Canonical does not
+// need any of this: it never decodes the block, it assigns it (`ent.order
+// = ord`), so every spelling survives untouched. Go is the only port that
+// decodes and rebuilds, and a rebuild silently loses whatever it does not
+// model. That single cause produced four separate parity breaks - the
+// list form, scalar-vs-one-element-list, an authored empty list, an
+// authored null - and the corpus could see none of them until
+// `config/normorder` was written to assert the block's own shape.
+//
+// `set` is deliberately not `0 < len(list)`: an authored `[]` states a
+// constraint that names nothing, which is NOT the same document as an
+// absent key.
+//
+// `raw` is the ONE source of truth and `list` is a derived cache, both
+// unexported. An earlier round exported `List`, which made the value
+// mutable from outside and gave it two sources that could disagree: a
+// caller mutating the slice it passed in changed what marshalled while
+// ResolveOrder kept the old constraint, and editing `List` directly did
+// the reverse. A persisted-then-reloaded config could then order
+// differently from the live one. NewOrderRef is now the only way to build
+// one, it copies what it is given, and Refs() hands back a copy.
+type OrderRef struct {
+	raw  any
+	list []string
+	set  bool
+}
+
+// Refs is the parsed spellings this ref names, as a copy. Callers get no
+// handle on the ref's own state.
+func (ref OrderRef) Refs() []string {
+	out := make([]string, len(ref.list))
+	copy(out, ref.list)
+
+	return out
+}
+
+// UnmarshalJSON decodes to `any` first and then goes through the SAME
+// decoder the in-memory path uses.
+//
+// It used to try `string` and then `[]string` directly. That is wrong
+// twice over: json.Unmarshal into a string is a documented NO-OP on JSON
+// null and returns a nil error, so `{"after":null}` took the string
+// branch and came back as `{"after":""}` - an empty-string constraint
+// nobody wrote; and having two decoders for one rule let them drift, so
+// this path hard-failed on values the in-memory path quietly accepted.
+func (ref *OrderRef) UnmarshalJSON(data []byte) error {
+	var authored any
+
+	if err := json.Unmarshal(data, &authored); nil != err {
+		return err
+	}
+
+	*ref = asorderref(authored, true)
+
+	return nil
+}
+
+// Stated reports whether this ref says anything at all - because a
+// document stated it, or because a Go caller built it by hand.
+//
+// It is NOT `0 < len(List)`: an authored `[]` states a constraint that
+// names nothing, and an absent key states nothing, and those are
+// different documents.
+func (ref OrderRef) Stated() bool {
+	return ref.set
+}
+
+// MarshalJSON replays the AUTHORED value.
+//
+// A ref that was never stated marshals as `null`, and OrderBlock omits
+// the key rather than emitting that. There is no `List` fallback and no
+// way to build a ref outside NewOrderRef: an earlier round had both, and
+// carrying two ways to construct one value is exactly what let them
+// desync.
+//
+// `marshal`, not `json.Marshal`. The latter escapes `<`, `>` and `&` as
+// \u00XX, which canonical's JSON.stringify does not, and an outer encoder
+// cannot undo an escape its input already carries - so a spelling holding
+// any of those three came back with different bytes from every other
+// port. go/AGENTS.md states this rule outright and both marshallers here
+// broke it.
+func (ref OrderRef) MarshalJSON() ([]byte, error) {
+	if ref.set {
+		return marshal(ref.raw)
+	}
+
+	return []byte("null"), nil
+}
+
+// NewOrderRef builds an OrderRef from Go, for callers assembling a
+// document programmatically rather than decoding one. It takes what a
+// document may hold - a string, a []string, a []any of strings, or nil -
+// and runs it through the SAME decoder the JSON and in-memory paths use,
+// so a constructed ref and a decoded one cannot disagree.
+func NewOrderRef(spelling any) OrderRef {
+	return asorderref(spelling, true)
 }
 
 // Instance is a normalized instance entry. Option data is NOT merged

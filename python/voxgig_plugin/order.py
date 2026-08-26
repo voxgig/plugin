@@ -30,10 +30,11 @@ def resolve_order(bindings, pin=None):
 
     for b in nodes:
         block = b.get('order') or {}
-        if block.get('after'):
+        # An ABSENT constraint and an EMPTY LIST are both "no constraint".
+        if declared(block.get('after')):
             for target in targets(block['after'], nodes):
                 edges[target].append(b['ref'])
-        if block.get('before'):
+        if declared(block.get('before')):
             for target in targets(block['before'], nodes):
                 edges[b['ref']].append(target)
 
@@ -72,17 +73,35 @@ def band(b):
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
+def declared(spec):
+    """Was a constraint stated? An absent value and an EMPTY LIST are
+    both no-constraint - and an empty list is truthy in most languages,
+    which is exactly how this class of bug survives."""
+    if spec is None:
+        return False
+    if isinstance(spec, list):
+        return any('' != one for one in spec)
+    return '' != spec
+
+
 def targets(spec, nodes):
     """Matching is by REF, or by NAME across all of that definition's
     instances (section 7) - which is the whole reason the two spellings
     exist."""
     hit = []
-    for b in nodes:
-        if b['ref'] == spec:
-            hit.append(b['ref'])
-            continue
-        if parse_ref(b['ref'])['name'] == spec:
-            hit.append(b['ref'])
+    # One spelling or a LIST of them. A list fans out to the union of what
+    # each names, so after: ['a','b'] means after BOTH, and the same
+    # instance named twice - once by name, once by ref - is one edge.
+    specs = spec if isinstance(spec, list) else [spec]
+    for one in specs:
+        for b in nodes:
+            if b['ref'] in hit:
+                continue
+            if b['ref'] == one:
+                hit.append(b['ref'])
+                continue
+            if parse_ref(b['ref'])['name'] == one:
+                hit.append(b['ref'])
     return hit
 
 

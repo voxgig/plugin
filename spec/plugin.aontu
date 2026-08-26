@@ -412,6 +412,66 @@ primary: config: {
   ]
 
 
+  # The normalized instance's ORDER BLOCK, which nothing else asserts.
+  #
+  # Every other section reads `order` for its EFFECT on the sort. These
+  # pin the block's own SHAPE in the normalized document, and that gap is
+  # exactly what let a port rewrite the block while staying green: three
+  # separate parity breaks reached review because no entry could see one.
+  # Normalization does not interpret the block (§9.1) — it carries the
+  # authored value through — so whatever spelling was written must come
+  # back unchanged, in every port.
+  #
+  # Every ABSENT key is asserted `__UNDEF__` rather than left out. `match`
+  # is partial, so an omitted key is an UNCHECKED key: without this a port
+  # could materialize its zero value — `band: 0`, an empty `before` — and
+  # still pass every entry here while handing back a block nobody wrote.
+  # Synthesizing a key is the same defect as dropping one.
+  normorder: set: [
+    {
+      id: 'config/normorder#scalar', doc: true
+      in: { doc: { plugin: 1, instance: { retry: {}, alpha: { order: { after: 'retry' } } } } }
+      match: { out: { instance: { alpha: { order: { after: 'retry', before: '__UNDEF__', band: '__UNDEF__' } } } } }
+    }
+    # A ONE-ELEMENT LIST IS NOT THE SCALAR FORM. A port that keeps both
+    # as a list and re-emits the scalar collapses these two documents
+    # into one, so this entry and the one above must disagree.
+    {
+      id: 'config/normorder#one-element-list'
+      in: { doc: { plugin: 1, instance: { retry: {}, alpha: { order: { after: ['retry'] } } } } }
+      match: { out: { instance: { alpha: { order: { after: ['retry'], before: '__UNDEF__', band: '__UNDEF__' } } } } }
+    }
+    {
+      id: 'config/normorder#many'
+      in: { doc: { plugin: 1, instance: { retry: {}, zeta: {}, alpha: { order: { after: ['retry', 'zeta'] } } } } }
+      match: { out: { instance: { alpha: { order: { after: ['retry', 'zeta'], before: '__UNDEF__', band: '__UNDEF__' } } } } }
+    }
+    # An AUTHORED EMPTY LIST constrains nothing, but it is not the same
+    # document as an absent key and must survive as written. Length alone
+    # cannot tell a typed port which of the two it holds.
+    {
+      id: 'config/normorder#empty-list-survives'
+      in: { doc: { plugin: 1, instance: { alpha: { order: { after: [] } } } } }
+      match: { out: { instance: { alpha: { order: { after: [], before: '__UNDEF__', band: '__UNDEF__' } } } } }
+    }
+    # An authored null is a null. A typed port that decodes `null` through
+    # a string branch invents an empty-string constraint nobody wrote —
+    # worse than dropping it, because it then names a binding.
+    {
+      id: 'config/normorder#null-survives'
+      in: { doc: { plugin: 1, instance: { alpha: { order: { after: null } } } } }
+      match: { out: { instance: { alpha: { order: { after: '__NULL__', before: '__UNDEF__', band: '__UNDEF__' } } } } }
+    }
+    # `band` alone leaves BOTH constraint keys absent — not null, not
+    # empty. A port that materializes its zero value emits them anyway.
+    {
+      id: 'config/normorder#band-only'
+      in: { doc: { plugin: 1, instance: { alpha: { order: { band: 2 } } } } }
+      match: { out: { instance: { alpha: { order: { band: 2, before: '__UNDEF__', after: '__UNDEF__' } } } } }
+    }
+  ]
+
+
   # Array form. The array POSITION is the load order (§9.1) — the same
   # contract as sdkgen's ordered-array feature form.
   normarray: set: [
@@ -1692,6 +1752,96 @@ primary: order: {
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
         { do: 'ready', ref: 'probe$b', order: { band: 1, after: 'probe$a' } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+  ]
+
+
+  # `before`/`after` take ONE spelling or a LIST of them. plugin typed this
+  # as a bare string and matched with `===`, so a list matched nothing and
+  # was SILENTLY DROPPED - the sort came out as if no constraint had been
+  # declared, with nothing raised. station has declared and validated the
+  # list form since Stage 3b, so the two levels of one rule disagreed about
+  # what the rule accepts. Every entry here carries a band that CONTRADICTS
+  # the constraint: without one, `pos` alone would produce the wanted order
+  # and the entry would pass whether or not the list was read.
+  list: set: [
+    {
+      id: 'order/list#after-one', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['probe$a'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b'] } }
+    }
+    # A list means after ALL of them, not after the first one read.
+    {
+      id: 'order/list#after-many', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$c', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['probe$a', 'probe$c'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$c', 'probe$b'] } }
+    }
+    # The `before` spelling takes a list on the same terms.
+    {
+      id: 'order/list#before-many', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99, before: ['probe$b', 'probe$c'] } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1 } }
+        { do: 'ready', ref: 'probe$c', order: { band: 1 } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'probe$b', 'probe$c'] } }
+    }
+    # An EMPTY list declares no constraint. It must not be read as one -
+    # and a truthiness test gets this wrong in every language where an
+    # empty array is truthy, which is most of them.
+    {
+      id: 'order/list#empty-is-no-constraint', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: [] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$b', 'probe$a'] } }
+    }
+    # A list may name the same instance twice - once by NAME, once by REF.
+    # That is one edge, not two, and must not deadlock or double-count.
+    #
+    # The declaring instance is deliberately a DIFFERENT definition. A bare
+    # name fans out to every instance of that definition, so a member naming
+    # the declarer's own definition would include the declarer itself - a
+    # self-edge, which is a cycle of one and correctly raises. That is §7
+    # working, not a list defect, and it cost this entry one rewrite.
+    {
+      id: 'order/list#name-and-ref-are-one-edge', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'define', name: 'other' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'other$b', order: { band: 1, after: ['probe', 'probe$a'] } }
+        { do: 'order', point: 'p' }
+      ]
+      match: { out: { result: ['probe$a', 'other$b'] } }
+    }
+    # A vacuous member does not poison the rest: an absent name is
+    # satisfied vacuously (§7) and the real constraint still holds.
+    {
+      id: 'order/list#vacuous-member', doc: true
+      cmd: [
+        { do: 'define', name: 'probe' }
+        { do: 'ready', ref: 'probe$a', order: { band: 99 } }
+        { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['nosuchthing', 'probe$a'] } }
         { do: 'order', point: 'p' }
       ]
       match: { out: { result: ['probe$a', 'probe$b'] } }

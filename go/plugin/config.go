@@ -567,6 +567,62 @@ func isposint(v any) bool {
 	return f == float64(int(f)) && 1 <= f
 }
 
+// asorderref reads ONE spelling or a LIST of them into an OrderRef, and
+// KEEPS THE AUTHORED VALUE so normalization can hand it back untouched.
+//
+// It used to be a bare asstring(), so a list decoded to "" and the
+// constraint was SILENTLY DROPPED - the sort ran as if nothing had been
+// declared.
+//
+// `stated` is separate from the value because an ABSENT key and a key
+// authored as `null` are different documents, and a map index alone
+// cannot tell them apart.
+//
+// The other four ports have no type like this at all: they carry the
+// authored block straight through (`ent.order = ord`), so every spelling
+// survives normalization by construction. Go is the only port that
+// decodes and rebuilds, and a rebuild loses whatever it does not model -
+// first the list form, then scalar-vs-one-element-list, then an authored
+// empty list, then an authored null. One cause, four parity breaks, none
+// of which the corpus could see until `config/normorder` was written.
+// Keeping the authored value ends the class rather than the instance.
+func asorderref(v any, stated bool) OrderRef {
+	if !stated {
+		return OrderRef{}
+	}
+
+	out := OrderRef{raw: v, set: true, list: []string{}}
+
+	// Slices are COPIED into `raw`. A caller that keeps its own handle on
+	// the slice it passed in must not be able to change what this ref
+	// marshals afterwards, while the parsed form stays as it was.
+	switch list := v.(type) {
+	case string:
+		if "" != list {
+			out.list = append(out.list, list)
+		}
+	case []string:
+		out.raw = append([]string{}, list...)
+		for _, one := range list {
+			if "" != one {
+				out.list = append(out.list, one)
+			}
+		}
+	case []any:
+		out.raw = append([]any{}, list...)
+		for _, item := range list {
+			if one, ok := item.(string); ok && "" != one {
+				out.list = append(out.list, one)
+			}
+		}
+	}
+
+	// Anything else - a number, a map, a null - names no binding, so it
+	// constrains nothing. It was still STATED, and goes back verbatim.
+
+	return out
+}
+
 // orderblock decodes an `order` entry off a document. The canonical
 // stores the raw value and reads `.before`, `.after`, `.band` off it
 // wherever it lands; a typed port decodes once, here.
@@ -575,12 +631,19 @@ func orderblock(v any) *OrderBlock {
 	if !ok {
 		return nil
 	}
+
 	out := &OrderBlock{}
-	out.Before = asstring(m["before"], "")
-	out.After = asstring(m["after"], "")
+
+	before, statedbefore := m["before"]
+	after, statedafter := m["after"]
+
+	out.Before = asorderref(before, statedbefore)
+	out.After = asorderref(after, statedafter)
+
 	if f, ok := tonumber(m["band"]); ok {
 		n := int(f)
 		out.Band = &n
 	}
+
 	return out
 }

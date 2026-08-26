@@ -444,6 +444,44 @@ avoid, so the corpus is the arbiter (as it is for §4 rule 5) and pins
 { "order": { "before": "<ref|name>", "after": "<ref|name>", "band": 0 } }
 ```
 
+**`before` and `after` each take one spelling OR a list of them**, so a
+binding that must follow two unrelated others can say so:
+
+```json
+{ "order": { "after": ["auth", "retry$fast"] } }
+```
+
+Three rules a port must implement:
+
+- **A list is the UNION of what its members name.** `after: ['a','b']`
+  means after *both*, not after whichever matched first.
+- **The same instance named twice is ONE edge.** A list may hit one
+  instance by name and again by ref; that must not double-count or
+  deadlock.
+- **An EMPTY list is no constraint at all** — the same as an absent key.
+  Note that an empty list is *truthy* in most languages, so a plain
+  truthiness test gets this wrong; test for a non-empty spelling.
+
+**Only the first is observable through the sort.** This section claimed
+all three were pinned by the `order/list` corpus set; that was wrong, and
+measuring it is what showed why. The other two are invisible to the sort
+*by construction*: a duplicate edge increments and decrements the same
+in-degree, so it cancels, and a declared-but-empty constraint names
+nothing, so it yields no edge either way. Delete either guard from any
+port and the whole corpus stays green.
+
+Where they *are* observable is the normalized document, and the
+`config/normorder` set pins that: the block a port hands back must be the
+block that was authored — scalar and one-element list kept distinct, an
+empty list kept, a null kept. §9.1 makes normalization a carrier, not an
+interpreter, so a port that rewrites the block is inventing a shape no
+document asked for.
+
+A port that types these as a bare string will not fail loudly. It will
+match nothing and **silently drop the constraint**, ordering as though
+none had been declared — which is exactly what plugin itself did until
+the `order/list` entries were added.
+
 `band` rather than a nested `order`, because `order.order` is a name
 that has to be explained every time it is read. Every key is optional;
 absent `band` is `0`.

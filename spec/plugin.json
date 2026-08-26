@@ -2007,6 +2007,193 @@
           }
         ]
       },
+      "normorder": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normorder#scalar",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "retry"
+                    }
+                  },
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "retry",
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#one-element-list",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry"
+                      ]
+                    }
+                  },
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry"
+                      ],
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#many",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry",
+                        "zeta"
+                      ]
+                    }
+                  },
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry",
+                        "zeta"
+                      ],
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#empty-list-survives",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": []
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [],
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#null-survives",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": null
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "__NULL__",
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#band-only",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "band": 2
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "__UNDEF__",
+                      "band": 2,
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
       "normpartial": {
         "set": [
           {
@@ -9084,6 +9271,266 @@
               }
             ],
             "err": "plugin_order_cycle"
+          }
+        ]
+      },
+      "list": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "probe$a"
+                  ],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#after-one",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$c"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "probe$a",
+                    "probe$c"
+                  ],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#after-many",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$c",
+                  "probe$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99,
+                  "before": [
+                    "probe$b",
+                    "probe$c"
+                  ]
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 1
+                },
+                "ref": "probe$c"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#before-many",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b",
+                  "probe$c"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#empty-is-no-constraint",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$b",
+                  "probe$a"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "define",
+                "name": "other"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "probe",
+                    "probe$a"
+                  ],
+                  "band": 1
+                },
+                "ref": "other$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#name-and-ref-are-one-edge",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "other$b"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "band": 99
+                },
+                "ref": "probe$a"
+              },
+              {
+                "do": "ready",
+                "order": {
+                  "after": [
+                    "nosuchthing",
+                    "probe$a"
+                  ],
+                  "band": 1
+                },
+                "ref": "probe$b"
+              },
+              {
+                "do": "order",
+                "point": "p"
+              }
+            ],
+            "doc": true,
+            "id": "order/list#vacuous-member",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$a",
+                  "probe$b"
+                ]
+              }
+            }
           }
         ]
       },

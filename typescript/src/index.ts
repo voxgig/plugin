@@ -21,7 +21,7 @@ export {
 export type { FeatureClass } from './FeatureHost'
 
 export { PluginError } from './Types'
-export type { Ref, Status, Instance, OrderBlock, Normalized } from './Types'
+export type { Ref, Status, Instance, OrderRef, OrderSpec, OrderBlock, Normalized } from './Types'
 export type { Definition, Catalog } from './Catalog'
 export type { Binding, Pin } from './Order'
 export type { Host, HostOptions, PointSpec } from './Host'

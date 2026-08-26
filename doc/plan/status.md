@@ -13,7 +13,13 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-Nothing in this repo. The last two in-flight items both merged:
+**voxgig/plugin#18** — list-valued `before`/`after` across canonical and
+all four ports, plus the `config/normorder` set that makes a rewritten
+order block visible at all. OPEN.
+
+Merged since this section last named a tip:
+
+**voxgig/plugin#17** — the register refresh, and the review round on it.
 
 **voxgig/plugin#15** — P3.2 (the sdkgen bridge), **P4 complete** (the go
 and python ports) and **P5's first two** (javascript, ruby) — merged as
@@ -23,9 +29,16 @@ and python ports) and **P5's first two** (javascript, ruby) — merged as
 as `f7656aa`, review follow-ups merged in voxgig/station#10. **C3 is
 discharged.**
 
-plugin `main` is `153c878`; station `main` is `2036cd6` (#9 and #10
-merged). C1 and C2 were discharged by voxgig/plugin#7; C3 by
+plugin `main` is **`6a4be0c`**; station `main` is **`dcfdd0a`**, which is
+**95 commits past the `2036cd6` this section used to name** — the npm and
+OIDC release work plus voxgig/station#15, #16 and #17 all landed in
+between. C1 and C2 were discharged by voxgig/plugin#7; C3 by
 voxgig/station#9.
+
+Both tips were re-read from the repositories when this was written.
+Neither is carried forward from what this file previously said, which is
+how it came to name a station tip 95 commits out of date while asserting
+nothing was in flight.
 
 
 ## Pick this up first
