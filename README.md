@@ -25,7 +25,7 @@ programmatic API over the same normalized model.
 ## Status
 
 **P5 — two of fourteen.** The design is complete and agreed with its
-first host, the contract is complete (all 19 corpus sections, 533
+first host, the contract is complete (all 19 corpus sections, 539
 entries), and there are five implementations: `typescript/` the
 canonical, plus `go/`, `python/`, `javascript/` and `ruby/`. **All five
 pass every section.**
@@ -54,7 +54,7 @@ in the canonical and pinned by new entries — see
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | **533 entries across all 19 sections** — the contract is complete |
+| corpus | **539 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
 | ports | `typescript/` (canonical), `go/`, `python/`, `javascript/` and `ruby/` — **all five pass every section**. Two tracks run in parallel: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P5's remaining twelve ports. |
 

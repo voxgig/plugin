@@ -567,34 +567,37 @@ func isposint(v any) bool {
 	return f == float64(int(f)) && 1 <= f
 }
 
-// orderblock decodes an `order` entry off a document. The canonical
-// stores the raw value and reads `.before`, `.after`, `.band` off it
-// asorderref reads ONE spelling or a LIST of them into an OrderRef.
+// asorderref reads ONE spelling or a LIST of them into an OrderRef, and
+// KEEPS THE AUTHORED VALUE so normalization can hand it back untouched.
 //
-// This used to be a bare asstring(), so a list decoded to "" and the
+// It used to be a bare asstring(), so a list decoded to "" and the
 // constraint was SILENTLY DROPPED - the sort ran as if nothing had been
-// declared. Anything that is neither a string nor a list of them yields
-// no constraint, which is what the previous code did for a list.
-func asorderref(v any) OrderRef {
-	if nil == v {
+// declared.
+//
+// `stated` is separate from the value because an ABSENT key and a key
+// authored as `null` are different documents, and a map index alone
+// cannot tell them apart.
+//
+// The other four ports have no type like this at all: they carry the
+// authored block straight through (`ent.order = ord`), so every spelling
+// survives normalization by construction. Go is the only port that
+// decodes and rebuilds, and a rebuild loses whatever it does not model -
+// first the list form, then scalar-vs-one-element-list, then an authored
+// empty list, then an authored null. One cause, four parity breaks, none
+// of which the corpus could see until `config/normorder` was written.
+// Keeping the authored value ends the class rather than the instance.
+func asorderref(v any, stated bool) OrderRef {
+	if !stated {
 		return OrderRef{}
 	}
 
-	if one, ok := v.(string); ok {
-		if "" == one {
-			return OrderRef{}
-		}
-		return OrderRef{List: []string{one}, scalar: true}
-	}
-
-	// BOTH slice shapes. `[]any` is what JSON decoding produces; `[]string`
-	// is what a Go caller writes by hand into an in-memory document handed
-	// to NormalizeConfig or Host.Apply. Accepting only the first silently
-	// dropped the constraint for programmatic callers - the very bug this
-	// type exists to end, in a second path.
-	out := OrderRef{List: []string{}}
+	out := OrderRef{raw: v, set: true, List: []string{}}
 
 	switch list := v.(type) {
+	case string:
+		if "" != list {
+			out.List = append(out.List, list)
+		}
 	case []string:
 		for _, one := range list {
 			if "" != one {
@@ -607,25 +610,35 @@ func asorderref(v any) OrderRef {
 				out.List = append(out.List, one)
 			}
 		}
-	default:
-		return OrderRef{}
 	}
+
+	// Anything else - a number, a map, a null - names no binding, so it
+	// constrains nothing. It was still STATED, and goes back verbatim.
 
 	return out
 }
 
+// orderblock decodes an `order` entry off a document. The canonical
+// stores the raw value and reads `.before`, `.after`, `.band` off it
 // wherever it lands; a typed port decodes once, here.
 func orderblock(v any) *OrderBlock {
 	m, ok := v.(map[string]any)
 	if !ok {
 		return nil
 	}
+
 	out := &OrderBlock{}
-	out.Before = asorderref(m["before"])
-	out.After = asorderref(m["after"])
+
+	before, statedbefore := m["before"]
+	after, statedafter := m["after"]
+
+	out.Before = asorderref(before, statedbefore)
+	out.After = asorderref(after, statedafter)
+
 	if f, ok := tonumber(m["band"]); ok {
 		n := int(f)
 		out.Band = &n
 	}
+
 	return out
 }

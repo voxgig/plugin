@@ -451,8 +451,7 @@ binding that must follow two unrelated others can say so:
 { "order": { "after": ["auth", "retry$fast"] } }
 ```
 
-Three rules a port must implement, all pinned by the corpus's
-`order/list` set:
+Three rules a port must implement:
 
 - **A list is the UNION of what its members name.** `after: ['a','b']`
   means after *both*, not after whichever matched first.
@@ -462,6 +461,21 @@ Three rules a port must implement, all pinned by the corpus's
 - **An EMPTY list is no constraint at all** — the same as an absent key.
   Note that an empty list is *truthy* in most languages, so a plain
   truthiness test gets this wrong; test for a non-empty spelling.
+
+**Only the first is observable through the sort.** This section claimed
+all three were pinned by the `order/list` corpus set; that was wrong, and
+measuring it is what showed why. The other two are invisible to the sort
+*by construction*: a duplicate edge increments and decrements the same
+in-degree, so it cancels, and a declared-but-empty constraint names
+nothing, so it yields no edge either way. Delete either guard from any
+port and the whole corpus stays green.
+
+Where they *are* observable is the normalized document, and the
+`config/normorder` set pins that: the block a port hands back must be the
+block that was authored — scalar and one-element list kept distinct, an
+empty list kept, a null kept. §9.1 makes normalization a carrier, not an
+interpreter, so a port that rewrites the block is inventing a shape no
+document asked for.
 
 A port that types these as a bare string will not fail loudly. It will
 match nothing and **silently drop the constraint**, ordering as though

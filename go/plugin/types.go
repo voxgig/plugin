@@ -57,10 +57,10 @@ type OrderBlock struct {
 // for an authored scalar, one level up.
 func (block OrderBlock) MarshalJSON() ([]byte, error) {
 	out := map[string]any{}
-	if 0 < len(block.Before.List) {
+	if block.Before.set {
 		out["before"] = block.Before
 	}
-	if 0 < len(block.After.List) {
+	if block.After.set {
 		out["after"] = block.After
 	}
 	if nil != block.Band {
@@ -76,46 +76,54 @@ func (block OrderBlock) MarshalJSON() ([]byte, error) {
 // was SILENTLY DROPPED - the sort came out as if no constraint had been
 // declared. Go could not even represent the input.
 //
-// `scalar` records WHICH SPELLING THE DOCUMENT USED, and exists only so
-// that normalization round-trips. Canonical keeps an authored `after:
-// "other"` as a string, so a Go port that always emitted `["other"]` would
-// hand consumers a language-dependent shape for input that never used the
-// list form - a parity break the corpus cannot see, since no entry asserts
-// an order block in its output.
+// `raw` is THE AUTHORED VALUE, kept so normalization can hand the block
+// back exactly as written; `List` is the parsed form the sort consumes,
+// and `set` says whether the key was stated at all. Canonical does not
+// need any of this: it never decodes the block, it assigns it (`ent.order
+// = ord`), so every spelling survives untouched. Go is the only port that
+// decodes and rebuilds, and a rebuild silently loses whatever it does not
+// model. That single cause produced four separate parity breaks - the
+// list form, scalar-vs-one-element-list, an authored empty list, an
+// authored null - and the corpus could see none of them until
+// `config/normorder` was written to assert the block's own shape.
+//
+// `set` is deliberately not `0 < len(List)`: an authored `[]` states a
+// constraint that names nothing, which is NOT the same document as an
+// absent key.
 type OrderRef struct {
-	List   []string
-	scalar bool
+	List []string
+	raw  any
+	set  bool
 }
 
-// UnmarshalJSON accepts a bare string or an array of them, remembering
-// which was written.
+// UnmarshalJSON decodes to `any` first and then goes through the SAME
+// decoder the in-memory path uses.
+//
+// It used to try `string` and then `[]string` directly. That is wrong
+// twice over: json.Unmarshal into a string is a documented NO-OP on JSON
+// null and returns a nil error, so `{"after":null}` took the string
+// branch and came back as `{"after":""}` - an empty-string constraint
+// nobody wrote; and having two decoders for one rule let them drift, so
+// this path hard-failed on values the in-memory path quietly accepted.
 func (ref *OrderRef) UnmarshalJSON(data []byte) error {
-	var one string
-	if err := json.Unmarshal(data, &one); nil == err {
-		*ref = OrderRef{List: []string{one}, scalar: true}
-		return nil
-	}
+	var authored any
 
-	var many []string
-	if err := json.Unmarshal(data, &many); nil != err {
+	if err := json.Unmarshal(data, &authored); nil != err {
 		return err
 	}
 
-	*ref = OrderRef{List: many}
+	*ref = asorderref(authored, true)
 
 	return nil
 }
 
-// MarshalJSON gives back the spelling the document used.
+// MarshalJSON replays the authored value.
 func (ref OrderRef) MarshalJSON() ([]byte, error) {
-	if ref.scalar && 1 == len(ref.List) {
-		return json.Marshal(ref.List[0])
-	}
-	if 0 == len(ref.List) {
+	if !ref.set {
 		return []byte("null"), nil
 	}
 
-	return json.Marshal(ref.List)
+	return json.Marshal(ref.raw)
 }
 
 // Instance is a normalized instance entry. Option data is NOT merged

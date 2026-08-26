@@ -412,6 +412,60 @@ primary: config: {
   ]
 
 
+  # The normalized instance's ORDER BLOCK, which nothing else asserts.
+  #
+  # Every other section reads `order` for its EFFECT on the sort. These
+  # pin the block's own SHAPE in the normalized document, and that gap is
+  # exactly what let a port rewrite the block while staying green: three
+  # separate parity breaks reached review because no entry could see one.
+  # Normalization does not interpret the block (§9.1) — it carries the
+  # authored value through — so whatever spelling was written must come
+  # back unchanged, in every port.
+  normorder: set: [
+    {
+      id: 'config/normorder#scalar', doc: true
+      in: { doc: { plugin: 1, instance: { retry: {}, alpha: { order: { after: 'retry' } } } } }
+      match: { out: { instance: { alpha: { order: { after: 'retry', before: '__UNDEF__' } } } } }
+    }
+    # A ONE-ELEMENT LIST IS NOT THE SCALAR FORM. A port that keeps both
+    # as a list and re-emits the scalar collapses these two documents
+    # into one, so this entry and the one above must disagree.
+    {
+      id: 'config/normorder#one-element-list'
+      in: { doc: { plugin: 1, instance: { retry: {}, alpha: { order: { after: ['retry'] } } } } }
+      match: { out: { instance: { alpha: { order: { after: ['retry'] } } } } }
+    }
+    {
+      id: 'config/normorder#many'
+      in: { doc: { plugin: 1, instance: { retry: {}, zeta: {}, alpha: { order: { after: ['retry', 'zeta'] } } } } }
+      match: { out: { instance: { alpha: { order: { after: ['retry', 'zeta'] } } } } }
+    }
+    # An AUTHORED EMPTY LIST constrains nothing, but it is not the same
+    # document as an absent key and must survive as written. Length alone
+    # cannot tell a typed port which of the two it holds.
+    {
+      id: 'config/normorder#empty-list-survives'
+      in: { doc: { plugin: 1, instance: { alpha: { order: { after: [] } } } } }
+      match: { out: { instance: { alpha: { order: { after: [] } } } } }
+    }
+    # An authored null is a null. A typed port that decodes `null` through
+    # a string branch invents an empty-string constraint nobody wrote —
+    # worse than dropping it, because it then names a binding.
+    {
+      id: 'config/normorder#null-survives'
+      in: { doc: { plugin: 1, instance: { alpha: { order: { after: null } } } } }
+      match: { out: { instance: { alpha: { order: { after: '__NULL__' } } } } }
+    }
+    # `band` alone leaves BOTH constraint keys absent — not null, not
+    # empty. A port that materializes its zero value emits them anyway.
+    {
+      id: 'config/normorder#band-only'
+      in: { doc: { plugin: 1, instance: { alpha: { order: { band: 2 } } } } }
+      match: { out: { instance: { alpha: { order: { band: 2, before: '__UNDEF__', after: '__UNDEF__' } } } } }
+    }
+  ]
+
+
   # Array form. The array POSITION is the load order (§9.1) — the same
   # contract as sdkgen's ordered-array feature form.
   normarray: set: [

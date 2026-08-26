@@ -2007,6 +2007,184 @@
           }
         ]
       },
+      "normorder": {
+        "set": [
+          {
+            "doc": true,
+            "id": "config/normorder#scalar",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "retry"
+                    }
+                  },
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "retry",
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#one-element-list",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry"
+                      ]
+                    }
+                  },
+                  "retry": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#many",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry",
+                        "zeta"
+                      ]
+                    }
+                  },
+                  "retry": {},
+                  "zeta": {}
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": [
+                        "retry",
+                        "zeta"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#empty-list-survives",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": []
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#null-survives",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": null
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "__NULL__"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "config/normorder#band-only",
+            "in": {
+              "doc": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "band": 2
+                    }
+                  }
+                },
+                "plugin": 1
+              }
+            },
+            "match": {
+              "out": {
+                "instance": {
+                  "alpha": {
+                    "order": {
+                      "after": "__UNDEF__",
+                      "band": 2,
+                      "before": "__UNDEF__"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
       "normpartial": {
         "set": [
           {
