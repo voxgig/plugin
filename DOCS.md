@@ -444,6 +444,30 @@ avoid, so the corpus is the arbiter (as it is for §4 rule 5) and pins
 { "order": { "before": "<ref|name>", "after": "<ref|name>", "band": 0 } }
 ```
 
+**`before` and `after` each take one spelling OR a list of them**, so a
+binding that must follow two unrelated others can say so:
+
+```json
+{ "order": { "after": ["auth", "retry$fast"] } }
+```
+
+Three rules a port must implement, all pinned by the corpus's
+`order/list` set:
+
+- **A list is the UNION of what its members name.** `after: ['a','b']`
+  means after *both*, not after whichever matched first.
+- **The same instance named twice is ONE edge.** A list may hit one
+  instance by name and again by ref; that must not double-count or
+  deadlock.
+- **An EMPTY list is no constraint at all** — the same as an absent key.
+  Note that an empty list is *truthy* in most languages, so a plain
+  truthiness test gets this wrong; test for a non-empty spelling.
+
+A port that types these as a bare string will not fail loudly. It will
+match nothing and **silently drop the constraint**, ordering as though
+none had been declared — which is exactly what plugin itself did until
+the `order/list` entries were added.
+
 `band` rather than a nested `order`, because `order.order` is a name
 that has to be explained every time it is read. Every key is optional;
 absent `band` is `0`.

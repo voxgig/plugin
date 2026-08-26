@@ -54,7 +54,7 @@ in the canonical and pinned by new entries — see
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | **527 entries across all 19 sections** — the contract is complete |
+| corpus | **533 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
 | ports | `typescript/` (canonical), `go/`, `python/`, `javascript/` and `ruby/` — **all five pass every section**. Two tracks run in parallel: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P5's remaining twelve ports. |
 

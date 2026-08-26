@@ -577,26 +577,38 @@ func isposint(v any) bool {
 // no constraint, which is what the previous code did for a list.
 func asorderref(v any) OrderRef {
 	if nil == v {
-		return nil
+		return OrderRef{}
 	}
 
 	if one, ok := v.(string); ok {
 		if "" == one {
-			return nil
+			return OrderRef{}
 		}
-		return OrderRef{one}
+		return OrderRef{List: []string{one}, scalar: true}
 	}
 
-	list, ok := v.([]any)
-	if !ok {
-		return nil
-	}
+	// BOTH slice shapes. `[]any` is what JSON decoding produces; `[]string`
+	// is what a Go caller writes by hand into an in-memory document handed
+	// to NormalizeConfig or Host.Apply. Accepting only the first silently
+	// dropped the constraint for programmatic callers - the very bug this
+	// type exists to end, in a second path.
+	out := OrderRef{List: []string{}}
 
-	out := OrderRef{}
-	for _, item := range list {
-		if one, ok := item.(string); ok && "" != one {
-			out = append(out, one)
+	switch list := v.(type) {
+	case []string:
+		for _, one := range list {
+			if "" != one {
+				out.List = append(out.List, one)
+			}
 		}
+	case []any:
+		for _, item := range list {
+			if one, ok := item.(string); ok && "" != one {
+				out.List = append(out.List, one)
+			}
+		}
+	default:
+		return OrderRef{}
 	}
 
 	return out

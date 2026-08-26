@@ -49,21 +49,50 @@ type OrderBlock struct {
 	Band   *int     `json:"band,omitempty"`
 }
 
-// OrderRef is ONE spelling or a LIST of them. Both forms normalize to a
-// list here, so the rest of the sort has a single shape to read.
+// MarshalJSON omits an unstated constraint entirely.
+//
+// `omitempty` does not apply to a struct, so without this an absent
+// `before` serialized as `"before": null` while canonical simply has no
+// key - the same language-dependent shape divergence as emitting a list
+// for an authored scalar, one level up.
+func (block OrderBlock) MarshalJSON() ([]byte, error) {
+	out := map[string]any{}
+	if 0 < len(block.Before.List) {
+		out["before"] = block.Before
+	}
+	if 0 < len(block.After.List) {
+		out["after"] = block.After
+	}
+	if nil != block.Band {
+		out["band"] = *block.Band
+	}
+
+	return json.Marshal(out)
+}
+
+// OrderRef is ONE spelling or a LIST of them.
 //
 // plugin used to type this as a bare string, so a list matched nothing and
 // was SILENTLY DROPPED - the sort came out as if no constraint had been
 // declared. Go could not even represent the input.
-type OrderRef []string
+//
+// `scalar` records WHICH SPELLING THE DOCUMENT USED, and exists only so
+// that normalization round-trips. Canonical keeps an authored `after:
+// "other"` as a string, so a Go port that always emitted `["other"]` would
+// hand consumers a language-dependent shape for input that never used the
+// list form - a parity break the corpus cannot see, since no entry asserts
+// an order block in its output.
+type OrderRef struct {
+	List   []string
+	scalar bool
+}
 
-// UnmarshalJSON accepts a bare string or an array of them. Anything else
-// is an error rather than a silent empty, which is the failure this type
-// exists to end.
+// UnmarshalJSON accepts a bare string or an array of them, remembering
+// which was written.
 func (ref *OrderRef) UnmarshalJSON(data []byte) error {
 	var one string
 	if err := json.Unmarshal(data, &one); nil == err {
-		*ref = OrderRef{one}
+		*ref = OrderRef{List: []string{one}, scalar: true}
 		return nil
 	}
 
@@ -72,9 +101,21 @@ func (ref *OrderRef) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*ref = OrderRef(many)
+	*ref = OrderRef{List: many}
 
 	return nil
+}
+
+// MarshalJSON gives back the spelling the document used.
+func (ref OrderRef) MarshalJSON() ([]byte, error) {
+	if ref.scalar && 1 == len(ref.List) {
+		return json.Marshal(ref.List[0])
+	}
+	if 0 == len(ref.List) {
+		return []byte("null"), nil
+	}
+
+	return json.Marshal(ref.List)
 }
 
 // Instance is a normalized instance entry. Option data is NOT merged
