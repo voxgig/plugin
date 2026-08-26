@@ -57,10 +57,10 @@ type OrderBlock struct {
 // for an authored scalar, one level up.
 func (block OrderBlock) MarshalJSON() ([]byte, error) {
 	out := map[string]any{}
-	if block.Before.set {
+	if block.Before.Stated() {
 		out["before"] = block.Before
 	}
-	if block.After.set {
+	if block.After.Stated() {
 		out["after"] = block.After
 	}
 	if nil != block.Band {
@@ -117,13 +117,44 @@ func (ref *OrderRef) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON replays the authored value.
+// Stated reports whether this ref says anything at all - because a
+// document stated it, or because a Go caller built it by hand.
+//
+// It is NOT `0 < len(List)`: an authored `[]` states a constraint that
+// names nothing, and an absent key states nothing, and those are
+// different documents.
+func (ref OrderRef) Stated() bool {
+	return ref.set || 0 < len(ref.List)
+}
+
+// MarshalJSON replays the authored value, or falls back to `List` for a
+// ref BUILT IN GO rather than decoded.
+//
+// The fallback is not optional. `OrderBlock{After: OrderRef{List: ...}}`
+// is reachable from outside the package, ResolveOrder already honours its
+// `List`, and gating marshalling on `set` alone silently dropped exactly
+// that value - the same silent drop this whole change exists to end,
+// arriving through the exported API instead of a document. NewOrderRef is
+// the supported way to build one; this keeps the literal working too.
 func (ref OrderRef) MarshalJSON() ([]byte, error) {
-	if !ref.set {
-		return []byte("null"), nil
+	if ref.set {
+		return json.Marshal(ref.raw)
 	}
 
-	return json.Marshal(ref.raw)
+	if 0 < len(ref.List) {
+		return json.Marshal(ref.List)
+	}
+
+	return []byte("null"), nil
+}
+
+// NewOrderRef builds an OrderRef from Go, for callers assembling a
+// document programmatically rather than decoding one. It takes what a
+// document may hold - a string, a []string, a []any of strings, or nil -
+// and runs it through the SAME decoder the JSON and in-memory paths use,
+// so a constructed ref and a decoded one cannot disagree.
+func NewOrderRef(spelling any) OrderRef {
+	return asorderref(spelling, true)
 }
 
 // Instance is a normalized instance entry. Option data is NOT merged

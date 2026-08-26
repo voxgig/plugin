@@ -14,7 +14,7 @@
  * a band chosen by trial and error to fix an ordering bug is a bug
  * wearing a number. */
 
-import { OrderBlock, OrderRef, fail } from './Types'
+import { OrderBlock, OrderRef, OrderSpec, fail } from './Types'
 import { parseref } from './Ref'
 
 export type Binding = {
@@ -92,7 +92,7 @@ function band(b: Binding): number {
 
 /** Was a constraint actually declared? An ABSENT one and an EMPTY LIST
  * are both "no constraint"; only a non-empty spelling is an edge. */
-function declared(spec?: OrderRef): boolean {
+function declared(spec?: OrderSpec): spec is OrderRef {
   return Array.isArray(spec) ? 0 < spec.length : null != spec && '' !== spec
 }
 

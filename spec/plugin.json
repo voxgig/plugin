@@ -2031,6 +2031,7 @@
                   "alpha": {
                     "order": {
                       "after": "retry",
+                      "band": "__UNDEF__",
                       "before": "__UNDEF__"
                     }
                   }
@@ -2062,7 +2063,9 @@
                     "order": {
                       "after": [
                         "retry"
-                      ]
+                      ],
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
                     }
                   }
                 }
@@ -2096,7 +2099,9 @@
                       "after": [
                         "retry",
                         "zeta"
-                      ]
+                      ],
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
                     }
                   }
                 }
@@ -2122,7 +2127,9 @@
                 "instance": {
                   "alpha": {
                     "order": {
-                      "after": []
+                      "after": [],
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
                     }
                   }
                 }
@@ -2148,7 +2155,9 @@
                 "instance": {
                   "alpha": {
                     "order": {
-                      "after": "__NULL__"
+                      "after": "__NULL__",
+                      "band": "__UNDEF__",
+                      "before": "__UNDEF__"
                     }
                   }
                 }

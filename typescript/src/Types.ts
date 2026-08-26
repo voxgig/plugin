@@ -40,7 +40,17 @@ export type Instance = {
  * declared, with nothing raised. */
 export type OrderRef = string | string[]
 
-export type OrderBlock = { before?: OrderRef, after?: OrderRef, band?: number }
+/** What a NORMALIZED block may hold, which is wider than what constrains
+ * anything. Normalization is a carrier, not an interpreter (§9.1): the
+ * block comes back exactly as authored, so a value written `null` is still
+ * `null` here, and `config/normorder#null-survives` pins that. Typing it
+ * as `OrderRef | undefined` told callers a runtime null was impossible
+ * while `Config.ts` assigned one straight through `any`. `declared()` is
+ * the gate that turns a spec into a constraint; nothing else may assume
+ * one. */
+export type OrderSpec = OrderRef | null
+
+export type OrderBlock = { before?: OrderSpec, after?: OrderSpec, band?: number }
 
 export type Normalized = {
   instance: { [ref: string]: Instance }
