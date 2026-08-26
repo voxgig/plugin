@@ -67,7 +67,8 @@ func (block OrderBlock) MarshalJSON() ([]byte, error) {
 		out["band"] = *block.Band
 	}
 
-	return json.Marshal(out)
+	// `marshal` for the same reason as OrderRef.MarshalJSON above.
+	return marshal(out)
 }
 
 // OrderRef is ONE spelling or a LIST of them.
@@ -145,18 +146,23 @@ func (ref OrderRef) Stated() bool {
 	return ref.set
 }
 
-// MarshalJSON replays the authored value, or falls back to `List` for a
-// ref BUILT IN GO rather than decoded.
+// MarshalJSON replays the AUTHORED value.
 //
-// The fallback is not optional. `OrderBlock{After: OrderRef{List: ...}}`
-// is reachable from outside the package, ResolveOrder already honours its
-// `List`, and gating marshalling on `set` alone silently dropped exactly
-// that value - the same silent drop this whole change exists to end,
-// arriving through the exported API instead of a document. NewOrderRef is
-// the supported way to build one; this keeps the literal working too.
+// A ref that was never stated marshals as `null`, and OrderBlock omits
+// the key rather than emitting that. There is no `List` fallback and no
+// way to build a ref outside NewOrderRef: an earlier round had both, and
+// carrying two ways to construct one value is exactly what let them
+// desync.
+//
+// `marshal`, not `json.Marshal`. The latter escapes `<`, `>` and `&` as
+// \u00XX, which canonical's JSON.stringify does not, and an outer encoder
+// cannot undo an escape its input already carries - so a spelling holding
+// any of those three came back with different bytes from every other
+// port. go/AGENTS.md states this rule outright and both marshallers here
+// broke it.
 func (ref OrderRef) MarshalJSON() ([]byte, error) {
 	if ref.set {
-		return json.Marshal(ref.raw)
+		return marshal(ref.raw)
 	}
 
 	return []byte("null"), nil
