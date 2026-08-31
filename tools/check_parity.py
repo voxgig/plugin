@@ -63,6 +63,7 @@ PORTS = {
     'java': ['java/src'],
     'lua': ['lua/src'],
     'csharp': ['csharp/src'],
+    'elixir': ['elixir/lib'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj', '.lake'}

@@ -89,7 +89,7 @@ jobs:
       matrix:
         # P4 is complete; P5 is under way. P6 adds the rest.
         port: [typescript, go, python, javascript, ruby, php, perl, rust, java, lua,
-               csharp]
+               csharp, elixir]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -125,6 +125,12 @@ jobs:
       # would be a worse trade than an apt line that names its package.
       - if: matrix.port == 'lua'
         run: sudo apt-get update && sudo apt-get install -y lua5.4
+      # elixir is the other one. Same apt reasoning as lua; the package
+      # pulls the erlang runtime it needs, and `make inspect-elixir` prints
+      # the pair it got — the port needs 1.12+ for the `..//` step range
+      # and nothing newer.
+      - if: matrix.port == 'elixir'
+        run: sudo apt-get update && sudo apt-get install -y elixir
       - run: make build-${{ matrix.port }}
       - run: make test-${{ matrix.port }}
       - run: make inspect-${{ matrix.port }}

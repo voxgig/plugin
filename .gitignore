@@ -176,3 +176,6 @@ zig-out/
 .cpcache/
 .bsp/
 .scala-build/
+
+# Erlang/Elixir
+erl_crash.dump
