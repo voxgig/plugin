@@ -88,7 +88,7 @@ jobs:
       fail-fast: false
       matrix:
         # P4 is complete; P5 is under way. P6 adds the rest.
-        port: [typescript, go, python, javascript, ruby]
+        port: [typescript, go, python, javascript, ruby, php, perl]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -99,9 +99,14 @@ jobs:
         if: matrix.port == 'python'
         with:
           python-version: '3.12'
-      # NO setup-ruby STEP, for the same reason as go below: the
-      # ubuntu-latest image ships ruby 3.x, the port has no gems, and an
-      # unpinned action would be the worse trade.
+      # NO setup-ruby, setup-php OR setup-perl STEP, for the same reason
+      # as go below: the ubuntu-latest image ships ruby 3.x, php 8.x and
+      # perl 5.38, none of those ports has a dependency to fetch, and an
+      # unpinned action would be the worse trade. Each port's `inspect`
+      # prints the version it got, which is what makes a surprise there
+      # visible rather than silent — php needs 8.1+ for `array_is_list`
+      # and perl 5.36+ for `builtin::is_bool`, and both are well below
+      # what the image carries.
       # NO setup-go STEP, DELIBERATELY. Every action here is pinned to a
       # SHA rather than a tag, and this workflow cannot resolve one for an
       # action it does not already use; an unpinned action would be a
