@@ -60,6 +60,7 @@ PORTS = {
     'php': ['php/src'],
     'perl': ['perl/lib'],
     'rust': ['rust/src'],
+    'java': ['java/src'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj', '.lake'}

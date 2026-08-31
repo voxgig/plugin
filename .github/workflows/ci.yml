@@ -88,7 +88,7 @@ jobs:
       fail-fast: false
       matrix:
         # P4 is complete; P5 is under way. P6 adds the rest.
-        port: [typescript, go, python, javascript, ruby, php, perl, rust]
+        port: [typescript, go, python, javascript, ruby, php, perl, rust, java]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -99,9 +99,9 @@ jobs:
         if: matrix.port == 'python'
         with:
           python-version: '3.12'
-      # NO setup-ruby, setup-php, setup-perl OR setup-rust STEP, for the same reason
+      # NO setup-ruby, setup-php, setup-perl, setup-rust OR setup-java STEP, for the same reason
       # as go below: the ubuntu-latest image ships ruby 3.x, php 8.x and
-      # perl 5.38 and a rust toolchain, none of those ports has a
+      # perl 5.38, a rust toolchain and a JDK, none of those ports has a
       # dependency to fetch (rust's Cargo.toml has an EMPTY [dependencies],
       # which is why `make test-rust` passes --offline), and an
       # unpinned action would be the worse trade. Each port's `inspect`
