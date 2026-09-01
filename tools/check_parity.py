@@ -68,6 +68,7 @@ PORTS = {
     'dart': ['dart/lib'],
     'kotlin': ['kotlin/src'],
     'swift': ['swift/src'],
+    'scala': ['scala/src'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj', '.lake'}

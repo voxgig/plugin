@@ -89,7 +89,7 @@ jobs:
       matrix:
         # P4 is complete; P5 is under way. P6 adds the rest.
         port: [typescript, go, python, javascript, ruby, php, perl, rust, java, lua,
-               csharp, elixir, clojure, dart, kotlin, swift]
+               csharp, elixir, clojure, dart, kotlin, swift, scala]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -150,6 +150,11 @@ jobs:
       # stdlib jar beside it, which is all the port's Makefile looks for.
       - if: matrix.port == 'kotlin'
         run: sudo apt-get update && sudo apt-get install -y kotlin
+      # scala likewise. The archive carries 2.11, which is what this port is
+      # written to - `make inspect-scala` prints the version it got, so a newer
+      # one arriving is visible rather than silent.
+      - if: matrix.port == 'scala'
+        run: sudo apt-get update && sudo apt-get install -y scala
       # swift is not, so this is the release tarball from swift.org at a PINNED
       # version - the same reason every action here is pinned to a SHA. The
       # runtime libraries it needs come with it; the port has no package

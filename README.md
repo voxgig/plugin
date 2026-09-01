@@ -24,11 +24,16 @@ programmatic API over the same normalized model.
 
 ## Status
 
-**P5 — two of fourteen.** The design is complete and agreed with its
-first host, the contract is complete (all 19 corpus sections, 539
-entries), and there are five implementations: `typescript/` the
-canonical, plus `go/`, `python/`, `javascript/` and `ruby/`. **All five
-pass every section.**
+**P5 tier-3 complete — fourteen of fourteen.** The design is complete
+and agreed with its first host, the contract is complete (all 19 corpus
+sections, 539 entries), and there are **sixteen implementations**:
+`typescript/` the canonical, plus `go/`, `python/`, `javascript/`,
+`ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`,
+`elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. **All
+sixteen pass every section**, and none of them carries a runtime
+dependency: every one writes its own JSON parser and its own test
+runner, because §16 permits exactly one dependency and no port of it
+exists in those languages.
 
 The pair went before the other fourteen ports on purpose — go for
 static-only registration, typed extension points and explicit errors;
@@ -50,13 +55,24 @@ accepted it, and no corpus entry distinguished them. All of it is fixed
 in the canonical and pinned by new entries — see
 [`doc/plan/handover.md`](./doc/plan/handover.md) §13 and §15.
 
+Twelve more ports since then found **no further defect in the
+canonical**, which is the result a settled contract should produce. What
+they did find is three places where two implementations could disagree
+and **the corpus would not notice** — mutation-tested independently in
+every language, and the same three every time: shape validation at
+catalog *registration* is pinned by nothing (no corpus definition
+carries a `shape` at all), `providersof` comparing refs uncanonicalized
+changes no observed answer, and whether a nested host counts as an open
+resource is a free choice. §18 of the handover records them, and the
+remedy is the usual one: an entry each, in the canonical first.
+
 | | |
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
 | corpus | **539 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
-| ports | `typescript/` (canonical), `go/`, `python/`, `javascript/` and `ruby/` — **all five pass every section**. Two tracks run in parallel: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P5's remaining twelve ports. |
+| ports | **sixteen, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. Next: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P6's six tier-4 ports. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is
@@ -64,7 +80,7 @@ what this repo owes station, and what has actually landed, is
 
 Next are two parallel tracks: **P3.1**, the extraction against
 station's merged Stages 2–3b (unblocked by C3, and the proof that P3
-is not a thought experiment), and the rest of **P5** — see
+is not a thought experiment), and **P6**'s six tier-4 ports — see
 [`AGENTS.md`](./AGENTS.md) §6. Read
 [`doc/plan/handover.md`](./doc/plan/handover.md) §13 before writing one:
 the six defects the proving pair found were all of two kinds, and both

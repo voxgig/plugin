@@ -933,6 +933,90 @@ ends. Two more pin it through `hold`, which names the holder, and one
 pins that the selection does not survive the consumer's own restart.
 
 
+## 18. What twelve more ports found, and the three things the corpus still cannot see
+
+P5's fourteen tier-3 ports are complete: `php`, `perl`, `rust`, `java`,
+`lua`, `csharp`, `elixir`, `clojure`, `dart`, `kotlin`, `swift` and
+`scala` joined `javascript` and `ruby`, and **all sixteen
+implementations pass all 539 entries**. Each port's own `AGENTS.md`
+carries its language-specific traps; this section carries only what is
+the CORPUS's business rather than a port's.
+
+### The three gaps every port finds
+
+Mutation testing each port against the whole corpus produces the same
+three survivors, in every language and independently:
+
+**1. Shape validation at catalog REGISTRATION is pinned by nothing.**
+§10.1 puts `check_shape` in `catalog.add` so that a malformed shape
+"fails once, and in the same place everywhere". **No corpus definition
+carries a `shape` at all** — the driver's nine probes have none — so
+the check is reachable only through `resolve_options`, and every port
+could defer it to resolution time and stay green. That is precisely the
+divergence §10.1 exists to prevent: a host that registers a definition
+with `{"$MERGE": "nonsense"}` would fail at a different moment in every
+implementation. **This one is new**, found independently by elixir,
+clojure, dart, kotlin, swift and scala.
+
+**2. `providersof` comparing refs uncanonicalized.** §11.1 lets a REF
+satisfy a requirement, and §4 rule 5 says ports canonicalize before
+comparing — but every requirement name in the corpus is already
+canonical, so dropping the `canon` changes nothing any entry observes.
+Found by php first and by every port since.
+
+**3. A nested host counted as an open resource.** §6.5 registers the
+inner host's teardown in the outer instance's scope; whether that also
+increments `open` is a free choice, because no `nest` entry asserts
+`open` while an inner host is live.
+
+None of the three is a defect in any port — every port implements the
+design. They are places where **two implementations could disagree and
+the corpus would not notice**, which is the same category §17 records,
+and the same remedy applies: an entry each, in the canonical first.
+
+### One gap that is a SCALE gap rather than a coverage gap
+
+The dart port's `stableSortBy` survives having its index tiebreak
+removed. Dart's `List.sort` is genuinely unstable — two hundred elements
+sorted by a two-valued key come back reordered — but it uses an
+insertion sort below 32 elements, and **no corpus entry sorts more than
+a handful of bindings**. A host with 32 live bindings on one point would
+see it and the corpus never will. Recorded rather than fixed by a
+32-instance entry, because the fix belongs in the ports (all of which do
+decorate) rather than in a corpus row that exists only to be slow.
+
+### What the ports found that the corpus DID catch
+
+Two bugs, both in ports rather than in the canonical, and both worth
+knowing because the entry that caught each is not the obvious one:
+
+- **`Host.instance` must canonicalize with the VALIDATING spelling.**
+  Rust and swift both wrote it with the forgiving `canon`, and
+  `declare/lookup#malformed` failed: a lookup with a malformed ref is
+  `plugin_bad_name`, not a miss.
+- **`declare`/`load` must test PRESENT AND NOT NULL, not merely
+  present.** Every port's driver builds its command spec with all four
+  keys and a null for each absent one, so a presence test reads an
+  omitted `options` as an authored empty and wipes the real ones.
+  `declare/clear` catches it.
+
+### Two non-mutations worth not re-deriving
+
+Recorded so the next port does not spend an afternoon on them:
+
+- **Anchors in the ref grammar are load-bearing in some languages and
+  decorative in others.** Ruby's `^`/`$` are LINE anchors (§15), java's
+  and dart's `$` matches before a final newline — but clojure's
+  `re-matches` and kotlin's `Regex.matches` already require a
+  whole-input match, and swift and scala use character loops with no
+  search at all. In those four the anchors cannot be got wrong, and the
+  four `#trailing-newline` entries pass either way. They still catch a
+  port that reaches for `re-find`/`containsMatchIn`.
+- **An empty `after: []` reading as a stated constraint changes
+  nothing**, because `order_targets` yields no targets for it. The guard
+  documents the intent; it does not change an answer.
+
+
 ## 12. Open, and deliberately so
 
 | | |
