@@ -16,14 +16,14 @@ a wrong status file is worse than none.**
 **P5's fourteen tier-3 ports are complete.** Twelve landed in this
 session — `php`, `perl`, `rust`, `java`, `lua`, `csharp`, `elixir`,
 `clojure`, `dart`, `kotlin`, `swift`, `scala` — joining `javascript` and
-`ruby`. **Seventeen implementations now pass all 552 corpus entries**, and
+`ruby`. **Seventeen implementations now pass all 561 corpus entries**, and
 `make check` runs every one of them.
 
 They found **nothing further wrong with the canonical**, which is the
 result a settled contract should produce. What they found instead is
 **three places two implementations could disagree and the corpus would
 not notice** — the same three in every language, mutation-tested
-independently. **The first is now closed; two remain:**
+independently. **All three are now closed:**
 
 1. ~~Shape validation at catalog REGISTRATION is pinned by nothing.~~
    **CLOSED** — `declare/shape` (7 entries) and `declare/register` (3).
@@ -34,20 +34,27 @@ independently. **The first is now closed; two remain:**
    canonical bug — **`apply` dropped a first-time instance's options
    entirely** — now fixed in the eight ports that had it and pinned by
    three new `apply/idempotent` entries.
-2. **`providersof` comparing refs uncanonicalized** changes no answer
-   any entry observes.
-3. **Whether `nest` counts the inner host as an open resource** is a
-   free choice.
+2. ~~`providersof` comparing refs uncanonicalized.~~ **CLOSED** —
+   `depend/byref` (5 entries). Wider than its name: the whole
+   ref-satisfaction branch was dead code (`if (false)` passed all 552
+   entries) and the rule lived only in a comment in the canonical's
+   source. **Design §11.1 now states it.**
+3. ~~Whether `nest` counts the inner host as an open resource.~~
+   **CLOSED** — `nest/open` (4 entries). It counts nothing: the scope
+   entry is a teardown, not an acquisition, and the inner host keeps its
+   own counter.
+
+Gaps 2 and 3 needed **no port change** — all seventeen already agreed,
+which is what a coverage gap rather than a divergence looks like.
 
 handover.md §18 has all of it, plus a fourth that is a SCALE gap rather
 than a coverage one (dart's unstable sort above 32 elements), the two
 port-side bugs the corpus DID catch, and two non-mutations recorded so
 nobody re-derives them.
 
-**Pick 2 and 3 up first.** They are pure-corpus work — an entry each,
-no driver change — and every P6 port added after them inherits the
-check. Gap 1 was described the same way and was not: see §18 for why
-"no entry carries X" is worth one question before it is sized.
+**All three are done, so P6's tier-4 ports are next.** See §18 for what
+the sizing got wrong in both directions — and for why a gap's *name* can
+be narrower than the gap, which is what gap 2 turned out to be.
 
 Merged since this section last named a tip:
 
@@ -90,14 +97,7 @@ bands, vacuous satisfaction of an absent name, ties by declaration
 position rather than alphabet, and the innermost pin. That was
 deliberate, and it makes P3 a move rather than a rewrite.
 
-**The two remaining corpus gaps, then P6's tier-4 ports.** Gap 1 is
-closed (above). Gaps 2 and 3 are corpus-only — `providersof` without
-`canon` needs an entry whose requirement name is NOT already canonical
-(a trailing `$` against a bare `provides`), and `nest` needs an entry
-asserting `open` while an inner host is live. Neither needs a driver
-change, which is what made gap 1 different.
-
-Then **P6's six tier-4 ports**: `c` and `cpp` first — gcc/g++ 13.3.0 are
+**P6's six tier-4 ports** — the corpus gaps are all closed (above): `c` and `cpp` first — gcc/g++ 13.3.0 are
 present — and `zig`, `haskell`, `ocaml`, `lean` after their toolchains
 are installed and verified. Porting a language nobody can execute ships
 an implementation nobody has run; say which are gated rather than

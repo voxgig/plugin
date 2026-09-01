@@ -23,7 +23,7 @@ literal matcher) and buys a library with no crate graph to audit.
 | `src/value.rs` | the JSON value, and the only parser this port has |
 | `src/*.rs` | the library, one module per §-area |
 | `tests/support/` | the corpus runner and the driver (DOCS.md §4) |
-| `tests/corpus.rs` | the suite: one `#[test]`, 552 entries |
+| `tests/corpus.rs` | the suite: one `#[test]`, 561 entries |
 
 ## Using it
 

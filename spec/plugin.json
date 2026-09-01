@@ -4827,6 +4827,153 @@
           }
         ]
       },
+      "byref": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/byref#satisfies",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "id": "depend/byref#canonical-comparison",
+            "match": {
+              "out": {
+                "status": {
+                  "dep": "live",
+                  "dep$c": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "declare",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending",
+                  "dep$p": "declared"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "load",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "id": "depend/byref#lost",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          }
+        ]
+      },
       "cascade": {
         "set": [
           {
@@ -9314,6 +9461,87 @@
                 "status": {
                   "probe$outer": "live"
                 }
+              }
+            }
+          }
+        ]
+      },
+      "open": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$inner"
+                  ]
+                },
+                "ref": "probe$outer"
+              }
+            ],
+            "doc": true,
+            "id": "nest/open#nest-is-not-a-resource",
+            "match": {
+              "out": {
+                "open": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$i1",
+                    "probe$i2"
+                  ]
+                },
+                "ref": "probe$outer"
+              }
+            ],
+            "id": "nest/open#inner-resources-stay-inner",
+            "match": {
+              "out": {
+                "open": 1
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "ready",
+                "options": {
+                  "nest": [
+                    "probe$i1",
+                    "probe$i2"
+                  ]
+                },
+                "ref": "probe$outer"
+              },
+              {
+                "do": "deactivate",
+                "ref": "probe$outer"
+              }
+            ],
+            "id": "nest/open#unwinds",
+            "match": {
+              "out": {
+                "open": 0
               }
             }
           }

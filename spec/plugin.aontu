@@ -8,7 +8,7 @@
 # both. Never hand-edit the JSON (§16, prime directive 5).
 #
 # STATUS: P5 complete. The corpus is COMPLETE against §15.3 — all
-# nineteen sections, 552 entries (417 at P2, when this line was first
+# nineteen sections, 561 entries (417 at P2, when this line was first
 # written), every one running green against the canonical TypeScript
 # port AND the sixteen ports of it.
 #
@@ -3267,6 +3267,78 @@ primary: depend: {
   ]
 
 
+  # A REF SATISFIES TOO (§11.1), AND THE COMPARISON IS CANONICAL
+  # (§4 rule 5).
+  #
+  # §11.1 opens by saying a dependency is on a capability and NOT on a
+  # ref, and then makes this one narrow exception: a host that genuinely
+  # needs a specific instance should not have to invent a capability for
+  # it. Until this group the rule lived only in a comment in the
+  # canonical's source — the design did not state it and no entry
+  # reached it, so the whole branch was DEAD CODE against the corpus and
+  # deleting it outright passed all 552 entries. Seventeen ports carried
+  # it because they copied the canonical, not because anything checked.
+  #
+  # The canonicalization is the half that was named as a gap, and it is
+  # the smaller half: `dep$` and `dep` are the same instance, so a port
+  # comparing the requirement string against the registry key without
+  # canonicalizing first answers `pending` where every other port
+  # answers `live`. Every requirement name elsewhere in the corpus is
+  # already canonical, which is why nothing saw it.
+  byref: set: [
+    {
+      id: 'depend/byref#satisfies', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
+    }
+    # THE NON-CANONICAL SPELLING OF THE SAME REF. `dep$` parses to the
+    # empty tag and formats back to `dep`, which is the only way two
+    # spellings of one ref can differ (§4) — so this is the entry, and
+    # there is no other, that a port dropping the canonicalization fails.
+    {
+      id: 'depend/byref#canonical-comparison'
+      cmd: [
+        { do: 'ready', ref: 'dep', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$'] } }
+      ]
+      match: { out: { status: { 'dep': 'live', 'dep$c': 'live' } } }
+    }
+    # LIVE, exactly as a capability is. A declared instance is a map
+    # entry and no executed code (§5.1), and it can no more satisfy a
+    # requirement than a capability nobody has provided yet.
+    {
+      cmd: [
+        { do: 'declare', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'declared', 'dep$c': 'pending' } } }
+    }
+    # ...and `loaded` is not enough either, which is the line that makes
+    # this the same rule as the capability one rather than a second one.
+    {
+      cmd: [
+        { do: 'load', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'pending' } } }
+    }
+    # LOSING IT CASCADES, like any other requirement. Without this the
+    # ref path could be satisfied once at activation and never rechecked.
+    {
+      id: 'depend/byref#lost'
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'pending' } } }
+    }
+  ]
+
+
   # THE HOST ACTIVATES IT THE MOMENT THE REQUIREMENT ARRIVES, WITHOUT
   # BEING ASKED AGAIN. Reconciliation is EAGER — it settles by running
   # to a fixed point, not by scheduling.
@@ -4410,6 +4482,58 @@ primary: nest: {
       id: 'nest/lifetime#isolated'
       cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
       match: { out: { status: { 'probe$outer': 'live' } } }
+    }
+  ]
+
+
+  # A NESTED HOST IS NOT ITSELF AN OPEN RESOURCE, AND THE INNER HOST'S
+  # RESOURCES ARE ITS OWN.
+  #
+  # §6.5 says the outer instance's scope holds the inner host's
+  # teardown, and every port implements that. Whether the nest ALSO
+  # counts toward the outer's `open` was a free choice nothing pinned:
+  # the three entries above assert `result` and `status`, never `open`,
+  # so a port that counted the nest reported one more open resource than
+  # its neighbours for the same document and stayed green. `open` is the
+  # synthetic counter DOCS.md §4.5 puts in the observable precisely so
+  # "what is still held" is data rather than a sentence each port words
+  # differently, and two ports disagreeing about it is exactly the
+  # divergence it exists to expose.
+  #
+  # It counts NOTHING. The scope entry is a teardown, not an
+  # acquisition, and the inner host keeps its own counter — so the
+  # outer's `open` is its own `acquire` and no more.
+  open: set: [
+    {
+      id: 'nest/open#nest-is-not-a-resource', doc: true
+      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
+      match: { out: { open: 1 } }
+    }
+    # THE SAME NUMBER AS WITHOUT THE NEST, which is the half that says
+    # `open: 1` above is the outer's own `acquire` rather than a nest
+    # that happens to cost one.
+    {
+      cmd: [ { do: 'ready', ref: 'probe$a' } ]
+      match: { out: { open: 1 } }
+    }
+    # AND IT DOES NOT SCALE WITH THE INNER HOST'S CONTENTS. Two inner
+    # instances acquire two resources IN THE INNER HOST; a port
+    # accumulating them into the outer's counter answers 3.
+    {
+      id: 'nest/open#inner-resources-stay-inner'
+      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } } ]
+      match: { out: { open: 1 } }
+    }
+    # ...and the outer's deactivation returns it to zero, closing the
+    # inner host on the way. `nest/lifetime#outer-closes-inner` asserts
+    # the inner is gone; this asserts nothing was left held.
+    {
+      id: 'nest/open#unwinds'
+      cmd: [
+        { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } }
+        { do: 'deactivate', ref: 'probe$outer' }
+      ]
+      match: { out: { open: 0 } }
     }
   ]
 }

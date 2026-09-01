@@ -1693,6 +1693,27 @@ requires: [{ name: 'store', range: '2.1',
   `transactional: true` would be indefensible.
 - **`version` / `range`** — §11.2.
 
+**A REF SATISFIES TOO**, and this is the one exception to the sentence
+this section opens with. A requirement naming a live instance's ref is
+met by that instance, because a host that genuinely needs a *specific*
+instance should not have to invent a capability for it to depend on.
+The exception is narrow on purpose: it is met only while that instance
+is `live`, exactly as a capability is, so losing it sends the consumer
+back to `pending` like any other loss. Everything else about depending
+on a ref is worse than depending on a capability, and nothing here
+recommends it.
+
+**The comparison is on the CANONICAL ref** (§4 rule 5). `dep$` and
+`dep` are the same instance, so a requirement written either way is met
+by it — a port comparing the requirement string against the registry
+key without canonicalizing first answers differently, which is the
+divergence rule 5 exists to prevent.
+
+This rule lived only in the canonical's source comments until the
+corpus's `depend/byref` group was written; the whole ref branch was
+dead code as far as the corpus was concerned, and deleting it outright
+passed every entry.
+
 Unsatisfiable is not an error at declaration time. It is a *fact about
 the current registry*, and §11.4 is how you ask for it.
 
