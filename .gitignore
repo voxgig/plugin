@@ -179,3 +179,7 @@ zig-out/
 
 # Erlang/Elixir
 erl_crash.dump
+.swiftpm/
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
