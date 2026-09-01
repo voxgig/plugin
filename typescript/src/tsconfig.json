@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "noEmitOnError": true,
+    "outDir": "../dist",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2021",
+    "lib": [
+      "es2021"
+    ],
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationDir": "../dist",
+    "tsBuildInfoFile": "../.tsbuild/src.tsbuildinfo"
+  }
+}

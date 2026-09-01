@@ -3,20 +3,45 @@
   "version": "0.1.0",
   "description": "Plugin: multi-language plugin architecture (TypeScript, canonical)",
   "license": "MIT",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voxgig/plugin.git",
+    "directory": "typescript"
+  },
+  "homepage": "https://github.com/voxgig/plugin/tree/main/typescript",
+  "bugs": {
+    "url": "https://github.com/voxgig/plugin/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
+    "LICENSE",
     "src",
-    "dist/src"
+    "dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
-    "test": "npm run build && node --test \"dist/test/*.test.js\"",
-    "test-some": "npm run build && node --test --test-name-pattern=$npm_config_pattern \"dist/test/*.test.js\""
+    "build": "tsc --build src test",
+    "watch": "tsc --build src test -w",
+    "typecheck": "tsc --build src test --force",
+    "test": "node --enable-source-maps --test \"dist-test/**/*.test.js\"",
+    "test-some": "node --enable-source-maps --test-name-pattern=\"$TEST_PATTERN\" --test \"dist-test/**/*.test.js\"",
+    "test-cov": "rm -rf ./coverage && mkdir -p ./coverage && node --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --enable-source-maps --test \"dist-test/**/*.test.js\" && genhtml ./coverage/lcov.info -o ./coverage && open ./coverage/index.html",
+    "doc": "echo doc",
+    "clean": "rm -rf dist dist-test node_modules package-lock.json",
+    "clean-dist": "rm -rf dist dist-test",
+    "reset": "npm run clean && npm i && npm run build && npm test",
+    "prepublishOnly": "npm run clean-dist && npm run build",
+    "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: typescript-v$REPO_VERSION && git commit -a -m typescript-v$REPO_VERSION && git push && git tag typescript-v$REPO_VERSION && git push origin typescript-v$REPO_VERSION;",
+    "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
+    "repo-publish-quick": "npm run build && npm run test && npm run doc && npm run repo-tag",
+    "repo-publish-dry": "npm run clean && npm i && npm run repo-publish-dry-quick",
+    "repo-publish-dry-quick": "npm run build && npm run test && npm run doc && npm publish --dry-run --access public --registry https://registry.npmjs.org"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

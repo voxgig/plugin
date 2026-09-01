@@ -11,7 +11,7 @@ test: build
 	npm test
 
 clean:
-	rm -rf dist node_modules
+	rm -rf dist dist-test node_modules
 
 inspect:
 	@node --version

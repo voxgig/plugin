@@ -183,3 +183,7 @@ erl_crash.dump
 *.swiftmodule
 *.swiftdoc
 *.swiftsourceinfo
+
+# typescript: struct-style split output (src -> dist, test -> dist-test)
+dist-test/
+typescript/.tsbuild/
