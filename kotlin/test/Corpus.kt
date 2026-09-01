@@ -75,9 +75,13 @@ object Corpus {
 
         if (expect is Map<*, *>) {
             if (actual !is Map<*, *>) return false
-            return Types.keys(expect).all {
+        // THE ORACLE'S OWN KEY WALK. `Types.keys` sorts, and its ordering and
+        // key set are behaviour the corpus checks - so the oracle enumerates
+        // the expectation itself (AGENTS.md section 1). Order is irrelevant
+        // here: every named key must match, so this is a conjunction.
+            return expect.keys.all {
                 matches(
-                    Types.get(expect, it),
+                    expect[it],
                     if (actual.containsKey(it)) actual[it] else MISSING
                 )
             }

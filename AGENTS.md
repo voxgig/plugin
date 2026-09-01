@@ -44,6 +44,18 @@ And one this repo adds:
 
    The plugin library must never be used to implement its own tests.
 
+   **That covers the TYPING, not just the comparison.** A runner that
+   writes its own `same` but asks the library "is this a map", "what are
+   its keys", or "is this a string" has only moved the shared code one
+   level down — and map-versus-list is precisely what the corpus checks,
+   so a port that misclassifies would misclassify in the oracle too and
+   stay green. Every runner asks the LANGUAGE (or reads the port's own
+   tag, where a language has no answer — lua stamps a metatable, perl
+   reads SV flags) and enumerates keys for itself. Reading a VALUE the
+   port produces is fine and sometimes unavoidable: an error's `code`, a
+   present-null sentinel, `JSON::PP::Boolean`. Borrowing a JUDGEMENT is
+   not.
+
 
 ## 2. The layout
 

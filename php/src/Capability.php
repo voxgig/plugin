@@ -132,19 +132,32 @@ function matchvalue($want, $got): bool
         if (!is_array($got)) {
             return false;
         }
-        // AN EMPTY `$want` TAKES ITS SHAPE FROM `$got`. `[]` is both the
-        // empty map and the empty list in PHP (php/AGENTS.md), so the port
-        // has to choose - and choosing once, for all of them, is wrong in
-        // one direction or the other: read as a map, `match: {modes: []}`
-        // accepts a provider advertising `modes: ["write"]` where the
-        // canonical rejects it on length; read as a list, `match: {opts:
-        // {}}` rejects a provider carrying options where the canonical
-        // accepts. Deciding on `$got` agrees with the canonical whenever
-        // the requirement and the capability have the SAME shape, which is
-        // every case a document plausibly writes, and leaves only the
-        // mismatched shapes - where the canonical's own answer is that the
-        // two are simply not equal - undecidable here.
-        $wantmap = [] === $want ? !array_is_list($got) : !array_is_list($want);
+        // AN EMPTY `$want` IS UNDECIDABLE HERE, AND FAILS CLOSED. `[]`
+        // is both the empty map and the empty list in PHP - not merely
+        // after `json_decode`, but in the language: an array literal
+        // cannot say which it is (php/AGENTS.md). So php sees ONE input
+        // where the canonical sees two, and the canonical's answers for
+        // the two disagree on every non-empty `$got`: `{}` accepts any
+        // map, `[]` accepts only another empty list.
+        //
+        // Taking the shape from `$got` was tried and is worse. It made
+        // `match: {modes: []}` accept `modes: {write: true}`, which the
+        // canonical rejects - and a false ACCEPT binds a capability that
+        // does not meet the requirement, where a false REJECT is a
+        // visible resolution failure.
+        //
+        // Matching only an empty capability puts the error on the safe
+        // side: against a NON-EMPTY `$got` php never accepts what the
+        // canonical would reject, and over-rejects in exactly one case -
+        // an empty requirement against a non-empty map, where reading
+        // `[]` as `{}` would have said yes. Empty against empty stays
+        // true, which is the canonical's answer whenever the two shapes
+        // agree; the crossed shapes it would reject are not a thing a
+        // PHP caller can express on either side.
+        if ([] === $want) {
+            return [] === $got;
+        }
+        $wantmap = !array_is_list($want);
         if ($wantmap) {
             foreach ($want as $k => $v) {
                 if (!array_key_exists($k, $got) || !matchvalue($v, $got[$k])) {

@@ -95,9 +95,9 @@ public final class Corpus {
 
     Object got = MISSING == actual ? null : actual;
 
-    String pattern = Types.str(expect);
+    String pattern = expect instanceof String ? (String) expect : null;
     if (null != pattern && 2 < pattern.length() && pattern.startsWith("/") && pattern.endsWith("/")) {
-      String text = Types.str(got);
+      String text = got instanceof String ? (String) got : null;
       if (null == text) {
         return false;
       }
@@ -106,9 +106,9 @@ public final class Corpus {
       return Pattern.compile(pattern.substring(1, pattern.length() - 1)).matcher(text).find();
     }
 
-    List<Object> wl = Types.list(expect);
+    List<Object> wl = asList(expect);
     if (null != wl) {
-      List<Object> gl = Types.list(got);
+      List<Object> gl = asList(got);
       if (null == gl || wl.size() != gl.size()) {
         return false;
       }
@@ -120,9 +120,9 @@ public final class Corpus {
       return true;
     }
 
-    Map<String, Object> wm = Types.map(expect);
+    Map<String, Object> wm = asMap(expect);
     if (null != wm) {
-      Map<String, Object> gm = Types.map(got);
+      Map<String, Object> gm = asMap(got);
       if (null == gm) {
         return false;
       }
@@ -136,6 +136,20 @@ public final class Corpus {
     }
 
     return same(expect, got);
+  }
+
+  // THE ORACLE'S OWN CASTS, not `Types.map`/`Types.list`. Those are thin,
+  // but they are the port's answer to "what shape is this", which is
+  // exactly what the corpus's map-versus-list entries check - so the
+  // oracle asks the language instead (AGENTS.md section 1).
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> asMap(Object v) {
+    return v instanceof Map ? (Map<String, Object>) v : null;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<Object> asList(Object v) {
+    return v instanceof List ? (List<Object>) v : null;
   }
 
   /**

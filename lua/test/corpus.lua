@@ -22,6 +22,65 @@ M.SPEC = 'spec/plugin.json'
 -- absence - and `__UNDEF__` and `__NULL__` are different assertions.
 M.MISSING = setmetatable({}, { __tostring = function() return 'MISSING' end })
 
+-- THE ORACLE'S OWN CONTAINER TEST, not the library's.
+--
+-- AGENTS.md section 1: "The plugin library must never be used to implement
+-- its own tests." That covers the TYPING as well as the comparison. A
+-- table in lua is both a map and a list, so this port stamps a metatable
+-- on every table it builds and `T.ismap`/`T.islist`/`T.keys` read it -
+-- which makes them exactly the behaviour the corpus's map-versus-list
+-- entries exist to check. An oracle calling them would misclassify in
+-- lockstep with a broken port and stay green.
+--
+-- So the oracle reads the TAG rather than asking the library about it:
+-- `__jsontype` is the mark the port stamped, the way `JSON::PP::Boolean`
+-- is a mark the perl runner reads. `rawget` because a metatable of a
+-- metatable must not answer for it.
+local function tagof(v)
+  if 'table' ~= type(v) then return nil end
+  local mt = getmetatable(v)
+  if nil == mt then return nil end
+  return rawget(mt, '__jsontype')
+end
+
+local function ismap(v) return 'map' == tagof(v) end
+local function islist(v) return 'list' == tagof(v) end
+
+-- The oracle's own key walk. `pairs` has no defined order, so this sorts -
+-- but it enumerates for itself, so a `T.keys` that dropped a key or
+-- returned it unsorted no longer moves the oracle with it.
+local function keysof(t)
+  local out = {}
+  if not ismap(t) then return out end
+  for k in pairs(t) do out[#out + 1] = k end
+  table.sort(out)
+  return out
+end
+
+-- Presence, read off the table rather than through `T.has`.
+local function haskey(t, k)
+  return ismap(t) and nil ~= rawget(t, k)
+end
+
+-- The oracle's own map constructor, stamping the tag `ismap` above reads.
+-- Building with `T.map` would have let a mutation that stopped stamping
+-- take the oracle's own scaffolding with it.
+local ORACLE_MAP_MT = { __jsontype = 'map' }
+
+local function mapof(t)
+  return setmetatable(t or {}, ORACLE_MAP_MT)
+end
+
+-- The value at a key, with the port's present-null sentinel flattened to
+-- nil. `T.NULL` is a VALUE the port produces, like `JSON::PP::Boolean` in
+-- perl - reading it is not the same as borrowing a comparison.
+local function valueat(t, k)
+  if not ismap(t) then return nil end
+  local v = rawget(t, k)
+  if T.NULL == v then return nil end
+  return v
+end
+
 local cache
 
 function M.corpus()
@@ -38,15 +97,16 @@ end
 
 -- The groups of a section, minus `DEF`, in name order.
 function M.section(name)
-  local sec = T.getv(T.getv(M.corpus(), 'primary') or T.map {}, name)
+  local primary = valueat(M.corpus(), 'primary')
+  local sec = primary and valueat(primary, name) or nil
   if nil == sec then
     error('no such corpus section: ' .. name, 0)
   end
   local out = {}
-  for _, group in ipairs(T.keys(sec)) do
+  for _, group in ipairs(keysof(sec)) do
     if 'DEF' ~= group then
-      local set = T.getv(sec[group], 'set')
-      if T.islist(set) then
+      local set = valueat(sec[group], 'set')
+      if islist(set) then
         out[#out + 1] = { group = group, set = set }
       end
     end
@@ -56,7 +116,7 @@ end
 
 -- A stable label, so a failure names the entry rather than an index.
 function M.label(group, i, entry)
-  return T.getv(entry, 'id') or (group .. '#' .. i)
+  return valueat(entry, 'id') or (group .. '#' .. i)
 end
 
 -- A LITERAL-WITH-ANCHORS MATCHER, NOT A REGEX ENGINE.
@@ -102,19 +162,10 @@ end
 
 -- Deep equality over spec values. Key order never matters; list order
 -- always does.
---
--- AGENTS.md section 1: "The plugin library must never be used to implement
--- its own tests." A shared comparison lets a broken implementation and its
--- oracle be wrong together and stay green, so the corpus's equality is
--- written here rather than imported.
---
--- The TAGS are the oracle's own business rather than the library's: this
--- port tags every table it builds so `{}` can be told from `[]`, and the
--- corpus decoder is what produced the expected side.
 function M.same(a, b)
-  if T.ismap(a) or T.ismap(b) then
-    if not (T.ismap(a) and T.ismap(b)) then return false end
-    local ka, kb = T.keys(a), T.keys(b)
+  if ismap(a) or ismap(b) then
+    if not (ismap(a) and ismap(b)) then return false end
+    local ka, kb = keysof(a), keysof(b)
     if #ka ~= #kb then return false end
     for i = 1, #ka do
       if ka[i] ~= kb[i] then return false end
@@ -122,8 +173,8 @@ function M.same(a, b)
     end
     return true
   end
-  if T.islist(a) or T.islist(b) then
-    if not (T.islist(a) and T.islist(b)) then return false end
+  if islist(a) or islist(b) then
+    if not (islist(a) and islist(b)) then return false end
     if #a ~= #b then return false end
     for i = 1, #a do
       if not M.same(a[i], b[i]) then return false end
@@ -156,23 +207,23 @@ function M.matches(expect, actual)
     return M.regexlite(expect:sub(2, -2), got)
   end
 
-  if T.islist(expect) then
-    if not T.islist(got) or #expect ~= #got then return false end
+  if islist(expect) then
+    if not islist(got) or #expect ~= #got then return false end
     for i = 1, #expect do
       if not M.matches(expect[i], got[i]) then return false end
     end
     return true
   end
 
-  if T.ismap(expect) then
-    if not T.ismap(got) then return false end
-    for _, k in ipairs(T.keys(expect)) do
-      -- NOT `T.has(got, k) and got[k] or M.MISSING`. Lua's `and`/`or` is
+  if ismap(expect) then
+    if not ismap(got) then return false end
+    for _, k in ipairs(keysof(expect)) do
+      -- NOT `haskey(got, k) and got[k] or M.MISSING`. Lua's `and`/`or` is
       -- not a ternary when the middle term can be FALSE: a present `false`
       -- would fall through to MISSING and read as absent, which failed ten
       -- entries whose only crime was a `false` in the expectation.
       local sub = M.MISSING
-      if T.has(got, k) then sub = got[k] end
+      if haskey(got, k) then sub = got[k] end
       if not M.matches(expect[k], sub) then return false end
     end
     return true
@@ -187,13 +238,13 @@ end
 -- as at build time, because a runner that quietly accepted `err` beside
 -- `out` would let a contradictory entry pass.
 function M.check(entry, subject)
-  if T.has(entry, 'err') and T.has(entry, 'out') then
+  if haskey(entry, 'err') and haskey(entry, 'out') then
     return 'entry has both err and out'
   end
 
   local ok, value = pcall(subject, entry)
 
-  if T.has(entry, 'err') then
+  if haskey(entry, 'err') then
     if ok then
       return 'expected a raise, got: ' .. T.encode(value)
     end
@@ -208,9 +259,9 @@ function M.check(entry, subject)
                .. ' (' .. T.message(value) .. ')'
       end
     end
-    if T.has(entry, 'match') then
-      local got = T.map {
-        err = T.map {
+    if haskey(entry, 'match') then
+      local got = mapof {
+        err = mapof {
           code = T.codeof(value),
           message = T.message(value),
           name = 'PluginError',
@@ -228,19 +279,19 @@ function M.check(entry, subject)
     return 'unexpected raise: ' .. T.codeof(value) .. ' ' .. T.message(value)
   end
 
-  if T.has(entry, 'out') and not M.same(entry.out, value) then
+  if haskey(entry, 'out') and not M.same(entry.out, value) then
     return 'expected ' .. T.encode(entry.out) .. ', got ' .. T.encode(value)
   end
 
-  if T.has(entry, 'match') then
-    local got = T.map { ['in'] = T.getv(entry, 'in'), out = value }
+  if haskey(entry, 'match') then
+    local got = mapof { ['in'] = valueat(entry, 'in'), out = value }
     if not M.matches(entry.match, got) then
       return 'did not match ' .. T.encode(entry.match)
              .. ', got out=' .. T.encode(value)
     end
   end
 
-  if not T.has(entry, 'out') and not T.has(entry, 'match') then
+  if not haskey(entry, 'out') and not haskey(entry, 'match') then
     return 'entry asserts nothing'
   end
 

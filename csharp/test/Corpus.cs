@@ -117,12 +117,12 @@ namespace Voxgig.Plugin.Test
 
             var got = MISSING == actual ? null : actual;
 
-            var pattern = Types.Str(expect);
+            var pattern = expect as string;
             if (null != pattern && 2 < pattern.Length
                 && pattern.StartsWith("/", StringComparison.Ordinal)
                 && pattern.EndsWith("/", StringComparison.Ordinal))
             {
-                var text = Types.Str(got);
+                var text = got as string;
                 if (null == text)
                 {
                     return false;
@@ -133,10 +133,10 @@ namespace Voxgig.Plugin.Test
                 return Regex.IsMatch(text, pattern.Substring(1, pattern.Length - 2));
             }
 
-            var wl = Types.List(expect);
+            var wl = expect as IList<object>;
             if (null != wl)
             {
-                var gl = Types.List(got);
+                var gl = got as IList<object>;
                 if (null == gl || wl.Count != gl.Count)
                 {
                     return false;
@@ -151,10 +151,10 @@ namespace Voxgig.Plugin.Test
                 return true;
             }
 
-            var wm = Types.Map(expect);
+            var wm = expect as IDictionary<string, object>;
             if (null != wm)
             {
-                var gm = Types.Map(got);
+                var gm = got as IDictionary<string, object>;
                 if (null == gm)
                 {
                     return false;

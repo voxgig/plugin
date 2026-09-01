@@ -99,7 +99,11 @@ bool matches(dynamic expect, dynamic actual) {
 
   if (expect is Map) {
     if (actual is! Map) return false;
-    for (final k in p.sortedKeys(expect)) {
+    // The oracle's own key walk: `sortedKeys` is behaviour the corpus
+    // checks, so it does not get to decide which keys the oracle reads
+    // (AGENTS.md section 1). Order is irrelevant - every named key must
+    // match, so this is a conjunction.
+    for (final k in expect.keys) {
       if (!matches(expect[k], actual.containsKey(k) ? actual[k] : missing)) {
         return false;
       }

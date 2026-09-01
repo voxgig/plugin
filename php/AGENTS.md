@@ -60,23 +60,25 @@ every other port uses, and they parse.
 ## What php cannot express
 
 **An empty map and an empty list are one value.** `json_decode('{}',
-true)` and `json_decode('[]', true)` both give `[]`. This cannot make a
-failing entry pass — every non-empty shape still differs — but it does
-mean two readings had to be chosen rather than derived, and both say so
-where they are written:
+true)` and `json_decode('[]', true)` both give `[]` — and this is not
+just the decoder: a PHP array literal cannot say which it is either, so
+no host can pass the distinction in. Php therefore sees ONE input where
+the canonical sees two, and two readings had to be chosen rather than
+derived. Both say so where they are written:
 
 - `Util::maplike` — an empty array counts as a map for merging, so `{}`
   merging onto a map leaves it alone (what a javascript spread does).
-- `matchvalue` — an empty `want` takes its shape from `$got`, the only
-  side that still carries one. Choosing once for all of them is wrong in
-  one direction or the other: read always as a map, `match: {modes: []}`
-  accepts a provider advertising `modes: ["write"]` where the canonical
-  rejects it on length; read always as a list, `match: {opts: {}}`
-  rejects a provider carrying options where the canonical accepts.
-  Deciding on `$got` agrees with the canonical whenever requirement and
-  capability have the same shape — every case a document plausibly
-  writes — and leaves only the mismatched shapes, where the canonical's
-  own answer is that the two are simply not equal, undecidable here.
+- `matchvalue` — an empty `want` matches only an empty `got`. This is the
+  one place the collapse changes an ANSWER rather than a spelling, so it
+  is worth the paragraph. The canonical's two readings disagree on every
+  non-empty capability: `{}` accepts any map, `[]` accepts only another
+  empty list. Taking the shape from `$got` was tried and is worse — it
+  made `match: {modes: []}` accept `modes: {write: true}`, which the
+  canonical rejects. **A false ACCEPT binds a capability that does not
+  meet the requirement; a false REJECT is a visible resolution failure**,
+  so the tie breaks toward rejecting. Against a non-empty `$got` php now
+  never accepts what the canonical would reject, and over-rejects in
+  exactly one case: an empty requirement against a non-empty map.
 
 Nothing in the corpus exercises either. If an entry ever does, it belongs
 in the corpus first, and this file gets the note about which way php had
