@@ -25,10 +25,11 @@
 //! read anyone else's component; we take always-reluctant. Three axes were
 //! more than the model can carry across twenty ports.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::types::{details, fail, PluginError};
 use crate::value::Value;
+use crate::refs::canon;
 
 /// A bare string is shorthand for `{name}`.
 pub fn normrequire(raw: &Value) -> Value {
@@ -132,10 +133,19 @@ pub struct Node {
 /// satisfies its own name as a ref (§11.1), which is why the ref is a
 /// provider of itself here.
 pub fn dependencycycle(nodes: &[Node]) -> Option<Vec<String>> {
-    let mut provider: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    // matched differently - a capability by its exact name, a ref through
+    // the canonical spelling (section 4 rule 5) - and one map keyed by
+    // both can only do one of them. Keyed by both and looked up raw, as
+    // this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    // the load-time check that exists to catch a non-terminating
+    // reconcile.
+    let mut bycap: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut isref: BTreeSet<String> = BTreeSet::new();
     for n in nodes.iter() {
-        for cap in n.provides.iter().chain(std::iter::once(&n.eref)) {
-            provider.entry(cap.clone()).or_default().push(n.eref.clone());
+        isref.insert(n.eref.clone());
+        for cap in n.provides.iter() {
+            bycap.entry(cap.clone()).or_default().push(n.eref.clone());
         }
     }
 
@@ -148,11 +158,18 @@ pub fn dependencycycle(nodes: &[Node]) -> Option<Vec<String>> {
             }
             let name = req.get("name");
             let name = name.as_str().unwrap_or("");
-            if let Some(list) = provider.get(name) {
-                for p in list.iter() {
-                    if *p != n.eref && !out.contains(p) {
-                        out.push(p.clone());
-                    }
+            let mut from: Vec<String> = bycap.get(name).cloned().unwrap_or_default();
+            // A node satisfies its own name AS A REF (section 11.1),
+            // canonically - exactly what `providersof` does at runtime.
+            // `canon` hands back a name no ref could have unchanged, and
+            // no instance ref can equal one, so it is the tolerant test.
+            let asref = canon(name);
+            if isref.contains(&asref) && !from.contains(&asref) {
+                from.push(asref);
+            }
+            for p in from.iter() {
+                if *p != n.eref && !out.contains(p) {
+                    out.push(p.clone());
                 }
             }
         }

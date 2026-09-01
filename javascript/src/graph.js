@@ -21,6 +21,7 @@
 
 const { resolvecapability, matchvalue } = require('./capability')
 const { satisfies } = require('./version')
+const { tryref } = require('./ref')
 
 function resolvegraph(nodes) {
   const byref = {}
@@ -122,8 +123,20 @@ function firstunmet(n, byref, resolved) {
 
 function candidates(byref, name) {
   const out = []
+  // A NODE SATISFIES ITS OWN REF (§11.1), and the graph learned it here.
+  // Considering only declared capabilities made `resolve()` answer
+  // `absent` about a provider sitting right there and live — §11.4's job
+  // is explaining the graph the runtime reconciles, and it was
+  // explaining a different one.
+  const asref = tryref(name)
   for (const ref of Object.keys(byref).sort()) {
     const n = byref[ref]
+    // The ref match WINS OUTRIGHT for that node, as at runtime: one
+    // candidate, not two, for a node both named `b` and providing `b`.
+    if (ref === asref) {
+      out.push({ ref: n.ref, pos: n.pos, provides: { name } })
+      continue
+    }
     for (const p of n.provides || []) {
       if (p.name === name) out.push({ ref: n.ref, pos: n.pos, provides: p })
     }

@@ -148,10 +148,18 @@ type DependNode struct {
  * satisfies its own name as a ref (§11.1), which is why the ref is a
  * provider of itself here. */
 func DependencyCycle(nodes []DependNode) []string {
-	provider := map[string][]string{}
+	// TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+	// matched differently — a capability by its exact name, a ref through
+	// the canonical spelling (§4 rule 5) — and one map keyed by both can
+	// only do one of them. Keyed by both and looked up raw, as this was,
+	// a cycle spelled `a$`/`b$` found no providers and EVADED the
+	// load-time check that exists to catch a non-terminating reconcile.
+	bycap := map[string][]string{}
+	isref := map[string]bool{}
 	for _, n := range nodes {
-		for _, cap := range append(append([]string{}, n.Provides...), n.Ref) {
-			provider[cap] = append(provider[cap], n.Ref)
+		isref[n.Ref] = true
+		for _, cap := range n.Provides {
+			bycap[cap] = append(bycap[cap], n.Ref)
 		}
 	}
 
@@ -162,7 +170,17 @@ func DependencyCycle(nodes []DependNode) []string {
 			if !RestartCausing(r) {
 				continue
 			}
-			for _, p := range provider[r.Name] {
+			from := append([]string{}, bycap[r.Name]...)
+			// A node satisfies its own name AS A REF (§11.1),
+			// canonically — exactly what `providersof` does at runtime,
+			// so the load-time graph and the running one agree about
+			// what an edge is. `canon` hands back a name no ref could
+			// have unchanged, and no instance ref can equal one, so it
+			// is the tolerant test this needs.
+			if asref := canon(r.Name); isref[asref] && !hasstring(from, asref) {
+				from = append(from, asref)
+			}
+			for _, p := range from {
 				if p != n.Ref && !hasstring(out, p) {
 					out = append(out, p)
 				}

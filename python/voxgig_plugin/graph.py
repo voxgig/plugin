@@ -18,6 +18,7 @@ it, so `why` is part of the contract and the corpus pins its shape.
 
 from .capability import resolve_capability, matchvalue
 from .version import satisfiesq
+from .ref import try_ref
 
 
 def resolve_graph(nodes):
@@ -116,8 +117,18 @@ def firstunmet(node, byref, resolved):
 
 def candidates(byref, name):
     out = []
+    # A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned
+    # it here. Considering only declared capabilities made `resolve()`
+    # answer `absent` about a provider sitting right there and live.
+    asref = try_ref(name)
     for ref in sorted(byref):
         node = byref[ref]
+        # The ref match WINS OUTRIGHT for that node, as at runtime: one
+        # candidate, not two, for a node both named `b` and providing `b`.
+        if ref == asref:
+            out.append({'ref': node['ref'], 'pos': node.get('pos') or 0,
+                        'provides': {'name': name}})
+            continue
         for prov in node.get('provides') or []:
             if prov.get('name') == name:
                 out.append({'ref': node['ref'], 'pos': node.get('pos') or 0,

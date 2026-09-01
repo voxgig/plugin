@@ -23,7 +23,8 @@
   reluctant vs greedy and it is a knob every author must understand to
   read anyone else's component; we take always-reluctant. Three axes were
   more than the model can carry across twenty ports."
-  (:require [voxgig.plugin.types :as t]))
+  (:require [voxgig.plugin.types :as t]
+            [voxgig.plugin.ref :as r]))
 
 (defn norm-require
   "A bare string is shorthand for `{name}`."
@@ -94,20 +95,39 @@
   [req]
   (or (gates-activation? req) (restarts-on-loss? req)))
 
+;; TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are matched
+;; differently - a capability by its exact name, a ref through the
+;; canonical spelling (section 4 rule 5) - and one map keyed by both can
+;; only do one of them. Keyed by both and looked up raw, as this was, a
+;; cycle spelled `a$`/`b$` found no providers and EVADED the load-time
+;; check that exists to catch a non-terminating reconcile.
 (defn- providers-of [nodes]
   (reduce (fn [acc n]
-            (reduce #(update %1 %2 (fnil conj []) (:ref n)) acc (conj (vec (:provides n)) (:ref n))))
+            (reduce #(update %1 %2 (fnil conj []) (:ref n)) acc (vec (:provides n))))
           {}
           nodes))
 
 (defn- edges-of [nodes]
-  (let [provider (providers-of nodes)]
+  (let [bycap (providers-of nodes)
+        isref (set (map :ref nodes))]
     (into {}
           (for [n nodes]
             [(:ref n)
              (vec (sort (distinct (for [req (:requires n)
                                         :when (restart-causing? req)
-                                        p (or (provider (t/get req "name")) [])
+                                        ;; A node satisfies its own name AS
+                                        ;; A REF (section 11.1),
+                                        ;; canonically - exactly what
+                                        ;; `providers-of` does at runtime.
+                                        ;; `canon` hands back a name no ref
+                                        ;; could have unchanged, and no
+                                        ;; instance ref can equal one.
+                                        p (let [nm (t/get req "name")
+                                                from (or (bycap nm) [])
+                                                asref (r/canon nm)]
+                                            (if (isref asref)
+                                              (conj (vec from) asref)
+                                              from))
                                         :when (not= p (:ref n))]
                                     p))))]))))
 

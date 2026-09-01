@@ -143,16 +143,24 @@ namespace Voxgig.Plugin
         /// </summary>
         public static List<string> DependencyCycle(List<Node> nodes)
         {
-            var provider = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+            // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs
+            // are matched differently - a capability by its exact name, a
+            // ref through the canonical spelling (§4 rule 5) - and one map
+            // keyed by both can only do one of them. Keyed by both and
+            // looked up raw, as this was, a cycle spelled `a$`/`b$` found
+            // no providers and EVADED the load-time check that exists to
+            // catch a non-terminating reconcile.
+            var bycap = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+            var isref = new HashSet<string>(StringComparer.Ordinal);
             foreach (var n in nodes)
             {
-                var caps = new List<string>(n.Provides) { n.Ref };
-                foreach (var cap in caps)
+                isref.Add(n.Ref);
+                foreach (var cap in n.Provides)
                 {
-                    if (!provider.TryGetValue(cap, out var list))
+                    if (!bycap.TryGetValue(cap, out var list))
                     {
                         list = new List<string>();
-                        provider[cap] = list;
+                        bycap[cap] = list;
                     }
                     list.Add(n.Ref);
                 }
@@ -168,11 +176,23 @@ namespace Voxgig.Plugin
                     {
                         continue;
                     }
-                    if (!provider.TryGetValue(Types.Str(Types.Get(req, "name")) ?? "", out var list))
+                    var reqname = Types.Str(Types.Get(req, "name")) ?? "";
+                    var from = new List<string>();
+                    if (bycap.TryGetValue(reqname, out var list))
                     {
-                        continue;
+                        from.AddRange(list);
                     }
-                    foreach (var p in list)
+                    // A node satisfies its own name AS A REF (§11.1),
+                    // canonically - exactly what `providersof` does at
+                    // runtime. `Canon` hands back a name no ref could have
+                    // unchanged, and no instance ref can equal one, so it
+                    // is the tolerant test.
+                    var asref = Refs.Canon(reqname);
+                    if (isref.Contains(asref) && !from.Contains(asref))
+                    {
+                        from.Add(asref);
+                    }
+                    foreach (var p in from)
                     {
                         if (p != n.Ref && !out_.Contains(p))
                         {

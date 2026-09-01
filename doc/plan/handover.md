@@ -938,7 +938,7 @@ pins that the selection does not survive the consumer's own restart.
 P5's fourteen tier-3 ports are complete: `php`, `perl`, `rust`, `java`,
 `lua`, `csharp`, `elixir`, `clojure`, `dart`, `kotlin`, `swift` and
 `scala` joined `javascript` and `ruby`, and **all seventeen
-implementations pass all 561 entries**. Each port's own `AGENTS.md`
+implementations pass all 572 entries**. Each port's own `AGENTS.md`
 carries its language-specific traps; this section carries only what is
 the CORPUS's business rather than a port's.
 
@@ -1053,6 +1053,58 @@ without `canon`" named one mutation; the branch that mutation lived in
 was itself unreached, and the rule it implemented was not in the design
 at all. Before writing the entry that kills the named mutant, delete
 the whole construct and see what else survives.
+
+### The gap-2 close was premature, and review caught it
+
+Codex reviewed the PR that closed gaps 2 and 3 and said the second one
+was not closed. It was right, for a reason bigger than the finding —
+and the lesson is the most reusable thing in this section.
+
+**A rule is implemented once per place that asks the question, not once
+per codebase.** §11.1's "a ref satisfies a requirement" is read in
+THREE places: runtime `providersof`, load-time `dependencycycle`, and
+whole-graph `resolve`. Only the first had it. Pinning the runtime half
+and declaring the rule closed left two implementations of the same
+sentence disagreeing with it, and the corpus entry that proved the
+runtime half said nothing about either.
+
+Four defects came out of chasing it, and none of them is exotic:
+
+- **`providersof` canonicalized EVERY requirement name.** §4's grammar
+  is on plugin *names*; the design puts none on capability names, so
+  `2fa` and `my cap` are legal capabilities that no ref could be
+  called — and `canonref` RAISES on those. A legal document killed the
+  host at its first such requirement. **Nine ports had independently
+  worked around it** with a `try/except` or a tolerant `canon`, so the
+  CANONICAL was the outlier; the corpus could not see it because every
+  capability name in it happened to be a well-formed ref. A workaround
+  that reads as defensive rather than as the rule is how this stays
+  invisible: it fixes one call site and teaches the next reader nothing.
+- **`dependencycycle` indexed by canonical ref and looked up raw.** The
+  same cycle spelled `dep$`/`other$` produced no edges and evaded the
+  load-time check outright — a guarantee about non-terminating
+  reconciles that a spelling could switch off.
+- **`graph.candidates` never considered node refs at all**, so
+  `resolve()` reported `absent` about a provider the runtime binds. In
+  the canonical spelling, too: this was not a canonicalization bug but
+  a rule that had never been implemented there.
+- **The design text overstated ref loss**, saying it always sends the
+  consumer to `pending`. It follows the ordinary cardinality and policy
+  rules (§11.3) like any requirement, so mandatory-`dynamic` stays live
+  and optional never gated. A sentence that is true of the default and
+  stated as universal is a contract two ports can implement
+  differently while both reading it carefully.
+
+Eleven entries pin the lot, across `depend/byref`, `depend/cycle` and
+`graph/resolve`/`graph/blocked`; each targeted mutant fails its group
+and no other. The canonical gained a tolerant `tryref`; the ports use
+whatever tolerant spelling they already had.
+
+**What to take from it.** When a rule is stated in one place and read in
+several, grep for the other readers before calling it pinned. And when a
+port has a workaround the canonical lacks, that asymmetry is a finding,
+not a style difference — nine of them had one here, and it went
+unremarked through P4 and P5.
 
 ### One gap that is a SCALE gap rather than a coverage gap
 

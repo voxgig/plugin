@@ -5,7 +5,7 @@ Read this before changing anything. The design is
 below (§n) are to it.
 
 **Status: P5 tier-3 complete, fourteen of fourteen.** All **19 corpus
-sections** exist — 561 entries — with the driver contract in `DOCS.md`
+sections** exist — 572 entries — with the driver contract in `DOCS.md`
 §4. **Seventeen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
 `dart/`, `kotlin/`, `swift/` and `scala/`, and `make check` is the whole gate. What that means for you is in "Where to start" at the
@@ -227,7 +227,7 @@ pair, and all seventeen implementations pass all 19 corpus sections.
 **Next is P6's six tier-4 ports. All three corpus gaps §18 of the
 handover records are now CLOSED** — gap 1 by `declare/shape` and
 `declare/register`, gap 2 by `depend/byref`, gap 3 by `nest/open`. The
-corpus is 561 entries and every one of them is mutation-checked against
+corpus is 572 entries and every one of them is mutation-checked against
 the behaviour it names.
 
 **Gap 1 was the expensive one, and §18's "cheap" was wrong about it.** Nothing carried a

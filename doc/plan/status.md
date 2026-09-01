@@ -16,7 +16,7 @@ a wrong status file is worse than none.**
 **P5's fourteen tier-3 ports are complete.** Twelve landed in this
 session — `php`, `perl`, `rust`, `java`, `lua`, `csharp`, `elixir`,
 `clojure`, `dart`, `kotlin`, `swift`, `scala` — joining `javascript` and
-`ruby`. **Seventeen implementations now pass all 561 corpus entries**, and
+`ruby`. **Seventeen implementations now pass all 572 corpus entries**, and
 `make check` runs every one of them.
 
 They found **nothing further wrong with the canonical**, which is the

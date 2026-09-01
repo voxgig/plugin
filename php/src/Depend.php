@@ -151,13 +151,21 @@ function restartcausing(array $req): bool
  */
 function dependencycycle(array $nodes): ?array
 {
-    $provider = [];
+    // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    // matched differently — a capability by its exact name, a ref through
+    // the canonical spelling (§4 rule 5) — and one map keyed by both can
+    // only do one of them. Keyed by both and looked up raw, as this was,
+    // a cycle spelled `a$`/`b$` found no providers and EVADED the
+    // load-time check that exists to catch a non-terminating reconcile.
+    $bycap = [];
+    $isref = [];
     foreach ($nodes as $n) {
-        foreach (array_merge($n['provides'], [$n['ref']]) as $cap) {
-            if (!array_key_exists($cap, $provider)) {
-                $provider[$cap] = [];
+        $isref[$n['ref']] = true;
+        foreach ($n['provides'] as $cap) {
+            if (!array_key_exists($cap, $bycap)) {
+                $bycap[$cap] = [];
             }
-            $provider[$cap][] = $n['ref'];
+            $bycap[$cap][] = $n['ref'];
         }
     }
 
@@ -168,7 +176,16 @@ function dependencycycle(array $nodes): ?array
             if (!restartcausing($req)) {
                 continue;
             }
-            foreach ($provider[$req['name']] ?? [] as $p) {
+            $from = $bycap[$req['name']] ?? [];
+            // A node satisfies its own name AS A REF (§11.1),
+            // canonically — exactly what `providersof` does at runtime.
+            // `canon` hands back a name no ref could have unchanged, and
+            // no instance ref can equal one, so it is the tolerant test.
+            $asref = canon($req['name']);
+            if (($isref[$asref] ?? false) && !in_array($asref, $from, true)) {
+                $from[] = $asref;
+            }
+            foreach ($from as $p) {
                 if ($p !== $n['ref'] && !in_array($p, $out, true)) {
                     $out[] = $p;
                 }

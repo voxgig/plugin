@@ -18,14 +18,30 @@
   shape."
   (:require [voxgig.plugin.types :as t]
             [voxgig.plugin.capability :as cap]
+            [voxgig.plugin.ref :as r]
             [voxgig.plugin.version :as v]))
 
+;; A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned it
+;; here. Considering only declared capabilities made `resolve` answer
+;; `absent` about a provider sitting right there and live - section 11.4's
+;; job is explaining the graph the runtime reconciles, and it was
+;; explaining a different one. The ref match WINS OUTRIGHT for that node,
+;; as at runtime: one candidate, not two, for a node both named `b` and
+;; providing `b`.
 (defn graph-candidates [byref nm]
-  (vec (for [ref (t/sorted-keys byref)
-             :let [node (byref ref)]
-             prov (or (t/get node "provides") [])
-             :when (= nm (t/get prov "name"))]
-         {"ref" (t/get node "ref") "pos" (or (t/get node "pos") 0) "provides" prov})))
+  (let [asref (r/canon nm)]
+    (vec (mapcat (fn [ref]
+                   (let [node (byref ref)]
+                     (if (= ref asref)
+                       [{"ref" (t/get node "ref")
+                         "pos" (or (t/get node "pos") 0)
+                         "provides" {"name" nm}}]
+                       (for [prov (or (t/get node "provides") [])
+                             :when (= nm (t/get prov "name"))]
+                         {"ref" (t/get node "ref")
+                          "pos" (or (t/get node "pos") 0)
+                          "provides" prov}))))
+                 (t/sorted-keys byref)))))
 
 (defn- why [node nm reason]
   {"ref" (t/get node "ref") "unmet" nm "why" reason})

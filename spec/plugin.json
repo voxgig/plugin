@@ -4971,6 +4971,165 @@
                 }
               }
             }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "policy": "dynamic",
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "id": "depend/byref#lost-dynamic",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "optional": [
+                    "dep$p"
+                  ],
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
+            "id": "depend/byref#lost-optional",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "loaded"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "2fa"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "2fa"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "doc": true,
+            "id": "depend/byref#capability-not-a-ref",
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "my cap"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "my cap"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "live",
+                  "dep$p": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "2fa"
+                  ]
+                },
+                "ref": "dep$c"
+              }
+            ],
+            "match": {
+              "out": {
+                "status": {
+                  "dep$c": "pending"
+                }
+              }
+            }
           }
         ]
       },
@@ -5307,6 +5466,59 @@
             ],
             "err": "plugin_dependency_cycle",
             "id": "depend/cycle#three-node"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$b"
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$a"
+                  ]
+                },
+                "ref": "dep$b"
+              }
+            ],
+            "err": "plugin_dependency_cycle",
+            "id": "depend/cycle#through-refs"
+          },
+          {
+            "cmd": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "other$"
+                  ]
+                },
+                "ref": "dep"
+              },
+              {
+                "definition": "other",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "dep$"
+                  ]
+                },
+                "ref": "other"
+              }
+            ],
+            "doc": true,
+            "err": "plugin_dependency_cycle",
+            "id": "depend/cycle#through-refs-noncanonical"
           },
           {
             "cmd": [
@@ -7751,6 +7963,32 @@
             }
           },
           {
+            "id": "graph/blocked#byref-absent",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "nope$1"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [
+                {
+                  "ref": "c",
+                  "unmet": "nope$1",
+                  "why": {
+                    "kind": "absent"
+                  }
+                }
+              ],
+              "resolved": []
+            }
+          },
+          {
             "id": "graph/blocked#version",
             "in": [
               {
@@ -8131,6 +8369,86 @@
                 "a",
                 "b",
                 "c"
+              ]
+            }
+          },
+          {
+            "id": "graph/resolve#byref",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "p"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "c",
+                "p"
+              ]
+            }
+          },
+          {
+            "id": "graph/resolve#byref-canonical",
+            "in": [
+              {
+                "pos": 0,
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "p$"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "c",
+                "p"
+              ]
+            }
+          },
+          {
+            "id": "graph/resolve#capability-not-a-ref",
+            "in": [
+              {
+                "pos": 0,
+                "provides": [
+                  {
+                    "name": "2fa"
+                  }
+                ],
+                "ref": "p"
+              },
+              {
+                "pos": 1,
+                "ref": "c",
+                "requires": [
+                  {
+                    "name": "2fa"
+                  }
+                ]
+              }
+            ],
+            "out": {
+              "blocked": [],
+              "resolved": [
+                "c",
+                "p"
               ]
             }
           }

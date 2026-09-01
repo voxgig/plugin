@@ -18,6 +18,7 @@
 library;
 
 import 'types.dart' as t;
+import 'ref.dart' as r;
 import 'capability.dart' as cap;
 import 'version.dart' as v;
 
@@ -125,9 +126,26 @@ Map<String, dynamic> _why(dynamic node, String name, dynamic reason) =>
 
 List<dynamic> graphCandidates(Map<String, dynamic> byref, String name) {
   final out = <dynamic>[];
+  // A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned it
+  // here. Considering only declared capabilities made `resolve` answer
+  // `absent` about a provider sitting right there and live - section
+  // 11.4's job is explaining the graph the runtime reconciles, and it was
+  // explaining a different one.
+  final asref = r.canon(name);
   for (final ref in t.sortedKeys(byref)) {
     final node = byref[ref];
+    // The ref match WINS OUTRIGHT for that node, as at runtime: one
+    // candidate, not two, for a node both named `b` and providing `b`.
+    if (ref == asref) {
+      out.add({
+        'ref': t.get(node, 'ref'),
+        'pos': t.get(node, 'pos') ?? 0,
+        'provides': {'name': name}
+      });
+      continue;
+    }
     for (final prov in (t.get(node, 'provides') ?? []) as List) {
+      if (t.get(prov, 'name') != name) continue;
       out.add({
         'ref': t.get(node, 'ref'),
         'pos': t.get(node, 'pos') ?? 0,
@@ -135,7 +153,5 @@ List<dynamic> graphCandidates(Map<String, dynamic> byref, String name) {
       });
     }
   }
-  return out
-      .where((c) => t.get(t.get(c, 'provides'), 'name') == name)
-      .toList();
+  return out;
 }

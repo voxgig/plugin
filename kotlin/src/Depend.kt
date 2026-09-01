@@ -128,10 +128,19 @@ object Depend {
      * a provider of itself here.
      */
     fun dependencyCycle(nodes: List<GraphNode>): List<String>? {
-        val provider = HashMap<String, MutableList<String>>()
+        // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+        // matched differently - a capability by its exact name, a ref
+        // through the canonical spelling (section 4 rule 5) - and one map
+        // keyed by both can only do one of them. Keyed by both and looked
+        // up raw, as this was, a cycle spelled `a$`/`b$` found no
+        // providers and EVADED the load-time check that exists to catch a
+        // non-terminating reconcile.
+        val bycap = HashMap<String, MutableList<String>>()
+        val isref = HashSet<String>()
         for (n in nodes) {
-            for (cap in n.provides + n.ref) {
-                provider.getOrPut(cap) { ArrayList() }.add(n.ref)
+            isref.add(n.ref)
+            for (cap in n.provides) {
+                bycap.getOrPut(cap) { ArrayList() }.add(n.ref)
             }
         }
 
@@ -140,7 +149,15 @@ object Depend {
             val out = ArrayList<String>()
             for (req in n.requires) {
                 if (!restartCausing(req)) continue
-                for (p in provider[Types.get(req, "name")] ?: emptyList<String>()) {
+                val reqname = Types.get(req, "name")
+                val from = ArrayList<String>(bycap[reqname] ?: emptyList<String>())
+                // A node satisfies its own name AS A REF (section 11.1),
+                // canonically - exactly what `providersOf` does at
+                // runtime. `canon` hands back a name no ref could have
+                // unchanged, and no instance ref can equal one.
+                val asref = Refs.canon(reqname)
+                if (isref.contains(asref) && !from.contains(asref)) from.add(asref)
+                for (p in from) {
                     if (p != n.ref && !out.contains(p)) out.add(p)
                 }
             }

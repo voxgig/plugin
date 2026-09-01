@@ -25,6 +25,7 @@ model can carry across twenty ports.
 """
 
 from .types import fail
+from .ref import try_ref
 
 
 def normrequire(raw):
@@ -122,10 +123,19 @@ def dependencycycle(nodes):
     satisfies its own name as a ref (section 11.1), which is why the ref
     is a provider of itself here.
     """
-    provider = {}
+    # TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    # matched differently - a capability by its exact name, a ref through
+    # the canonical spelling (section 4 rule 5) - and one map keyed by
+    # both can only do one of them. Keyed by both and looked up raw, as
+    # this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    # the load-time check that exists to catch a non-terminating
+    # reconcile.
+    bycap = {}
+    isref = {}
     for node in nodes:
-        for cap in list(node['provides']) + [node['ref']]:
-            provider.setdefault(cap, []).append(node['ref'])
+        isref[node['ref']] = True
+        for cap in node['provides']:
+            bycap.setdefault(cap, []).append(node['ref'])
 
     edges = {}
     for node in nodes:
@@ -133,7 +143,13 @@ def dependencycycle(nodes):
         for req in node['requires']:
             if not restartcausing(req):
                 continue
-            for p in provider.get(req['name'], []):
+            frm = list(bycap.get(req['name'], []))
+            # A node satisfies its own name AS A REF (section 11.1),
+            # canonically - exactly what `_providersof` does at runtime.
+            asref = try_ref(req['name'])
+            if asref is not None and isref.get(asref) and asref not in frm:
+                frm.append(asref)
+            for p in frm:
                 if p != node['ref'] and p not in out:
                     out.append(p)
         edges[node['ref']] = sorted(out)

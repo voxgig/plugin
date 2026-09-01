@@ -83,6 +83,12 @@ pass without the port having to know they exist.
 
 ## What the corpus cannot see here
 
+> **Three of these are no longer invisible.** Shape validation at catalog
+> registration, `providersof` comparing refs uncanonicalized, and a nested
+> host counted as an open resource are now pinned by `declare/shape`,
+> `declare/register`, `depend/byref`, `depend/cycle`, `graph/resolve` and
+> `nest/open`. Anything else below still stands.
+
 Mutation testing: 20 mutations, 15 caught. Of the five survivors, one is a
 non-mutation (deep-merging two lists immediately falls back to replace),
 one is the empty-map-versus-empty-list evidence above, and three are the

@@ -25,6 +25,7 @@
 library;
 
 import 'types.dart' as t;
+import 'ref.dart' as r;
 
 /// One node of the requirement graph. An internal shape, never a corpus
 /// value.
@@ -111,10 +112,18 @@ bool restartCausing(dynamic req) =>
 /// its own name as a ref (section 11.1), which is why the ref is a provider
 /// of itself here.
 List<String>? dependencyCycle(List<GraphNode> nodes) {
-  final provider = <String, List<String>>{};
+  // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are matched
+  // differently - a capability by its exact name, a ref through the
+  // canonical spelling (section 4 rule 5) - and one map keyed by both can
+  // only do one of them. Keyed by both and looked up raw, as this was, a
+  // cycle spelled `a$`/`b$` found no providers and EVADED the load-time
+  // check that exists to catch a non-terminating reconcile.
+  final bycap = <String, List<String>>{};
+  final isref = <String>{};
   for (final n in nodes) {
-    for (final cap in [...n.provides, n.ref]) {
-      provider.putIfAbsent(cap, () => []).add(n.ref);
+    isref.add(n.ref);
+    for (final cap in n.provides) {
+      bycap.putIfAbsent(cap, () => []).add(n.ref);
     }
   }
 
@@ -123,7 +132,15 @@ List<String>? dependencyCycle(List<GraphNode> nodes) {
     final out = <String>[];
     for (final req in n.requires) {
       if (!restartCausing(req)) continue;
-      for (final p in provider[t.get(req, 'name')] ?? const <String>[]) {
+      final reqname = t.get(req, 'name');
+      final from = <String>[...(bycap[reqname] ?? const <String>[])];
+      // A node satisfies its own name AS A REF (section 11.1),
+      // canonically - exactly what `providersOf` does at runtime. `canon`
+      // hands back a name no ref could have unchanged, and no instance ref
+      // can equal one, so it is the tolerant test.
+      final asref = r.canon(reqname);
+      if (isref.contains(asref) && !from.contains(asref)) from.add(asref);
+      for (final p in from) {
         if (p != n.ref && !out.contains(p)) out.add(p);
       }
     }

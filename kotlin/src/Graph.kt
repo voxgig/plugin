@@ -141,8 +141,27 @@ object Graph {
 
     fun graphCandidates(byref: Map<String, Any?>, name: String): List<Any?> {
         val out = ArrayList<Any?>()
+        // A NODE SATISFIES ITS OWN REF (section 11.1), and the graph
+        // learned it here. Considering only declared capabilities made
+        // `resolve` answer `absent` about a provider sitting right there
+        // and live - section 11.4's job is explaining the graph the
+        // runtime reconciles, and it was explaining a different one.
+        val asref = Refs.canon(name)
         for (ref in Types.keys(byref)) {
             val node = byref[ref]
+            // The ref match WINS OUTRIGHT for that node, as at runtime:
+            // one candidate, not two, for a node both named `b` and
+            // providing `b`.
+            if (ref == asref) {
+                val rc = TreeMap<String, Any?>()
+                rc["ref"] = Types.get(node, "ref")
+                rc["pos"] = Types.get(node, "pos") ?: 0.0
+                val prov0 = TreeMap<String, Any?>()
+                prov0["name"] = name
+                rc["provides"] = prov0
+                out.add(rc)
+                continue
+            }
             for (prov in (Types.get(node, "provides") ?: emptyList<Any?>()) as List<*>) {
                 if (Types.get(prov, "name") != name) continue
                 val c = TreeMap<String, Any?>()

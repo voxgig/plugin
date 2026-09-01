@@ -197,9 +197,29 @@ public final class Graph {
 
   private static List<Object> candidates(Map<String, Object> byref, Object name) {
     List<Object> out = new ArrayList<>();
+    // A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned
+    // it here. Considering only declared capabilities made `resolve`
+    // answer `absent` about a provider sitting right there and live -
+    // section 11.4's job is explaining the graph the runtime reconciles,
+    // and it was explaining a different one.
+    String nm = str(name);
+    String asref = Refs.canon(null == nm ? "" : nm);
     // The map is sorted, so the walk is - which is the whole reason it is
     // a TreeMap.
     for (Object node : byref.values()) {
+      // The ref match WINS OUTRIGHT for that node, as at runtime: one
+      // candidate, not two, for a node both named `b` and providing `b`.
+      if (asref.equals(str(get(node, "ref")))) {
+        Map<String, Object> refcand = newmap();
+        refcand.put("ref", get(node, "ref"));
+        Double refpos = num(get(node, "pos"));
+        refcand.put("pos", null == refpos ? 0.0 : refpos);
+        Map<String, Object> prov = newmap();
+        prov.put("name", name);
+        refcand.put("provides", prov);
+        out.add(refcand);
+        continue;
+      }
       List<Object> provides = list(get(node, "provides"));
       if (null == provides) {
         continue;

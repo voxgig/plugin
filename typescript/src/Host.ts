@@ -15,7 +15,7 @@
  * fourteen of them will not have JavaScript's event loop. */
 
 import { Status, Instance, OrderBlock, fail } from './Types'
-import { canonref, parseref, formatref } from './Ref'
+import { canonref, tryref, parseref, formatref } from './Ref'
 import { Catalog, Definition, makecatalog } from './Catalog'
 import { resolveorder, Binding, Pin } from './Order'
 import { Spec, Bound, Mode, emit as fanout, compose, provider as pickone } from './Point'
@@ -673,11 +673,19 @@ export function makehost(options?: HostOptions) {
 
   function providersof(req: Required): Candidate[] {
     const cands: Candidate[] = []
+    // ASK WHETHER THE NAME IS A REF, do not assume it. A requirement
+    // name is a CAPABILITY name first (§11.1) and capability names are
+    // free-form, so `2fa` and `my cap` are legal ones that no ref could
+    // be called — and `canonref` RAISES on those, which made a perfectly
+    // legal document kill the host right here. `tryref` answers
+    // `undefined` instead, and still canonicalizes when it is a ref
+    // (§4 rule 5), which is what lets `dep$` find `dep`.
+    const asref = tryref(req.name)
     for (const ref of Object.keys(inst).sort()) {
       const t = inst[ref]
       if ('live' !== t.status) continue
       // A ref satisfies directly.
-      if (ref === canonref(req.name)) {
+      if (ref === asref) {
         cands.push({ ref, pos: t.pos, provides: { name: req.name } })
         continue
       }

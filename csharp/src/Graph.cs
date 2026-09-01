@@ -205,10 +205,30 @@ namespace Voxgig.Plugin
             SortedDictionary<string, object> byref, object name)
         {
             var out_ = new List<object>();
+            // A NODE SATISFIES ITS OWN REF (§11.1), and the graph learned
+            // it here. Considering only declared capabilities made
+            // `Resolve` answer `absent` about a provider sitting right
+            // there and live - §11.4's job is explaining the graph the
+            // runtime reconciles, and it was explaining a different one.
+            var asref = Refs.Canon(Types.Str(name) ?? "");
             // The map is sorted, so the walk is - which is the whole
             // reason it is a SortedDictionary.
             foreach (var node in byref.Values)
             {
+                // The ref match WINS OUTRIGHT for that node, as at
+                // runtime: one candidate, not two, for a node both named
+                // `b` and providing `b`.
+                if (asref == Types.Str(Types.Get(node, "ref")))
+                {
+                    var refcand = Types.NewMap();
+                    refcand["ref"] = Types.Get(node, "ref");
+                    refcand["pos"] = Types.Num(Types.Get(node, "pos")) ?? 0.0;
+                    var prov0 = Types.NewMap();
+                    prov0["name"] = name;
+                    refcand["provides"] = prov0;
+                    out_.Add(refcand);
+                    continue;
+                }
                 var provides = Types.List(Types.Get(node, "provides"));
                 if (null == provides)
                 {

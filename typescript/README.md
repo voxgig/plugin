@@ -45,7 +45,7 @@ cost of removing one at P4 is fourteen ports rewriting around it.
 
 ## Status
 
-**All 561 corpus entries pass, across all 19 sections** — `apply`,
+**All 572 corpus entries pass, across all 19 sections** — `apply`,
 `capability`, `config`, `declare`, `depend`, `env`, `error`, `export`,
 `graph`, `lifecycle`, `nest`, `order`, `point`, `ref`, `resolve`,
 `resource`, `state`, `trace` and `version`.

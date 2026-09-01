@@ -19,6 +19,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::capability::{matchvalue, resolve_capability};
+use crate::refs::canon;
 use crate::value::Value;
 use crate::version::satisfiesq;
 
@@ -181,9 +182,30 @@ fn unmet(node: &Value, name: &Value, why: Value) -> Value {
 
 fn graph_candidates(byref: &BTreeMap<String, Value>, name: &Value) -> Vec<Value> {
     let mut out = Vec::new();
+    // A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned
+    // it here. Considering only declared capabilities made `resolve`
+    // answer `absent` about a provider sitting right there and live -
+    // section 11.4's job is explaining the graph the runtime reconciles,
+    // and it was explaining a different one.
+    let asref = canon(name.as_str().unwrap_or(""));
     // The map is sorted, so the walk is - which is the whole reason it is
     // a BTreeMap.
     for node in byref.values() {
+        // The ref match WINS OUTRIGHT for that node, as at runtime: one
+        // candidate, not two, for a node both named `b` and providing `b`.
+        if node.get("ref").as_str().unwrap_or("") == asref {
+            let mut cand = Value::map();
+            cand.set("ref", node.get("ref"));
+            cand.set(
+                "pos",
+                if node.has("pos") { node.get("pos") } else { Value::Num(0.0) },
+            );
+            let mut prov = Value::map();
+            prov.set("name", name.clone());
+            cand.set("provides", prov);
+            out.push(cand);
+            continue;
+        }
         for prov in node.get("provides").as_list().cloned().unwrap_or_default() {
             if !prov.get("name").same(name) {
                 continue;

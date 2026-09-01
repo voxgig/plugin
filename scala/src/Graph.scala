@@ -115,15 +115,32 @@ object Graph {
   private def why(node: Value, name: String, reason: Value): Value =
     Value.map("ref" -> node.at("ref"), "unmet" -> VStr(name), "why" -> reason)
 
-  def graphCandidates(byref: Map[String, Value], name: String): List[Value] =
+  // A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned it
+  // here. Considering only declared capabilities made `resolve` answer
+  // `absent` about a provider sitting right there and live - section
+  // 11.4's job is explaining the graph the runtime reconciles, and it was
+  // explaining a different one. The ref match WINS OUTRIGHT for that node,
+  // as at runtime: one candidate, not two, for a node both named `b` and
+  // providing `b`.
+  def graphCandidates(byref: Map[String, Value], name: String): List[Value] = {
+    val asref = Refs.canon(VStr(name))
     byref.keys.toList.sorted.flatMap { ref =>
       val node = byref(ref)
-      node.at("provides").items
-        .filter(_.at("name").asString.contains(name))
-        .map(prov => Value.map(
+      if (ref == asref) {
+        List(Value.map(
           "ref" -> node.at("ref"),
           "pos" -> node.get("pos").getOrElse(VNum(0)),
-          "provides" -> prov
+          "provides" -> Value.map("name" -> VStr(name))
         ))
+      } else {
+        node.at("provides").items
+          .filter(_.at("name").asString.contains(name))
+          .map(prov => Value.map(
+            "ref" -> node.at("ref"),
+            "pos" -> node.get("pos").getOrElse(VNum(0)),
+            "provides" -> prov
+          ))
+      }
     }
+  }
 }

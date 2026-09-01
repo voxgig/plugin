@@ -24,6 +24,7 @@
 -- more than the model can carry across twenty ports.
 
 local T = require 'plugin.types'
+local R = require 'plugin.ref'
 
 local M = {}
 
@@ -123,14 +124,19 @@ end
 --
 -- `nodes` is a plain lua array of {ref=, provides=, requires=} records.
 function M.dependencycycle(nodes)
-  local provider = {}
+  -- TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+  -- matched differently - a capability by its exact name, a ref through
+  -- the canonical spelling (section 4 rule 5) - and one map keyed by both
+  -- can only do one of them. Keyed by both and looked up raw, as this
+  -- was, a cycle spelled `a$`/`b$` found no providers and EVADED the
+  -- load-time check that exists to catch a non-terminating reconcile.
+  local bycap = {}
+  local isref = {}
   for _, n in ipairs(nodes) do
-    local caps = {}
-    for _, c in ipairs(n.provides) do caps[#caps + 1] = c end
-    caps[#caps + 1] = n.ref
-    for _, cap in ipairs(caps) do
-      if nil == provider[cap] then provider[cap] = {} end
-      table.insert(provider[cap], n.ref)
+    isref[n.ref] = true
+    for _, cap in ipairs(n.provides) do
+      if nil == bycap[cap] then bycap[cap] = {} end
+      table.insert(bycap[cap], n.ref)
     end
   end
 
@@ -141,7 +147,20 @@ function M.dependencycycle(nodes)
     local seen = {}
     for _, req in ipairs(n.requires) do
       if M.restartcausing(req) then
-        for _, p in ipairs(provider[T.getv(req, 'name')] or {}) do
+        local reqname = T.getv(req, 'name')
+        local from = {}
+        for _, p in ipairs(bycap[reqname] or {}) do from[#from + 1] = p end
+        -- A node satisfies its own name AS A REF (section 11.1),
+        -- canonically - exactly what `providersof` does at runtime.
+        -- `canon` hands back a name no ref could have unchanged, and no
+        -- instance ref can equal one, so it is the tolerant test.
+        local asref = R.canon(reqname)
+        if isref[asref] then
+          local dup = false
+          for _, p in ipairs(from) do if p == asref then dup = true end end
+          if not dup then from[#from + 1] = asref end
+        end
+        for _, p in ipairs(from) do
           if p ~= n.ref and not seen[p] then
             seen[p] = true
             out[#out + 1] = p

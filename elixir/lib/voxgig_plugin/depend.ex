@@ -15,6 +15,7 @@ defmodule Voxgig.Plugin.Depend do
   instance holding a dead reference.
   """
 
+  alias Voxgig.Plugin.Ref
   alias Voxgig.Plugin.Types
 
   @doc "A bare string is shorthand for `{name}`."
@@ -95,19 +96,37 @@ defmodule Voxgig.Plugin.Depend do
   `nodes` is a list of `%{ref:, provides:, requires:}`.
   """
   def dependencycycle(nodes) do
-    provider =
+    # TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    # matched differently - a capability by its exact name, a ref through
+    # the canonical spelling (section 4 rule 5) - and one map keyed by
+    # both can only do one of them. Keyed by both and looked up raw, as
+    # this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    # the load-time check that exists to catch a non-terminating
+    # reconcile.
+    bycap =
       Enum.reduce(nodes, %{}, fn n, acc ->
-        Enum.reduce(n.provides ++ [n.ref], acc, fn cap, a ->
+        Enum.reduce(n.provides, acc, fn cap, a ->
           Map.update(a, cap, [n.ref], &(&1 ++ [n.ref]))
         end)
       end)
+
+    isref = MapSet.new(nodes, & &1.ref)
 
     edges =
       Map.new(nodes, fn n ->
         outs =
           n.requires
           |> Enum.filter(&restartcausing/1)
-          |> Enum.flat_map(fn req -> Map.get(provider, Types.get(req, "name")) || [] end)
+          |> Enum.flat_map(fn req ->
+            reqname = Types.get(req, "name")
+            from = Map.get(bycap, reqname) || []
+            # A node satisfies its own name AS A REF (section 11.1),
+            # canonically - exactly what `providersof` does at runtime.
+            # `canon` hands back a name no ref could have unchanged, and
+            # no instance ref can equal one, so it is the tolerant test.
+            asref = Ref.canon(reqname)
+            if MapSet.member?(isref, asref), do: from ++ [asref], else: from
+          end)
           |> Enum.reject(&(&1 == n.ref))
           |> Enum.uniq()
           |> Enum.sort()

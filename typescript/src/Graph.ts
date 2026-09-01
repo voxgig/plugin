@@ -21,6 +21,7 @@ import {
   Provided, Required, Candidate, resolvecapability, matchvalue,
 } from './Capability'
 import { satisfies } from './Version'
+import { tryref } from './Ref'
 
 export type Node = {
   ref: string
@@ -148,8 +149,27 @@ function firstunmet(
 
 function candidates(byref: { [ref: string]: Node }, name: string): Candidate[] {
   const out: Candidate[] = []
+  // A NODE SATISFIES ITS OWN REF (§11.1), and this is where the graph
+  // learned it. Considering only declared capabilities made `resolve()`
+  // answer `absent` about a provider sitting right there and live —
+  // §11.4's whole job is explaining the graph the runtime reconciles,
+  // and it was explaining a different one. Canonical (§4 rule 5), and
+  // tolerant, because a capability name need not be a well-formed ref.
+  const asref = tryref(name)
   for (const ref of Object.keys(byref).sort()) {
     const n = byref[ref]
+    // Synthesized exactly as `providersof` synthesizes it, so the two
+    // answer the same question the same way — including that a bare ref
+    // carries no version, and so cannot satisfy a `range`.
+    // AND THE REF MATCH WINS OUTRIGHT for that node, as it does at
+    // runtime: `providersof` pushes the synthesized candidate and moves
+    // to the next instance. A node both named `b` and providing a
+    // capability `b` is ONE candidate, not two — without the skip the
+    // blocked-chain explanation named it twice.
+    if (ref === asref) {
+      out.push({ ref: n.ref, pos: n.pos, provides: { name } })
+      continue
+    }
     for (const p of n.provides || []) {
       if (p.name === name) out.push({ ref: n.ref, pos: n.pos, provides: p })
     }

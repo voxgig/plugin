@@ -66,6 +66,12 @@ anyway, for php, perl and lua.
 
 ## What the corpus cannot see here
 
+> **Three of these are no longer invisible.** Shape validation at catalog
+> registration, `providersof` comparing refs uncanonicalized, and a nested
+> host counted as an open resource are now pinned by `declare/shape`,
+> `declare/register`, `depend/byref`, `depend/cycle`, `graph/resolve` and
+> `nest/open`. Anything else below still stands.
+
 Mutation testing: 19 mutations, 16 caught. The three survivors are the
 **same three** php, perl and rust found independently — `order.band`
 accepting a non-integer, `providersof` without `canon`, and `config_pick`

@@ -5,7 +5,7 @@
 
 export { makehost } from './Host'
 export { makecatalog } from './Catalog'
-export { parseref, formatref, checkname, checktag, canonref } from './Ref'
+export { parseref, formatref, checkname, checktag, canonref, tryref } from './Ref'
 export { normalizeconfig, resolveoptions, checkshape } from './Config'
 export { resolveorder } from './Order'
 export { resolvecandidates, resolvefrom } from './Resolve'
