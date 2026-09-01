@@ -26,11 +26,11 @@ programmatic API over the same normalized model.
 
 **P5 tier-3 complete — fourteen of fourteen.** The design is complete
 and agreed with its first host, the contract is complete (all 19 corpus
-sections, 539 entries), and there are **sixteen implementations**:
+sections, 539 entries), and there are **seventeen implementations**:
 `typescript/` the canonical, plus `go/`, `python/`, `javascript/`,
 `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`,
 `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. **All
-sixteen pass every section**, and none of them carries a runtime
+seventeen pass every section**, and none of them carries a runtime
 dependency: every one writes its own JSON parser and its own test
 runner, because §16 permits exactly one dependency and no port of it
 exists in those languages.
@@ -72,7 +72,7 @@ remedy is the usual one: an entry each, in the canonical first.
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
 | corpus | **539 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
-| ports | **sixteen, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. Next: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P6's six tier-4 ports. |
+| ports | **seventeen, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. Next: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P6's six tier-4 ports. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is

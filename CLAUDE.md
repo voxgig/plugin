@@ -20,7 +20,7 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 
 **Status: P5 tier-3 complete, fourteen of fourteen.** P0–P5's port
 work is done: the corpus is 539 entries across 19 sections, and
-**sixteen implementations pass every one of them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+**seventeen implementations pass every one of them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
 `dart/`, `kotlin/`, `swift/` and `scala/`.
 `AGENTS.md` §6 says what to pick up; the live per-item state is

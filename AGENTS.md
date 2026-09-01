@@ -6,7 +6,7 @@ below (§n) are to it.
 
 **Status: P5 tier-3 complete, fourteen of fourteen.** All **19 corpus
 sections** exist — 539 entries — with the driver contract in `DOCS.md`
-§4. **Sixteen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+§4. **Seventeen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
 `dart/`, `kotlin/`, `swift/` and `scala/`, and `make check` is the whole gate. What that means for you is in "Where to start" at the
 bottom, and the live per-item state is
@@ -210,14 +210,16 @@ wrong status file is worse than none.
 
 P0–P4 are done and **P5's fourteen tier-3 ports are complete**:
 `typescript/` is the canonical, `go/` and `python/` are the proving
-pair, and all sixteen implementations pass all 19 corpus sections.
+pair, and all seventeen implementations pass all 19 corpus sections.
 
-**Next is P6's six tier-4 ports, and the two corpus gaps §18 of the
+**Next is P6's six tier-4 ports, and the three corpus gaps §18 of the
 handover records.** The gaps first, because they are cheap and because
 every port added after them inherits the check: shape validation at
 catalog REGISTRATION (§10.1) is pinned by nothing — no corpus definition
-carries a `shape` at all — and `providersof` comparing refs
-uncanonicalized (§4 rule 5, §11.1) changes no answer any entry observes.
+carries a `shape` at all; `providersof` comparing refs uncanonicalized
+(§4 rule 5, §11.1) changes no answer any entry observes; and whether
+`nest` counts the inner host as an open resource (§6.5) is free, because
+no `nest` entry asserts `open` while an inner host is live.
 
 Every tier-3 toolchain is reachable, but not all of them are
 preinstalled: lua, csharp, elixir, clojure, kotlin and scala come from

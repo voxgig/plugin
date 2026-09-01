@@ -937,7 +937,7 @@ pins that the selection does not survive the consumer's own restart.
 
 P5's fourteen tier-3 ports are complete: `php`, `perl`, `rust`, `java`,
 `lua`, `csharp`, `elixir`, `clojure`, `dart`, `kotlin`, `swift` and
-`scala` joined `javascript` and `ruby`, and **all sixteen
+`scala` joined `javascript` and `ruby`, and **all seventeen
 implementations pass all 539 entries**. Each port's own `AGENTS.md`
 carries its language-specific traps; this section carries only what is
 the CORPUS's business rather than a port's.
