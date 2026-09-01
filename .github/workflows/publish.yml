@@ -1,0 +1,134 @@
+# Publish the canonical typescript port to npm as `@voxgig/plugin`.
+#
+# NO TOKEN. Authentication is npm TRUSTED PUBLISHING: the `id-token: write`
+# permission lets the job mint a short-lived OIDC token, npm verifies it
+# against the trusted publisher configured for the package, and nothing
+# long-lived is ever stored in the repository. A leaked secret cannot
+# publish this package because there is no secret.
+#
+# THE ONE-TIME BOOTSTRAP. npm cannot do a package's FIRST publish over
+# OIDC — a trusted publisher is configured on an existing package's
+# settings page, and a package that has never been published has no
+# settings page. (PyPI allows pre-registration; npm does not.) So the
+# first `@voxgig/plugin` release is published once by hand with a granular
+# access token, the trusted publisher is configured against this file, and
+# every release after that runs here. `typescript/AGENTS.md` records the
+# whole sequence.
+#
+# Action SHAs are pinned rather than floating on a tag, for the reason
+# ci.yml gives: a tag can move, and a supply-chain change to a CI action is
+# a change to everything it builds.
+
+name: publish
+
+on:
+  # `typescript-` prefixed, not a bare `v*`: this repository holds
+  # seventeen ports and only one of them is an npm package. The next
+  # ecosystem gets its own prefix rather than fighting over the tag space.
+  push:
+    tags: ['typescript-v*']
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Build, test and pack, but do not publish'
+        type: boolean
+        default: false
+
+# Never cancel a publish in flight; a half-run publish job is worse than a
+# queued one.
+concurrency:
+  group: publish-typescript
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish @voxgig/plugin to npm
+    # A GitHub-HOSTED runner, not self-hosted: provenance generation is
+    # only supported on hosted runners.
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # The whole point. Without this the OIDC token cannot be minted and
+      # the publish falls back to looking for a token that does not exist.
+      id-token: write
+
+    defaults:
+      run:
+        working-directory: typescript
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # DELIBERATELY NO `registry-url`. Setting it makes setup-node write an
+      # .npmrc carrying `_authToken=${NODE_AUTH_TOKEN}`; with no token in
+      # the environment that line resolves to an empty credential and npm
+      # can fail auth before it ever tries OIDC. The default registry is
+      # already registry.npmjs.org, so the option buys nothing here.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+
+      # Trusted publishing needs npm >= 11.5.1 and node >= 22.14.0. Node 24
+      # satisfies the second and ships a recent npm, but "ships a recent
+      # npm" is a moving target, so upgrade and then ASSERT — a silent
+      # downgrade would fail later with an auth error that says nothing
+      # about the version.
+      - name: npm >= 11.5.1
+        run: |
+          npm install -g npm@latest
+          node --version
+          npm --version
+          node -e '
+            const need = [11, 5, 1]
+            const raw = process.argv[1]
+            const have = raw.split("-")[0].split(".").map(Number)
+            for (let i = 0; i < 3; i++) {
+              if (have[i] > need[i]) process.exit(0)
+              if (have[i] < need[i]) {
+                console.error("npm " + raw + " is older than 11.5.1, which trusted publishing requires")
+                process.exit(1)
+              }
+            }
+          ' "$(npm --version)"
+
+      - name: install
+        run: npm ci
+
+      # The corpus gates the release. `npm test` builds and then runs all
+      # 539 entries; a port that cannot pass its own contract does not ship.
+      - name: test
+        run: npm test
+
+      # On a tag, the tag and the manifest must agree. They drift the moment
+      # someone tags before bumping, and the failure mode without this check
+      # is a published version nobody can find by tag.
+      - name: tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tagged="${GITHUB_REF_NAME#typescript-v}"
+          manifest="$(node -p 'require("./package.json").version')"
+          if [ "$tagged" != "$manifest" ]; then
+            echo "tag $GITHUB_REF_NAME says $tagged, package.json says $manifest" >&2
+            exit 1
+          fi
+          echo "publishing $manifest"
+
+      - name: pack (dry run)
+        if: inputs.dryrun
+        run: npm publish --provenance --dry-run
+
+      # `--provenance` is passed explicitly even though trusted publishing
+      # is documented to enable it by default: reports of it NOT being
+      # applied are common enough, and an unsigned release is not worth the
+      # saved flag. It needs `repository` in package.json to match this
+      # repo, which is why that field is not optional decoration.
+      #
+      # `access` is public via package.json's publishConfig, so it holds
+      # for the by-hand bootstrap publish too rather than living only here.
+      - name: publish
+        if: ${{ !inputs.dryrun }}
+        run: npm publish --provenance
