@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import * as Assert from 'node:assert'
 
 import { section, check, label, Entry } from './corpus'
-import { normalizeconfig, resolveoptions } from '../src/index'
+import { normalizeconfig, resolveoptions } from '../dist/index'
 
 const groups = section('config')
 

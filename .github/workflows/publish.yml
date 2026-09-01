@@ -106,8 +106,15 @@ jobs:
       - name: install
         run: npm ci
 
-      # The corpus gates the release. `npm test` builds and then runs all
-      # 539 entries; a port that cannot pass its own contract does not ship.
+      # BUILD IS ITS OWN STEP. `npm test` runs the compiled suite and does
+      # not build first — matching struct's script set — so a workflow that
+      # skipped this would test whatever `dist` happened to contain, which
+      # after a fresh `npm ci` is nothing.
+      - name: build
+        run: npm run build
+
+      # The corpus gates the release: all 539 entries. A port that cannot
+      # pass its own contract does not ship.
       - name: test
         run: npm test
 

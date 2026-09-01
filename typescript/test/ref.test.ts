@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import * as Assert from 'node:assert'
 
 import { section, check, label, Entry } from './corpus'
-import { parseref, formatref, checkname, checktag, canonref } from '../src/index'
+import { parseref, formatref, checkname, checktag, canonref } from '../dist/index'
 
 // Group name -> subject. Explicit rather than inferred: a runner that
 // guessed from the entry's shape would run the wrong function on a

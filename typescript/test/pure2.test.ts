@@ -7,7 +7,7 @@ import { section, check, label, Entry } from './corpus'
 import {
   applyenv, parserange, satisfies,
   resolvecapability, resolvegraph, resolvecandidates, resolvefrom,
-} from '../src/index'
+} from '../dist/index'
 
 const SUBJECT: { [sec: string]: { [group: string]: (e: Entry) => any } } = {
   env: {

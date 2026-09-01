@@ -14,7 +14,7 @@
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
-const SPEC = Path.join(__dirname, '..', '..', '..', 'spec', 'plugin.json')
+const SPEC = Path.join(__dirname, '..', '..', 'spec', 'plugin.json')
 
 export type Entry = {
   id?: string

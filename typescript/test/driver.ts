@@ -4,8 +4,8 @@
  * port-specific: the probe catalog, the command interpreter, and the
  * canonical observable. */
 
-import { makehost, makecatalog } from '../src/index'
-import type { Definition } from '../src/index'
+import { makehost, makecatalog } from '../dist/index'
+import type { Definition } from '../dist/index'
 
 /** §4.3's six probes. Their behaviour is as much the contract as the
  * runner is — this is where twenty implementations of `noisy` are made

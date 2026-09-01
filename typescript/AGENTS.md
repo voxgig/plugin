@@ -49,7 +49,8 @@ unstated, which is how an exception becomes a precedent.
 ## Local shape
 
 - `src/` is plain CommonJS-target TypeScript, `strict: true`, no runtime
-  dependencies. `voxgig/struct` is the single permitted one and is not
+  dependencies. It compiles to `dist/`; the suite compiles to
+  `dist-test/`. `voxgig/struct` is the single permitted one and is not
   yet needed — when it is, it goes in `package.json` and nowhere else.
 - `test/corpus.ts` dispatches by GROUP NAME, explicitly. Do not make it
   infer the subject from an entry's shape: a mistyped entry would then
@@ -57,6 +58,69 @@ unstated, which is how an exception becomes a precedent.
 - Both suites assert that **every corpus group has a subject**. A group
   the runner does not know is a group silently not run, which is worse
   than a failure.
+
+## The npm scripts mirror `voxgig/struct`
+
+`build watch typecheck test test-some test-cov doc clean reset repo-tag
+repo-publish*` are the same names, in the same order, as
+[`struct/typescript/package.json`](https://github.com/voxgig/struct/blob/main/typescript/package.json).
+Muscle memory should carry between the two repositories; `npm run reset`
+means the same thing in both.
+
+**The layout is struct's too.** `src/` and `test/` are two SEPARATE
+tsconfig projects, built with `tsc --build src test`:
+
+| | |
+|---|---|
+| `src/tsconfig.json` | `outDir`/`declarationDir` `../dist`, `rootDir` `.` |
+| `test/tsconfig.json` | `outDir` `../dist-test`, `rootDir` `.` |
+
+So `dist/` is the library, flat — `dist/index.js` is the entry point —
+and `dist-test/` is the compiled suite. There is no root `tsconfig.json`;
+struct has none either, and `tsc --build src test` needs none.
+
+Two consequences that are not obvious and will bite anyone who forgets
+them:
+
+- **The tests import `../dist`, not `../src`.** `test/` is its own
+  project with `rootDir: "."`, so it CANNOT reach into `src/` — a
+  `../src/index` import drags those files into the test project and
+  breaks `rootDir`. Struct's tests import the built output for exactly
+  this reason. It also means **a stale `dist` is a stale test run**: build
+  before you test, which `make test` and `publish.yml` both do.
+- **`corpus.ts` resolves the spec two levels up, not three.** It is
+  `dist-test/corpus.js` now rather than `dist/test/corpus.js`, so the
+  path to `spec/plugin.json` lost a `..`. Move the output again and this
+  moves with it.
+
+`tsBuildInfoFile` puts the incremental state in `.tsbuild/`, outside
+`dist`, because `files` ships `dist` and build state is not something to
+publish.
+
+Three places the layout still forced an adaptation, all deliberate:
+
+- **`test` does NOT build.** Struct's does not either, which is the point
+  — a test script that silently rebuilds hides a stale `dist`. `make
+  test` depends on `build`, and `publish.yml` has its own build step, so
+  nothing runs the suite against an unbuilt tree.
+- **`prepublishOnly` uses `clean-dist`, not `clean`.** `clean` removes
+  `node_modules`, and the next thing `prepublishOnly` does is invoke
+  `tsc`. That ordering deletes the compiler and then asks for it.
+- **`repo-tag` tags `typescript-vX.Y.Z`**, not `vX.Y.Z`: seventeen ports
+  share this repository and `publish.yml` keys on that prefix.
+
+**`repo-publish` does not publish.** In struct it ends in `npm stage
+publish`; here it ends at `repo-tag`, because pushing the tag is what
+starts the release — `publish.yml` does the publishing over OIDC, from a
+runner, with no credential on anyone's laptop. Publishing locally would
+need the standing token this whole arrangement exists to avoid.
+`repo-publish-dry` still packs locally, which is the part that is useful
+to run by hand.
+
+There is no `lint`, `format` or `inject-version` yet. The first two need
+eslint and prettier, which this port does not carry and which would
+reformat the canonical implementation; `inject-version` has nothing to
+inject, since no file here carries struct's `// VERSION:` comment.
 
 ## Releasing to npm
 
@@ -97,6 +161,6 @@ Two things that are load-bearing and look like decoration:
 - **`repository` in `package.json` must match this repo, case
   sensitively.** Provenance generation reads it, and a mismatch fails the
   publish rather than quietly skipping the attestation.
-- **`prepublishOnly` rebuilds from clean.** `files` ships `dist/src`, and
+- **`prepublishOnly` rebuilds from clean.** `files` ships `dist`, and
   without the hook a publish would happily package whatever `dist` last
   contained — including nothing.

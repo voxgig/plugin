@@ -17,10 +17,10 @@
 import { describe, test } from 'node:test'
 import { deepStrictEqual, equal, ok, throws } from 'node:assert'
 
-import { makehost, makecatalog } from '../src/index'
+import { makehost, makecatalog } from '../dist/index'
 import {
   REQUEST_POINT, SDK_HOOKS, featuredefinition, featurepoints,
-} from '../src/FeatureHost'
+} from '../dist/FeatureHost'
 
 // An sdkgen-shaped feature that WRAPS the transport, exactly as
 // RetryFeature does: capture the current fetcher, install a replacement
