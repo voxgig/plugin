@@ -89,7 +89,7 @@ jobs:
       matrix:
         # P4 is complete; P5 is under way. P6 adds the rest.
         port: [typescript, go, python, javascript, ruby, php, perl, rust, java, lua,
-               csharp, elixir]
+               csharp, elixir, clojure]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -131,6 +131,11 @@ jobs:
       # and nothing newer.
       - if: matrix.port == 'elixir'
         run: sudo apt-get update && sudo apt-get install -y elixir
+      # clojure likewise. The debian package is the launcher plus the
+      # clojure jar and nothing else, which is all this port asks for -
+      # there is no deps.edn to resolve and no leiningen to install.
+      - if: matrix.port == 'clojure'
+        run: sudo apt-get update && sudo apt-get install -y clojure
       - run: make build-${{ matrix.port }}
       - run: make test-${{ matrix.port }}
       - run: make inspect-${{ matrix.port }}

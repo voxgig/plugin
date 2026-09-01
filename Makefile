@@ -32,7 +32,7 @@
 # error-swallowing branch entirely. It is free to decide now, with no
 # ports written, and expensive to retrofit across twenty.
 # P4 is complete; P5 is under way. P6 the rest.
-LANGS = typescript go python javascript ruby php perl rust java lua csharp elixir
+LANGS = typescript go python javascript ruby php perl rust java lua csharp elixir clojure
 
 .PHONY: all test build inspect clean parity probes check spec spec-check
 
