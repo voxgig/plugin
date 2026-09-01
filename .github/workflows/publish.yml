@@ -34,10 +34,14 @@ on:
         type: boolean
         default: false
 
-# Never cancel a publish in flight; a half-run publish job is worse than a
-# queued one.
+# KEYED ON THE REF, not a single static group. GitHub allows one running
+# and one pending run per group, and a newly queued run CANCELS the
+# pending one — so with a static group, three releases in quick
+# succession silently drop the middle version. Two different versions
+# publishing at once is harmless; two runs of the SAME tag is the only
+# real hazard, and that is exactly what keying on the ref still serializes.
 concurrency:
-  group: publish-typescript
+  group: publish-typescript-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -62,6 +66,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The main-ancestry check below walks history; a depth-1 clone
+          # has none to walk.
+          fetch-depth: 0
 
       # DELIBERATELY NO `registry-url`. Setting it makes setup-node write an
       # .npmrc carrying `_authToken=${NODE_AUTH_TOKEN}`; with no token in
@@ -102,6 +110,28 @@ jobs:
       # 539 entries; a port that cannot pass its own contract does not ship.
       - name: test
         run: npm test
+
+      # THE TAG ALONE PROVES NOTHING ABOUT THE OTHER SIXTEEN PORTS. A tag
+      # can be pushed at any commit, ci.yml does not run on tags, and the
+      # `npm test` above is this one port — so a commit where typescript
+      # and the corpus agree but propagation broke elsewhere would sail
+      # through and publish. Requiring the commit to be ON MAIN borrows
+      # the gate that already exists: ci.yml runs the full seventeen-port
+      # matrix on every pull request and every push to main, so a commit
+      # main contains is a commit `make check` has passed.
+      - name: tagged commit must be on main
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # FETCH_HEAD, not origin/main: on a TAG checkout the action's
+          # refspec need not create a remote-tracking branch ref, but the
+          # fetch on the line above always sets FETCH_HEAD.
+          git fetch --no-tags --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "$GITHUB_SHA is not on main, so the full seventeen-port CI" >&2
+            echo "matrix has never run on it. Tag a commit that main contains." >&2
+            exit 1
+          fi
+          echo "$GITHUB_SHA is on main"
 
       # On a tag, the tag and the manifest must agree. They drift the moment
       # someone tags before bumping, and the failure mode without this check

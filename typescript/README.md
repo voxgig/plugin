@@ -17,8 +17,14 @@ make clean
 
 | | |
 |---|---|
+| `src/Host.ts` | the host: `define`, `load`, `activate`, `ready`, `nest` — §6–§8 |
 | `src/Ref.ts` | `parseref`, `formatref`, `checkname`, `checktag`, `canonref` — §4 |
 | `src/Config.ts` | `normalizeconfig`, `resolveoptions`, `checkshape` — §9 |
+| `src/Catalog.ts` | definition registration and shape validation — §10 |
+| `src/Depend.ts`, `src/Graph.ts`, `src/Resolve.ts` | requirements, candidates, selection — §11 |
+| `src/Point.ts`, `src/Order.ts` | extension points and ordering — §7 |
+| `src/Capability.ts`, `src/Version.ts` | `match` and version ranges — §11.1 |
+| `src/Env.ts`, `src/Export.ts`, `src/FeatureHost.ts` | `applyenv`, exports, the feature bridge |
 | `src/Types.ts` | the shared types, and `PluginError` |
 | `test/corpus.ts` | the runner: reads `spec/plugin.json` and dispatches by group |
 
@@ -39,6 +45,22 @@ cost of removing one at P4 is fourteen ports rewriting around it.
 
 ## Status
 
-P1. The two **pure** sections run green — `ref` (97 entries) and
-`config` (86). `lifecycle` and `order` are driver sections and need the
-host, which is the next piece.
+**All 539 corpus entries pass, across all 19 sections** — `apply`,
+`capability`, `config`, `declare`, `depend`, `env`, `error`, `export`,
+`graph`, `lifecycle`, `nest`, `order`, `point`, `ref`, `resolve`,
+`resource`, `state`, `trace` and `version`.
+
+Sixteen other implementations pass the same corpus: `go`, `python`,
+`javascript`, `ruby`, `php`, `perl`, `rust`, `java`, `lua`, `csharp`,
+`elixir`, `clojure`, `dart`, `kotlin`, `swift` and `scala`. That is the
+point of the corpus — the contract is the same in every language, and
+this package is the one it is defined by.
+
+## Install
+
+```bash
+npm install @voxgig/plugin
+```
+
+**No runtime dependencies.** `voxgig/struct` is the single permitted one
+and is not yet needed.

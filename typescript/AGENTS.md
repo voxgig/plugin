@@ -75,9 +75,14 @@ published has no settings page — PyPI lets you pre-register a name, npm
 does not. So the bootstrap is, once, in this order:
 
 1. Publish `0.1.0` by hand with a granular access token scoped to this one
-   package (`npm publish --provenance` from `typescript/`, or the token in
-   `NODE_AUTH_TOKEN`). `publishConfig.access` is already `public`, which a
-   scoped package's first publish needs.
+   package: plain `npm publish` from `typescript/`, with the token in
+   `NODE_AUTH_TOKEN`. **Not `--provenance`** — provenance can only be
+   generated on a supported CI provider, and npm aborts the publish with
+   `Automatic provenance generation not supported for provider` rather
+   than skipping the attestation. So the bootstrap release is the one
+   unsigned one; every release after it is signed, because the workflow
+   passes the flag from inside Actions. `publishConfig.access` is already
+   `public`, which a scoped package's first publish needs.
 2. On npmjs.com, `@voxgig/plugin` → Settings → Trusted Publisher → GitHub
    Actions, with organization `voxgig`, repository `plugin`, workflow file
    `publish.yml`.
