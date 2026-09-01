@@ -13,7 +13,9 @@ import static voxgig.plugin.Types.truthy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * Dependency cardinality, policy, and the restart graph (§11.3).
@@ -172,12 +174,19 @@ public final class Depend {
    * ref is a provider of itself here.
    */
   public static List<String> dependencycycle(List<Node> nodes) {
-    Map<String, List<String>> provider = new TreeMap<>();
+    // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    // matched differently - a capability by its exact name, a ref through
+    // the canonical spelling (section 4 rule 5) - and one map keyed by
+    // both can only do one of them. Keyed by both and looked up raw, as
+    // this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    // the load-time check that exists to catch a non-terminating
+    // reconcile.
+    Map<String, List<String>> bycap = new TreeMap<>();
+    Set<String> isref = new TreeSet<>();
     for (Node n : nodes) {
-      List<String> caps = new ArrayList<>(n.provides);
-      caps.add(n.ref);
-      for (String cap : caps) {
-        provider.computeIfAbsent(cap, k -> new ArrayList<>()).add(n.ref);
+      isref.add(n.ref);
+      for (String cap : n.provides) {
+        bycap.computeIfAbsent(cap, k -> new ArrayList<>()).add(n.ref);
       }
     }
 
@@ -188,11 +197,21 @@ public final class Depend {
         if (!restartcausing(req)) {
           continue;
         }
-        List<String> list = provider.get(str(get(req, "name")));
-        if (null == list) {
-          continue;
+        String reqname = str(get(req, "name"));
+        List<String> from = new ArrayList<>();
+        List<String> list = bycap.get(reqname);
+        if (null != list) {
+          from.addAll(list);
         }
-        for (String p : list) {
+        // A node satisfies its own name AS A REF (section 11.1),
+        // canonically - exactly what `providersof` does at runtime.
+        // `canon` hands back a name no ref could have unchanged, and no
+        // instance ref can equal one, so it is the tolerant test.
+        String asref = Refs.canon(null == reqname ? "" : reqname);
+        if (isref.contains(asref) && !from.contains(asref)) {
+          from.add(asref);
+        }
+        for (String p : from) {
           if (!p.equals(n.ref) && !out.contains(p)) {
             out.add(p);
           }

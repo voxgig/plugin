@@ -19,7 +19,7 @@ Quick reminders (the full rationale is in `AGENTS.md`):
   `make check`.
 
 **Status: P5 tier-3 complete, fourteen of fourteen.** P0–P5's port
-work is done: the corpus is 552 entries across 19 sections, and
+work is done: the corpus is 572 entries across 19 sections, and
 **seventeen implementations pass every one of them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
 `dart/`, `kotlin/`, `swift/` and `scala/`.

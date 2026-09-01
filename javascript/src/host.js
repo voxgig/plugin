@@ -17,7 +17,7 @@
 'use strict'
 
 const { fail } = require('./types')
-const { canonref, parseref, formatref } = require('./ref')
+const { canonref, tryref, parseref, formatref } = require('./ref')
 const { makecatalog } = require('./catalog')
 const { resolveorder } = require('./order')
 const { emit: fanout, compose, provider: pickone } = require('./point')
@@ -542,11 +542,18 @@ function makehost(options) {
 
   function providersof(req) {
     const cands = []
+    // ASK WHETHER THE NAME IS A REF, do not assume it. A requirement name
+    // is a CAPABILITY name first (§11.1) and capability names are
+    // free-form, so `2fa` is a legal one that no ref could be called —
+    // and `canonref` RAISES on those, which made a legal document kill
+    // the host right here. `tryref` answers `undefined` instead, and
+    // still canonicalizes when it is a ref (§4 rule 5).
+    const asref = tryref(req.name)
     for (const ref of Object.keys(inst).sort()) {
       const t = inst[ref]
       if ('live' !== t.status) continue
       // A ref satisfies directly.
-      if (ref === canonref(req.name)) {
+      if (ref === asref) {
         cands.push({ ref, pos: t.pos, provides: { name: req.name } })
         continue
       }

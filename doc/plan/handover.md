@@ -11,7 +11,7 @@ on a human, and what to pick up first is [`status.md`](status.md) —
 read that first. Delete a section here once its lesson has been
 absorbed somewhere better.
 
-Last updated: 2026-08-23.
+Last updated: 2026-09-01.
 
 
 ## 1. What has landed
@@ -933,20 +933,22 @@ ends. Two more pin it through `hold`, which names the holder, and one
 pins that the selection does not survive the consumer's own restart.
 
 
-## 18. What twelve more ports found, and the two things the corpus still cannot see
+## 18. What twelve more ports found, and the three gaps — all now closed
 
 P5's fourteen tier-3 ports are complete: `php`, `perl`, `rust`, `java`,
 `lua`, `csharp`, `elixir`, `clojure`, `dart`, `kotlin`, `swift` and
 `scala` joined `javascript` and `ruby`, and **all seventeen
-implementations pass all 552 entries**. Each port's own `AGENTS.md`
+implementations pass all 572 entries**. Each port's own `AGENTS.md`
 carries its language-specific traps; this section carries only what is
 the CORPUS's business rather than a port's.
 
-### The three gaps every port finds — one now closed
+### The three gaps every port finds — all now closed
 
 Mutation testing each port against the whole corpus produced the same
-three survivors, in every language and independently. **The first is
-now closed; the other two remain.**
+three survivors, in every language and independently. **All three are
+now closed**, and the sizing was wrong in both directions: gap 1 cost
+seventeen driver implementations and turned up a canonical bug, while
+gaps 2 and 3 cost nine corpus entries between them and no port change.
 
 **1. Shape validation at catalog REGISTRATION was pinned by nothing.
 CLOSED — `declare/shape`, seven entries, plus `declare/register`.**
@@ -999,28 +1001,110 @@ and `define` replaced the probe with a definition that had no callbacks.
 Five unrelated groups went red at once, which is what a driver bug looks
 like and what a library bug does not.
 
-**2. `providersof` comparing refs uncanonicalized.** §11.1 lets a REF
-satisfy a requirement, and §4 rule 5 says ports canonicalize before
-comparing — but every requirement name in the corpus is already
-canonical, so dropping the `canon` changes nothing any entry observes.
-Found by php first and by every port since.
+**2. `providersof` comparing refs uncanonicalized. CLOSED —
+`depend/byref`, five entries.** Found by php first and by every port
+since.
 
-**3. A nested host counted as an open resource.** §6.5 registers the
-inner host's teardown in the outer instance's scope; whether that also
-increments `open` is a free choice, because no `nest` entry asserts
-`open` while an inner host is live.
+**The gap was wider than its name, and §11.1 did not say what this
+section claimed it said.** The claim was that "§11.1 lets a REF satisfy
+a requirement" and only the canonicalization was unpinned. In fact
+§11.1 said the opposite — "a dependency is on a capability, not on a
+ref" — and the exception lived nowhere but a comment in the canonical's
+`unmetof`: *"A ref satisfies too, because a host that genuinely needs a
+specific instance should not have to invent a capability for it."*
+Replacing the whole branch with `if (false)` passed all 552 entries.
+Seventeen ports carried the behaviour because they copied the
+canonical, not because anything checked it.
 
-Neither remaining gap is a defect in any port — every port implements
-the design. They are places where **two implementations could disagree
-and the corpus would not notice**, which is the same category §17
-records, and the same remedy applies: an entry each, in the canonical
-first. Both are corpus-only; unlike gap 1, neither needs a driver change.
+So closing it meant stating the rule in the design first (§11.1 now
+carries it, narrow and with the reason), then pinning both halves: that
+a live ref satisfies at all, that `loaded` and `declared` do not, that
+losing it cascades like any other requirement — and the canonicalizing
+comparison, which `dep$` against `dep` is the only way to reach, since
+a trailing `$` parsing to the empty tag is the sole way two spellings
+of one ref can differ (§4).
+
+**3. A nested host counted as an open resource. CLOSED — `nest/open`,
+four entries.** §6.5 registers the inner host's teardown in the outer
+instance's scope; whether that also increments `open` was free, because
+the three `nest` entries asserted `result` and `status` and never
+`open`. It counts nothing: the scope entry is a teardown, not an
+acquisition, and the inner host keeps its own counter. The entries pin
+that a nested outer reports the same `open` as an unnested one, that
+the count does not scale with the inner host's contents (two inner
+instances, still 1), and that it unwinds to zero.
+
+None of the three was a defect in any port — every port implemented the
+design, and all seventeen passed the new entries unchanged apart from
+gap 1's driver work. They were places where **two implementations could
+disagree and the corpus would not notice**, which is the same category
+§17 records.
 
 **"Cheap" was wrong about gap 1, and the reason generalizes.** A gap
 described as "no entry carries X" deserves one question before it is
-sized: *can* an entry carry X? Here it could not — the command that
-would have carried it did nothing — and the fix was seventeen driver
-implementations plus a canonical bug fix, not a handful of corpus rows.
+sized: *can* an entry carry X? For gap 1 it could not — the command
+that would have carried it did nothing — and the fix was seventeen
+driver implementations plus a canonical bug fix, not a handful of
+corpus rows. Gaps 2 and 3 were exactly what all three were advertised
+as, which is how the mis-sizing went unnoticed.
+
+**And a gap's NAME can be narrower than the gap.** "`providersof`
+without `canon`" named one mutation; the branch that mutation lived in
+was itself unreached, and the rule it implemented was not in the design
+at all. Before writing the entry that kills the named mutant, delete
+the whole construct and see what else survives.
+
+### The gap-2 close was premature, and review caught it
+
+Codex reviewed the PR that closed gaps 2 and 3 and said the second one
+was not closed. It was right, for a reason bigger than the finding —
+and the lesson is the most reusable thing in this section.
+
+**A rule is implemented once per place that asks the question, not once
+per codebase.** §11.1's "a ref satisfies a requirement" is read in
+THREE places: runtime `providersof`, load-time `dependencycycle`, and
+whole-graph `resolve`. Only the first had it. Pinning the runtime half
+and declaring the rule closed left two implementations of the same
+sentence disagreeing with it, and the corpus entry that proved the
+runtime half said nothing about either.
+
+Four defects came out of chasing it, and none of them is exotic:
+
+- **`providersof` canonicalized EVERY requirement name.** §4's grammar
+  is on plugin *names*; the design puts none on capability names, so
+  `2fa` and `my cap` are legal capabilities that no ref could be
+  called — and `canonref` RAISES on those. A legal document killed the
+  host at its first such requirement. **Nine ports had independently
+  worked around it** with a `try/except` or a tolerant `canon`, so the
+  CANONICAL was the outlier; the corpus could not see it because every
+  capability name in it happened to be a well-formed ref. A workaround
+  that reads as defensive rather than as the rule is how this stays
+  invisible: it fixes one call site and teaches the next reader nothing.
+- **`dependencycycle` indexed by canonical ref and looked up raw.** The
+  same cycle spelled `dep$`/`other$` produced no edges and evaded the
+  load-time check outright — a guarantee about non-terminating
+  reconciles that a spelling could switch off.
+- **`graph.candidates` never considered node refs at all**, so
+  `resolve()` reported `absent` about a provider the runtime binds. In
+  the canonical spelling, too: this was not a canonicalization bug but
+  a rule that had never been implemented there.
+- **The design text overstated ref loss**, saying it always sends the
+  consumer to `pending`. It follows the ordinary cardinality and policy
+  rules (§11.3) like any requirement, so mandatory-`dynamic` stays live
+  and optional never gated. A sentence that is true of the default and
+  stated as universal is a contract two ports can implement
+  differently while both reading it carefully.
+
+Eleven entries pin the lot, across `depend/byref`, `depend/cycle` and
+`graph/resolve`/`graph/blocked`; each targeted mutant fails its group
+and no other. The canonical gained a tolerant `tryref`; the ports use
+whatever tolerant spelling they already had.
+
+**What to take from it.** When a rule is stated in one place and read in
+several, grep for the other readers before calling it pinned. And when a
+port has a workaround the canonical lacks, that asymmetry is a finding,
+not a style difference — nine of them had one here, and it went
+unremarked through P4 and P5.
 
 ### One gap that is a SCALE gap rather than a coverage gap
 

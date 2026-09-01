@@ -93,6 +93,12 @@ suite. What that costs, and what it buys:
 
 ## What the corpus cannot see here
 
+> **Three of these are no longer invisible.** Shape validation at catalog
+> registration, `providersof` comparing refs uncanonicalized, and a nested
+> host counted as an open resource are now pinned by `declare/shape`,
+> `declare/register`, `depend/byref`, `depend/cycle`, `graph/resolve` and
+> `nest/open`. Anything else below still stands.
+
 Mutation testing: 24 mutations, **21 caught**. The three survivors are exactly
 the ones every other port also finds:
 

@@ -90,6 +90,12 @@ handed at `define`; here `Inst` is a `{host, ref}` handle and
 
 ## What the corpus cannot see here
 
+> **Three of these are no longer invisible.** Shape validation at catalog
+> registration, `providersof` comparing refs uncanonicalized, and a nested
+> host counted as an open resource are now pinned by `declare/shape`,
+> `declare/register`, `depend/byref`, `depend/cycle`, `graph/resolve` and
+> `nest/open`. Anything else below still stands.
+
 Mutation testing: 22 mutations, **20 caught**. The survivors:
 
 - **A nested host counted as an open resource.** `Inst.nest/2` registers

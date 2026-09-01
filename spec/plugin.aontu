@@ -8,7 +8,7 @@
 # both. Never hand-edit the JSON (§16, prime directive 5).
 #
 # STATUS: P5 complete. The corpus is COMPLETE against §15.3 — all
-# nineteen sections, 552 entries (417 at P2, when this line was first
+# nineteen sections, 572 entries (417 at P2, when this line was first
 # written), every one running green against the canonical TypeScript
 # port AND the sixteen ports of it.
 #
@@ -2642,6 +2642,35 @@ primary: graph: {
             { ref: 'a', pos: 2, provides: [ { name: 'a' } ] } ]
       out: { resolved: ['a', 'b', 'c'], blocked: [] }
     }
+    # A REF SATISFIES HERE TOO (§11.1), and it did not until this entry.
+    # `resolve()` considered only DECLARED CAPABILITIES, so it answered
+    # `absent` about a provider the runtime activates against — §11.4's
+    # whole job is explaining the graph the runtime reconciles, and it
+    # was explaining a different one. `depend/byref` pins the runtime
+    # half; without this the two disagree.
+    {
+      id: 'graph/resolve#byref'
+      in: [ { ref: 'p', pos: 0 }
+            { ref: 'c', pos: 1, requires: [ { name: 'p' } ] } ]
+      out: { resolved: ['c', 'p'], blocked: [] }
+    }
+    # ...canonically (§4 rule 5), same as everywhere else.
+    {
+      id: 'graph/resolve#byref-canonical'
+      in: [ { ref: 'p', pos: 0 }
+            { ref: 'c', pos: 1, requires: [ { name: 'p$' } ] } ]
+      out: { resolved: ['c', 'p'], blocked: [] }
+    }
+    # A NAME NO REF COULD HAVE is a capability name and nothing else.
+    # `2fa` is a perfectly good capability - the design puts no grammar
+    # on capability names, only on plugin names (§4) - so the ref
+    # comparison must ANSWER "not a ref" rather than raising.
+    {
+      id: 'graph/resolve#capability-not-a-ref'
+      in: [ { ref: 'p', pos: 0, provides: [ { name: '2fa' } ] }
+            { ref: 'c', pos: 1, requires: [ { name: '2fa' } ] } ]
+      out: { resolved: ['c', 'p'], blocked: [] }
+    }
   ]
 
 
@@ -2654,6 +2683,13 @@ primary: graph: {
       id: 'graph/blocked#absent', doc: true
       in: [ { ref: 'c', pos: 0, requires: [ { name: 'clock' } ] } ]
       out: { resolved: [], blocked: [ { ref: 'c', unmet: 'clock', why: { kind: 'absent' } } ] }
+    }
+    # A REF THAT IS NOT IN THE GRAPH is `absent` too - the ref path adds
+    # a way to be satisfied, not a way to be excused.
+    {
+      id: 'graph/blocked#byref-absent'
+      in: [ { ref: 'c', pos: 0, requires: [ { name: 'nope$1' } ] } ]
+      out: { resolved: [], blocked: [ { ref: 'c', unmet: 'nope$1', why: { kind: 'absent' } } ] }
     }
     # A provider at an incompatible version — WITH BOTH the range asked
     # for and the version found, because "version mismatch" without the
@@ -3267,6 +3303,140 @@ primary: depend: {
   ]
 
 
+  # A REF SATISFIES TOO (§11.1), AND THE COMPARISON IS CANONICAL
+  # (§4 rule 5).
+  #
+  # §11.1 opens by saying a dependency is on a capability and NOT on a
+  # ref, and then makes this one narrow exception: a host that genuinely
+  # needs a specific instance should not have to invent a capability for
+  # it. Until this group the rule lived only in a comment in the
+  # canonical's source — the design did not state it and no entry
+  # reached it, so the whole branch was DEAD CODE against the corpus and
+  # deleting it outright passed all 552 entries. Seventeen ports carried
+  # it because they copied the canonical, not because anything checked.
+  #
+  # The canonicalization is the half that was named as a gap, and it is
+  # the smaller half: `dep$` and `dep` are the same instance, so a port
+  # comparing the requirement string against the registry key without
+  # canonicalizing first answers `pending` where every other port
+  # answers `live`. Every requirement name elsewhere in the corpus is
+  # already canonical, which is why nothing saw it.
+  byref: set: [
+    {
+      id: 'depend/byref#satisfies', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
+    }
+    # THE NON-CANONICAL SPELLING OF THE SAME REF. `dep$` parses to the
+    # empty tag and formats back to `dep`, which is the only way two
+    # spellings of one ref can differ (§4) — so this is the entry, and
+    # there is no other, that a port dropping the canonicalization fails.
+    {
+      id: 'depend/byref#canonical-comparison'
+      cmd: [
+        { do: 'ready', ref: 'dep', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$'] } }
+      ]
+      match: { out: { status: { 'dep': 'live', 'dep$c': 'live' } } }
+    }
+    # LIVE, exactly as a capability is. A declared instance is a map
+    # entry and no executed code (§5.1), and it can no more satisfy a
+    # requirement than a capability nobody has provided yet.
+    {
+      cmd: [
+        { do: 'declare', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'declared', 'dep$c': 'pending' } } }
+    }
+    # ...and `loaded` is not enough either, which is the line that makes
+    # this the same rule as the capability one rather than a second one.
+    {
+      cmd: [
+        { do: 'load', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'pending' } } }
+    }
+    # LOSING IT CASCADES, like any other requirement. Without this the
+    # ref path could be satisfied once at activation and never rechecked.
+    {
+      id: 'depend/byref#lost'
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'pending' } } }
+    }
+    # ...AND IT CASCADES UNDER THE ORDINARY CARDINALITY AND POLICY RULES
+    # (§11.3), not always to `pending`. The entry above is the `static`
+    # mandatory default; a `dynamic` consumer is re-pointed in place and
+    # STAYS LIVE, because `dynamic` is the plugin saying it can survive a
+    # provider going away. A ref requirement is not a third axis.
+    {
+      id: 'depend/byref#lost-dynamic'
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['dep$p'], policy: 'dynamic' } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'live' } } }
+    }
+    # ...and an OPTIONAL ref requirement never gated activation in the
+    # first place, so losing it changes nothing.
+    {
+      id: 'depend/byref#lost-optional'
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['dep$p'], optional: ['dep$p'] } }
+        { do: 'deactivate', ref: 'dep$p' }
+      ]
+      match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'live' } } }
+    }
+    # A NAME NO REF COULD HAVE IS A CAPABILITY NAME, AND ONLY THAT.
+    #
+    # The design puts a grammar on plugin NAMES (§4) and none at all on
+    # capability names, so `2fa` and `my cap` are perfectly good
+    # capabilities. Asking `canonref` whether such a name is a ref does
+    # not answer no - it RAISES `plugin_bad_name` - so a legal document
+    # killed the host at the first requirement whose name no ref could
+    # have. Every capability name in the corpus happened to be a
+    # well-formed ref, which is why seventeen implementations carried it.
+    {
+      id: 'depend/byref#capability-not-a-ref', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep'
+          options: { provides: [ { name: '2fa' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['2fa'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
+    }
+    # A space is not in the name grammar either, and is likewise fine.
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep'
+          options: { provides: [ { name: 'my cap' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['my cap'] } }
+      ]
+      match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
+    }
+    # An UNMET one of those still just goes pending - "not a ref" must
+    # mean "compare as a capability", not "skip the requirement".
+    {
+      cmd: [
+        { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['2fa'] } }
+      ]
+      match: { out: { status: { 'dep$c': 'pending' } } }
+    }
+  ]
+
+
   # THE HOST ACTIVATES IT THE MOMENT THE REQUIREMENT ARRIVES, WITHOUT
   # BEING ASKED AGAIN. Reconciliation is EAGER — it settles by running
   # to a fixed point, not by scheduling.
@@ -3647,6 +3817,33 @@ primary: depend: {
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ], requires: ['z'] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: ['x'] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { provides: [ { name: 'z' } ], requires: ['y'] } }
+      ]
+      err: 'plugin_dependency_cycle'
+    }
+    # A CYCLE THROUGH REFS IS A CYCLE (§11.1) - the edge does not have to
+    # run through a declared capability, because a ref satisfies too and
+    # an edge is "could this be the provider selected".
+    {
+      id: 'depend/cycle#through-refs'
+      cmd: [
+        { do: 'ready', ref: 'dep$a', definition: 'dep', options: { requires: ['dep$b'] } }
+        { do: 'ready', ref: 'dep$b', definition: 'dep', options: { requires: ['dep$a'] } }
+      ]
+      err: 'plugin_dependency_cycle'
+    }
+    # ...AND THE SPELLING DOES NOT DECIDE WHETHER IT IS ONE. The detector
+    # indexed providers by canonical ref and looked them up with the raw
+    # requirement name, so the SAME CYCLE written `dep$`/`other$` found no
+    # providers, produced no edges, and sailed past a check whose entire
+    # purpose is to refuse a non-terminating reconcile BEFORE anything
+    # runs. Two spellings of one graph, two answers - which is the
+    # divergence §4 rule 5 exists to prevent, reached through a door
+    # `depend/byref` does not open.
+    {
+      id: 'depend/cycle#through-refs-noncanonical', doc: true
+      cmd: [
+        { do: 'ready', ref: 'dep', definition: 'dep', options: { requires: ['other$'] } }
+        { do: 'ready', ref: 'other', definition: 'other', options: { requires: ['dep$'] } }
       ]
       err: 'plugin_dependency_cycle'
     }
@@ -4410,6 +4607,58 @@ primary: nest: {
       id: 'nest/lifetime#isolated'
       cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
       match: { out: { status: { 'probe$outer': 'live' } } }
+    }
+  ]
+
+
+  # A NESTED HOST IS NOT ITSELF AN OPEN RESOURCE, AND THE INNER HOST'S
+  # RESOURCES ARE ITS OWN.
+  #
+  # §6.5 says the outer instance's scope holds the inner host's
+  # teardown, and every port implements that. Whether the nest ALSO
+  # counts toward the outer's `open` was a free choice nothing pinned:
+  # the three entries above assert `result` and `status`, never `open`,
+  # so a port that counted the nest reported one more open resource than
+  # its neighbours for the same document and stayed green. `open` is the
+  # synthetic counter DOCS.md §4.5 puts in the observable precisely so
+  # "what is still held" is data rather than a sentence each port words
+  # differently, and two ports disagreeing about it is exactly the
+  # divergence it exists to expose.
+  #
+  # It counts NOTHING. The scope entry is a teardown, not an
+  # acquisition, and the inner host keeps its own counter — so the
+  # outer's `open` is its own `acquire` and no more.
+  open: set: [
+    {
+      id: 'nest/open#nest-is-not-a-resource', doc: true
+      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
+      match: { out: { open: 1 } }
+    }
+    # THE SAME NUMBER AS WITHOUT THE NEST, which is the half that says
+    # `open: 1` above is the outer's own `acquire` rather than a nest
+    # that happens to cost one.
+    {
+      cmd: [ { do: 'ready', ref: 'probe$a' } ]
+      match: { out: { open: 1 } }
+    }
+    # AND IT DOES NOT SCALE WITH THE INNER HOST'S CONTENTS. Two inner
+    # instances acquire two resources IN THE INNER HOST; a port
+    # accumulating them into the outer's counter answers 3.
+    {
+      id: 'nest/open#inner-resources-stay-inner'
+      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } } ]
+      match: { out: { open: 1 } }
+    }
+    # ...and the outer's deactivation returns it to zero, closing the
+    # inner host on the way. `nest/lifetime#outer-closes-inner` asserts
+    # the inner is gone; this asserts nothing was left held.
+    {
+      id: 'nest/open#unwinds'
+      cmd: [
+        { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } }
+        { do: 'deactivate', ref: 'probe$outer' }
+      ]
+      match: { out: { open: 0 } }
     }
   ]
 }

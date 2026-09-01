@@ -26,6 +26,7 @@
 'use strict'
 
 const { fail } = require('./types')
+const { tryref } = require('./ref')
 
 /** A bare string is shorthand for `{name}`. */
 function normrequire(r) {
@@ -106,10 +107,18 @@ function restartcausing(r) {
  * satisfies its own name as a ref (§11.1), which is why the ref is a
  * provider of itself here. */
 function dependencycycle(nodes) {
-  const provider = {}
+  // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+  // matched differently — a capability by its exact name, a ref through
+  // the canonical spelling (§4 rule 5) — and one map keyed by both can
+  // only do one of them. Keyed by both and looked up raw, as this was, a
+  // cycle spelled `a$`/`b$` found no providers and EVADED the load-time
+  // check that exists to catch a non-terminating reconcile.
+  const bycap = {}
+  const isref = {}
   for (const n of nodes) {
-    for (const cap of n.provides.concat([n.ref])) {
-      (provider[cap] = provider[cap] || []).push(n.ref)
+    isref[n.ref] = true
+    for (const cap of n.provides) {
+      (bycap[cap] = bycap[cap] || []).push(n.ref)
     }
   }
 
@@ -118,7 +127,15 @@ function dependencycycle(nodes) {
     const out = []
     for (const r of n.requires) {
       if (!restartcausing(r)) continue
-      for (const p of (provider[r.name] || [])) {
+      const from = (bycap[r.name] || []).slice()
+      // A node satisfies its own name AS A REF (§11.1), canonically —
+      // exactly what `providersof` does at runtime, so the load-time
+      // graph and the running one agree about what an edge is.
+      const asref = tryref(r.name)
+      if (undefined !== asref && isref[asref] && -1 === from.indexOf(asref)) {
+        from.push(asref)
+      }
+      for (const p of from) {
         if (p !== n.ref && -1 === out.indexOf(p)) out.push(p)
       }
     }

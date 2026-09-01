@@ -40,6 +40,15 @@ is never produced by the parser and never compared as data.
 
 ## What the corpus cannot currently distinguish
 
+> **Three of the mutations listed below are no longer survivors.** Shape
+> validation at catalog registration (`declare/shape`, `declare/register`),
+> `providersof` comparing refs uncanonicalized (`depend/byref`,
+> `depend/cycle#through-refs-noncanonical`, `graph/resolve#byref`) and a
+> nested host counted as an open resource (`nest/open`) are all pinned now,
+> and each mutation fails its group. Anything else in this list still
+> stands. `doc/plan/handover.md` §18 has the account — including that
+> closing them turned up four defects the corpus could not previously see.
+
 Three mutations survive, and none is a licence to relax the code:
 
 - `order_declared` returning true for an ABSENT constraint, and for an
@@ -56,7 +65,7 @@ Three mutations survive, and none is a licence to relax the code:
   `Rc<RefCell<_>>` so the registry, the `Inst` a callback holds, and any
   closure that captured it all see one set of values.
 - The driver's probe closures capture the `Inst` that owns them — an `Rc`
-  cycle that is never collected. Deliberate, bounded (552 entries and the
+  cycle that is never collected. Deliberate, bounded (572 entries and the
   process exits), and said out loud in `tests/support/driver.rs`.
 - `make build` is a real compile, so a type error in a file no test
   exercises still fails.

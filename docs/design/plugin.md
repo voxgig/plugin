@@ -1693,6 +1693,53 @@ requires: [{ name: 'store', range: '2.1',
   `transactional: true` would be indefensible.
 - **`version` / `range`** — §11.2.
 
+**A REF SATISFIES TOO**, and this is the one exception to the sentence
+this section opens with. A requirement naming a live instance's ref is
+met by that instance, because a host that genuinely needs a *specific*
+instance should not have to invent a capability for it to depend on.
+The exception is narrow on purpose: it is met only while that instance
+is `live`, exactly as a capability is. Everything else about depending
+on a ref is worse than depending on a capability, and nothing here
+recommends it.
+
+**It is not a third axis.** A ref requirement is a requirement, so
+cardinality and policy (§11.3) decide what its loss does, exactly as
+for a capability: mandatory-`static` goes back to `pending`,
+mandatory-`dynamic` is re-pointed in place and stays live, and an
+optional one never gated activation and so changes nothing. Stating it
+as "losing the ref sends the consumer to `pending`" is true only of the
+default and would make ports that read it literally disagree with ports
+that routed it through the ordinary rules.
+
+**The comparison is on the CANONICAL ref** (§4 rule 5). `dep$` and
+`dep` are the same instance, so a requirement written either way is met
+by it — a port comparing the requirement string against the registry
+key without canonicalizing first answers differently, which is the
+divergence rule 5 exists to prevent.
+
+**And a requirement name need not be a ref at all.** §4's grammar is on
+plugin *names*; this design puts no grammar on capability names, so
+`2fa` and `my cap` are perfectly good capabilities and no ref could be
+called either. The ref comparison must therefore be able to answer *not
+a ref* rather than failing: canonicalizing every requirement name
+unconditionally raises `plugin_bad_name` on a legal document, which is
+what the canonical did until `depend/byref` pinned it.
+
+**The rule holds wherever the graph is examined, not only at
+activation.** Load-time cycle detection (§11.3) and whole-graph
+resolution (§11.4) answer questions about the same graph, so a ref edge
+is an edge in both: a cycle expressed through refs is
+`plugin_dependency_cycle`, and `resolve()` must not report `absent` for
+a provider the runtime would bind. All three read the requirement name
+the same way, and the corpus pins each — `depend/byref`,
+`depend/cycle#through-refs-noncanonical`, `graph/resolve#byref`.
+
+This rule lived only in the canonical's source comments until those
+groups were written; the whole ref branch was dead code as far as the
+corpus was concerned, and deleting it outright passed every entry —
+which is why the two places that never implemented it at all went
+unnoticed for as long as they did.
+
 Unsatisfiable is not an error at declaration time. It is a *fact about
 the current registry*, and §11.4 is how you ask for it.
 

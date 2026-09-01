@@ -28,6 +28,7 @@ package Voxgig::Plugin::Depend;
 use strict;
 use warnings;
 use Voxgig::Plugin::Types qw(fail_with truthy ismap islist sortstrings sortedkeys);
+use Voxgig::Plugin::Ref qw(canon);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(normrequire requirements restartsonloss gatesactivation
@@ -122,10 +123,18 @@ sub restartcausing {
 # of itself here.
 sub dependencycycle {
     my ($nodes) = @_;
-    my %provider;
+    # TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    # matched differently - a capability by its exact name, a ref through
+    # the canonical spelling (section 4 rule 5) - and one map keyed by
+    # both can only do one of them. Keyed by both and looked up raw, as
+    # this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    # the load-time check that exists to catch a non-terminating
+    # reconcile.
+    my (%bycap, %isref);
     for my $n (@$nodes) {
-        for my $cap (@{ $n->{provides} }, $n->{ref}) {
-            push @{ $provider{$cap} }, $n->{ref};
+        $isref{ $n->{ref} } = 1;
+        for my $cap (@{ $n->{provides} }) {
+            push @{ $bycap{$cap} }, $n->{ref};
         }
     }
 
@@ -135,7 +144,15 @@ sub dependencycycle {
         my %seen;
         for my $req (@{ $n->{requires} }) {
             next if !restartcausing($req);
-            for my $p (@{ $provider{ $req->{name} } // [] }) {
+            my @from = @{ $bycap{ $req->{name} } // [] };
+            # A node satisfies its own name AS A REF (section 11.1),
+            # canonically - exactly what `providersof` does at runtime.
+            # `canon` hands back a name no ref could have unchanged, and
+            # no instance ref can equal one, so it is the tolerant test.
+            my $asref = canon($req->{name});
+            push @from, $asref
+                if $isref{$asref} && !grep { $_ eq $asref } @from;
+            for my $p (@from) {
                 next if $p eq $n->{ref} || $seen{$p}++;
                 push @out, $p;
             }

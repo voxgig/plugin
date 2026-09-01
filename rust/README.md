@@ -23,7 +23,7 @@ literal matcher) and buys a library with no crate graph to audit.
 | `src/value.rs` | the JSON value, and the only parser this port has |
 | `src/*.rs` | the library, one module per §-area |
 | `tests/support/` | the corpus runner and the driver (DOCS.md §4) |
-| `tests/corpus.rs` | the suite: one `#[test]`, 552 entries |
+| `tests/corpus.rs` | the suite: one `#[test]`, 572 entries |
 
 ## Using it
 
@@ -74,6 +74,12 @@ metacharacter, because the one thing a hand-rolled matcher must never do is
 quietly report a mismatch it could not evaluate.
 
 ## What the corpus cannot see here
+
+> **Three of these are no longer invisible.** Shape validation at catalog
+> registration, `providersof` comparing refs uncanonicalized, and a nested
+> host counted as an open resource are now pinned by `declare/shape`,
+> `declare/register`, `depend/byref`, `depend/cycle`, `graph/resolve` and
+> `nest/open`. Anything else below still stands.
 
 Mutation testing: 18 mutations, 15 caught. Of the three survivors, **two
 are ones DOCS.md §4.4 predicts in writing** — an ordering constraint that

@@ -211,8 +211,20 @@ func firstunmet(n Node, byref map[string]Node, resolved map[string]bool) (Blocke
 
 func graphcandidates(byref map[string]Node, name string) []Candidate {
 	out := []Candidate{}
+	// A NODE SATISFIES ITS OWN REF (§11.1), and the graph learned it
+	// here. Considering only declared capabilities made Resolve answer
+	// `absent` about a provider sitting right there and live — §11.4's
+	// job is explaining the graph the runtime reconciles, and it was
+	// explaining a different one.
+	asref := canon(name)
 	for _, ref := range sortedkeys(byref) {
 		n := byref[ref]
+		// The ref match WINS OUTRIGHT for that node, as at runtime: one
+		// candidate, not two, for a node both named `b` and providing `b`.
+		if ref == asref {
+			out = append(out, Candidate{Ref: n.Ref, Pos: n.Pos, Provides: Provided{Name: name}})
+			continue
+		}
 		for _, p := range n.Provides {
 			if p.Name == name {
 				out = append(out, Candidate{Ref: n.Ref, Pos: n.Pos, Provides: p})

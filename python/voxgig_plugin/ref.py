@@ -91,3 +91,23 @@ def canon_ref(text):
     canonicalize before comparison."""
     ref = parse_ref(text)
     return format_ref(ref['name'], ref['tag'])
+
+
+def try_ref(text):
+    """The canonical ref this string denotes, or None if it denotes none -
+    the TOLERANT half of `canon_ref`, and the one a requirement name needs.
+
+    A REQUIREMENT NAME IS A CAPABILITY NAME FIRST (section 11.1), and
+    capability names are free-form: the design puts no grammar on them, so
+    `2fa` and `my cap` are perfectly good ones and neither is a well-formed
+    ref. `canon_ref` RAISES on those, so asking it "is this a ref?" made a
+    legal document kill the host. Answering None is the whole difference.
+    """
+    if not isinstance(text, str):
+        return None
+    cut = text.find('$')
+    name = text if -1 == cut else text[:cut]
+    tag = '' if -1 == cut else text[cut + 1:]
+    if not check_name(name) or not check_tag(tag):
+        return None
+    return name if '' == tag else name + '$' + tag

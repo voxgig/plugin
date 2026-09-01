@@ -78,3 +78,22 @@ export function canonref(str: string): string {
   const r = parseref(str)
   return formatref(r.name, r.tag)
 }
+
+/** The canonical ref this string denotes, or `undefined` if it denotes
+ * none — the TOLERANT half of `canonref`, and the one a requirement
+ * name needs.
+ *
+ * A REQUIREMENT NAME IS A CAPABILITY NAME FIRST (§11.1), and capability
+ * names are free-form: the design puts no grammar on them, so `2fa` and
+ * `my cap` are perfectly good ones and neither is a well-formed ref.
+ * `canonref` RAISES on those, so asking it "is this a ref?" made a legal
+ * document kill the host at the first requirement whose name no ref
+ * could have. Answering `undefined` is the whole difference. */
+export function tryref(str: string): string | undefined {
+  if ('string' !== typeof str) return undefined
+  const cut = str.indexOf('$')
+  const name = -1 === cut ? str : str.substring(0, cut)
+  const tag = -1 === cut ? '' : str.substring(cut + 1)
+  if (!checkname(name) || !checktag(tag)) return undefined
+  return '' === tag ? name : name + '$' + tag
+}

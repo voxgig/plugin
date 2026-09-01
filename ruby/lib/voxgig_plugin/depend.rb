@@ -107,10 +107,19 @@ module VoxgigPlugin
   # node also satisfies its own name as a ref (section 11.1), which is
   # why the ref is a provider of itself here.
   def self.dependencycycle(nodes)
-    provider = {}
+    # TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    # matched differently - a capability by its exact name, a ref through
+    # the canonical spelling (section 4 rule 5) - and one map keyed by
+    # both can only do one of them. Keyed by both and looked up raw, as
+    # this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    # the load-time check that exists to catch a non-terminating
+    # reconcile.
+    bycap = {}
+    isref = {}
     nodes.each do |n|
-      (n['provides'] + [n['ref']]).each do |cap|
-        (provider[cap] ||= []) << n['ref']
+      isref[n['ref']] = true
+      n['provides'].each do |cap|
+        (bycap[cap] ||= []) << n['ref']
       end
     end
 
@@ -120,7 +129,14 @@ module VoxgigPlugin
       n['requires'].each do |req|
         next unless restartcausing(req)
 
-        (provider[req['name']] || []).each do |p|
+        from = (bycap[req['name']] || []).dup
+        # A node satisfies its own name AS A REF (section 11.1),
+        # canonically - exactly what `providersof` does at runtime.
+        # `canon` hands back a name no ref could have unchanged, and no
+        # instance ref can equal one, so it is the tolerant test here.
+        asref = VoxgigPlugin.canon(req['name'])
+        from << asref if isref[asref] && !from.include?(asref)
+        from.each do |p|
           out << p if p != n['ref'] && !out.include?(p)
         end
       end

@@ -45,6 +45,15 @@ serializable class) and was fixed rather than suppressed.
 
 ## What the corpus cannot currently distinguish
 
+> **Three of the mutations listed below are no longer survivors.** Shape
+> validation at catalog registration (`declare/shape`, `declare/register`),
+> `providersof` comparing refs uncanonicalized (`depend/byref`,
+> `depend/cycle#through-refs-noncanonical`, `graph/resolve#byref`) and a
+> nested host counted as an open resource (`nest/open`) are all pinned now,
+> and each mutation fails its group. Anything else in this list still
+> stands. `doc/plan/handover.md` §18 has the account — including that
+> closing them turned up four defects the corpus could not previously see.
+
 Three mutations survive, and all three are gaps the php, perl and rust
 ports found independently:
 

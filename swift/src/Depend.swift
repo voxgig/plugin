@@ -121,10 +121,19 @@ public enum Depend {
     /// its own name as a ref (section 11.1), which is why the ref is a provider
     /// of itself here.
     public static func dependencyCycle(_ nodes: [GraphNode]) -> [String]? {
-        var provider: [String: [String]] = [:]
+        // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+        // matched differently - a capability by its exact name, a ref
+        // through the canonical spelling (section 4 rule 5) - and one map
+        // keyed by both can only do one of them. Keyed by both and looked
+        // up raw, as this was, a cycle spelled `a$`/`b$` found no
+        // providers and EVADED the load-time check that exists to catch a
+        // non-terminating reconcile.
+        var bycap: [String: [String]] = [:]
+        var isref: Set<String> = []
         for n in nodes {
-            for cap in n.provides + [n.ref] {
-                provider[cap, default: []].append(n.ref)
+            isref.insert(n.ref)
+            for cap in n.provides {
+                bycap[cap, default: []].append(n.ref)
             }
         }
 
@@ -132,7 +141,17 @@ public enum Depend {
         for n in nodes {
             var out: [String] = []
             for req in n.requires where restartCausing(req) {
-                for p in provider[req.at("name").asString ?? ""] ?? [] {
+                let reqname = req.at("name").asString ?? ""
+                var from = bycap[reqname] ?? []
+                // A node satisfies its own name AS A REF (section 11.1),
+                // canonically - exactly what `providersOf` does at
+                // runtime. `canon` hands back a name no ref could have
+                // unchanged, and no instance ref can equal one.
+                let asref = Refs.canon(.str(reqname))
+                if isref.contains(asref) && !from.contains(asref) {
+                    from.append(asref)
+                }
+                for p in from {
                     if p != n.ref && !out.contains(p) { out.append(p) }
                 }
             }

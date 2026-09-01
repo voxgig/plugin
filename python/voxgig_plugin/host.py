@@ -16,7 +16,7 @@ will not have JavaScript's event loop.
 """
 
 from .types import fail
-from .ref import canon_ref, format_ref, parse_ref
+from .ref import canon_ref, try_ref, format_ref, parse_ref
 from .catalog import make_catalog
 from .order import resolve_order
 from .point import emit as fanout, compose, provider as pickone
@@ -635,10 +635,14 @@ class Host:
 
     def _providersof(self, req):
         cands = []
-        try:
-            want = canon_ref(req['name'])
-        except Exception:
-            want = req['name']
+        # ASK WHETHER THE NAME IS A REF, do not assume it. A requirement
+        # name is a CAPABILITY name first (section 11.1) and capability
+        # names are free-form, so `2fa` is a legal one that no ref could
+        # be called. A bare try/except around `canon_ref` did the same job
+        # here, but only here - and it read as defensive rather than as
+        # the rule, so `dependencycycle` and `graph.candidates` did not
+        # get it. `try_ref` is that rule, named, and used in all three.
+        want = try_ref(req['name'])
         for ref in sorted(self._inst):
             target = self._inst[ref]
             if 'live' != target['status']:

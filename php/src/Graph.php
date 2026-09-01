@@ -165,8 +165,21 @@ function firstunmet(array $node, array $byref, array $resolved): ?array
 function graph_candidates(array $byref, string $name): array
 {
     $out = [];
+    // A NODE SATISFIES ITS OWN REF (§11.1), and the graph learned it
+    // here. Considering only declared capabilities made `resolve` answer
+    // `absent` about a provider sitting right there and live — §11.4's
+    // job is explaining the graph the runtime reconciles, and it was
+    // explaining a different one.
+    $asref = canon($name);
     foreach (Util::sortedkeys($byref) as $ref) {
         $node = $byref[$ref];
+        // The ref match WINS OUTRIGHT for that node, as at runtime: one
+        // candidate, not two, for a node both named `b` and providing `b`.
+        if ($ref === $asref) {
+            $out[] = ['ref' => $node['ref'], 'pos' => $node['pos'] ?? 0,
+                      'provides' => ['name' => $name]];
+            continue;
+        }
         foreach ($node['provides'] ?? [] as $prov) {
             if (($prov['name'] ?? null) !== $name) {
                 continue;

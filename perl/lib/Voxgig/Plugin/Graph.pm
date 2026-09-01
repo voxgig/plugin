@@ -21,6 +21,7 @@ package Voxgig::Plugin::Graph;
 use strict;
 use warnings;
 use Voxgig::Plugin::Types qw(truthy sortstrings sortedkeys);
+use Voxgig::Plugin::Ref qw(canon);
 use Voxgig::Plugin::Capability qw(resolve_capability matchvalue);
 use Voxgig::Plugin::Version qw(satisfiesq);
 
@@ -127,8 +128,20 @@ sub firstunmet {
 sub graph_candidates {
     my ($byref, $name) = @_;
     my @out;
+    # A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned
+    # it here. Considering only declared capabilities made `resolve`
+    # answer `absent` about a provider sitting right there and live -
+    # section 11.4's job is explaining the graph the runtime reconciles.
+    my $asref = canon($name);
     for my $ref (sortedkeys($byref)) {
         my $node = $byref->{$ref};
+        # The ref match WINS OUTRIGHT for that node, as at runtime: one
+        # candidate, not two, for a node both named `b` and providing `b`.
+        if ($ref eq $asref) {
+            push @out, { ref => $node->{ref}, pos => $node->{pos} // 0,
+                         provides => { name => $name } };
+            next;
+        }
         for my $prov (@{ $node->{provides} // [] }) {
             next if ($prov->{name} // '') ne $name;
             push @out, { ref => $node->{ref}, pos => $node->{pos} // 0,

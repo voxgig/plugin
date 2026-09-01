@@ -116,17 +116,34 @@ object Depend {
     * itself here.
     */
   def dependencyCycle(nodes: List[GraphNode]): Option[List[String]] = {
-    val provider = mutable.Map[String, mutable.ListBuffer[String]]()
+    // TWO INDEXES, NOT ONE MERGED MAP. Capability names and refs are
+    // matched differently - a capability by its exact name, a ref through
+    // the canonical spelling (section 4 rule 5) - and one map keyed by
+    // both can only do one of them. Keyed by both and looked up raw, as
+    // this was, a cycle spelled `a$`/`b$` found no providers and EVADED
+    // the load-time check that exists to catch a non-terminating
+    // reconcile.
+    val bycap = mutable.Map[String, mutable.ListBuffer[String]]()
+    val isref = nodes.map(_.ref).toSet
     nodes.foreach { n =>
-      (n.provides :+ n.ref).foreach { cap =>
-        provider.getOrElseUpdate(cap, mutable.ListBuffer.empty) += n.ref
+      n.provides.foreach { cap =>
+        bycap.getOrElseUpdate(cap, mutable.ListBuffer.empty) += n.ref
       }
     }
 
     val edges = nodes.map { n =>
       val out = n.requires
         .filter(restartCausing)
-        .flatMap(req => provider.getOrElse(req.at("name").asString.getOrElse(""), Nil))
+        .flatMap { req =>
+          val reqname = req.at("name").asString.getOrElse("")
+          val from = bycap.getOrElse(reqname, Nil).toList
+          // A node satisfies its own name AS A REF (section 11.1),
+          // canonically - exactly what `providersOf` does at runtime.
+          // `canon` hands back a name no ref could have unchanged, and no
+          // instance ref can equal one.
+          val asref = Refs.canon(VStr(reqname))
+          if (isref.contains(asref)) from :+ asref else from
+        }
         .filter(_ != n.ref)
         .distinct
         .sorted

@@ -19,15 +19,31 @@
 local T = require 'plugin.types'
 local Cap = require 'plugin.capability'
 local V = require 'plugin.version'
+local R = require 'plugin.ref'
 
 local M = {}
 
 local function candidates(byref, refs, name)
   local out = {}
+  -- A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned it
+  -- here. Considering only declared capabilities made `resolve` answer
+  -- `absent` about a provider sitting right there and live - section
+  -- 11.4's job is explaining the graph the runtime reconciles.
+  local asref = R.canon(name)
   -- Sorted refs, so the walk is deterministic in a language whose tables
   -- have no order at all.
   for _, ref in ipairs(refs) do
     local node = byref[ref]
+    -- The ref match WINS OUTRIGHT for that node, as at runtime: one
+    -- candidate, not two, for a node both named `b` and providing `b`.
+    if ref == asref then
+      out[#out + 1] = T.map {
+        ref = T.getv(node, 'ref'),
+        pos = T.getv(node, 'pos') or 0,
+        provides = T.map { name = name },
+      }
+      goto continue
+    end
     local provides = T.getv(node, 'provides') or T.list {}
     for i = 1, T.len(provides) do
       local prov = provides[i]
@@ -39,6 +55,7 @@ local function candidates(byref, refs, name)
         }
       end
     end
+    ::continue::
   end
   return T.list(out)
 end

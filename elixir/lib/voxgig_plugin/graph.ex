@@ -20,6 +20,7 @@ defmodule Voxgig.Plugin.Graph do
   """
 
   alias Voxgig.Plugin.Capability
+  alias Voxgig.Plugin.Ref
   alias Voxgig.Plugin.Types
   alias Voxgig.Plugin.Version
 
@@ -150,16 +151,32 @@ defmodule Voxgig.Plugin.Graph do
     do: %{"ref" => Types.get(node, "ref"), "unmet" => name, "why" => reason}
 
   def graph_candidates(byref, name) do
+    # A NODE SATISFIES ITS OWN REF (section 11.1), and the graph learned
+    # it here. Considering only declared capabilities made `resolve`
+    # answer `absent` about a provider sitting right there and live -
+    # section 11.4's job is explaining the graph the runtime reconciles,
+    # and it was explaining a different one.
+    asref = Ref.canon(name)
+
     byref
     |> Types.keys()
     |> Enum.flat_map(fn ref ->
       node = Types.get(byref, ref)
 
-      Enum.map(Types.get(node, "provides") || [], fn prov ->
-        %{"ref" => Types.get(node, "ref"), "pos" => Types.get(node, "pos") || 0,
-          "provides" => prov}
-      end)
+      # The ref match WINS OUTRIGHT for that node, as at runtime: one
+      # candidate, not two, for a node both named `b` and providing `b`.
+      if ref == asref do
+        [%{"ref" => Types.get(node, "ref"), "pos" => Types.get(node, "pos") || 0,
+           "provides" => %{"name" => name}}]
+      else
+        Types.get(node, "provides")
+        |> Kernel.||([])
+        |> Enum.filter(&(Types.get(&1, "name") == name))
+        |> Enum.map(fn prov ->
+          %{"ref" => Types.get(node, "ref"), "pos" => Types.get(node, "pos") || 0,
+            "provides" => prov}
+        end)
+      end
     end)
-    |> Enum.filter(&(Types.get(Types.get(&1, "provides"), "name") == name))
   end
 end
