@@ -19,15 +19,42 @@ wrong, and the burden is on the change to show otherwise.
 
 **There are no JSON types.** `Types::jsontype` is the whole answer: SV
 flags for number-versus-string, `builtin::is_bool` for the boolean,
-`ref` for the containers. Every leaf comparison in the library and in the
-runner goes through `Capability::samescalar`, which asks the type first.
-Never compare a corpus value with a bare `==` or `eq`.
+`ref` for the containers. Every leaf comparison in the library goes
+through `Capability::samescalar`, which asks the type first. Never
+compare a corpus value with a bare `==` or `eq`.
+
+The runner asks the same question with its OWN copy of that code
+(`Corpus::valuetype`), and must: `capability/match` exists to pin exactly
+this behaviour, and an oracle borrowing the library's answer would agree
+with a broken implementation and stay green (`../AGENTS.md` §1). The
+technique is forced — perl has one way to interrogate an SV — but the
+copy is not, and the copy is the point. `Corpus::valuetype` also reads
+`JSON::PP::Boolean` as a bool, which the library has no reason to: the
+expected side of every entry comes out of `JSON::PP`, which spells a JSON
+boolean as a blessed object, while the port produces perl's own.
 
 **Reading the type is destructive if you do it wrong.** A numeric scalar
 used in STRING context keeps POK for good and reads as a string
 afterwards. So: no interpolation of a corpus value before it is compared,
-and in the runner the `jsontype` call comes before the `'__EXISTS__' eq`
+and in the runner the `valuetype` call comes before the `'__EXISTS__' eq`
 sentinel tests, not after. Thirty entries failed on exactly that ordering.
+
+The same trap bites a PARSER. `Env::parsevalue` numifies a JSON integer
+it decoded, because the digits arrive as a PV and would otherwise read
+back as `str` — a bare `0 + $n` is the fix, and it has to happen where
+the value is made, not where it is compared.
+
+**`ref` names a CLASS, `reftype` names a STRUCTURE.** `Types::codeof`
+tested `ref $err` against the library's own error class, so an error
+raised by a host object of any other class reported no code at all. It
+duck-types now: `->code` if the thing `can`, otherwise the hash key via
+`reftype`, so a blessed hash from anywhere is still readable. Any test
+against `ref` is worth a second look for the same reason.
+
+**JSON escaping is a RANGE, not a list of named characters.** The
+control range `\x00-\x1f` all needs `\uXXXX`; escaping only `\n`,
+`\r`, `\t`, `\"` and `\\` emits raw bytes that no JSON reader
+accepts. `Types::_json` does the whole range.
 
 **`foreach` aliases, and aliasing a hash element autovivifies it.**
 `for my $x ($h->{k})` creates `$h->{k}` as undef. Assign the list to an

@@ -67,11 +67,30 @@ where they are written:
 
 - `Util::maplike` — an empty array counts as a map for merging, so `{}`
   merging onto a map leaves it alone (what a javascript spread does).
-- `matchvalue` — an empty `match` requirement is "no constraint".
+- `matchvalue` — an empty `want` takes its shape from `$got`, the only
+  side that still carries one. Choosing once for all of them is wrong in
+  one direction or the other: read always as a map, `match: {modes: []}`
+  accepts a provider advertising `modes: ["write"]` where the canonical
+  rejects it on length; read always as a list, `match: {opts: {}}`
+  rejects a provider carrying options where the canonical accepts.
+  Deciding on `$got` agrees with the canonical whenever requirement and
+  capability have the same shape — every case a document plausibly
+  writes — and leaves only the mismatched shapes, where the canonical's
+  own answer is that the two are simply not equal, undecidable here.
 
 Nothing in the corpus exercises either. If an entry ever does, it belongs
 in the corpus first, and this file gets the note about which way php had
 to go.
+
+## What php gets wrong quietly
+
+**Casting an oversized numeric string to `int` gives 0, not a clamp.**
+`(int)'999…9'` is `0` once the digits pass `PHP_INT_MAX`, so
+`Version::component` comparing the cast against `COMPONENT_MAX` read a
+thousand nines as in range. The bound is compared as a STRING there —
+longer than the bound, or the same length and `strcmp` greater — and
+`version/range#component-max` is what catches the alternative. Any other
+place that bounds a parsed integer has the same trap.
 
 ## Local shape
 
