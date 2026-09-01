@@ -1,0 +1,14 @@
+# The rust port. NO DEPENDENCIES - not even serde: §16 permits exactly one
+# runtime dependency (voxgig/struct) and rust has no port of it, so the
+# corpus JSON is parsed by `value.rs` in about a hundred lines. A crate
+# graph is also a supply chain, and this library is 3,000 lines.
+[package]
+name = "voxgig_plugin"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]

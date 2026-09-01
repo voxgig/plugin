@@ -39,6 +39,18 @@ PORTS = {
     'python': ['python/test'],
     'javascript': ['javascript/test'],
     'ruby': ['ruby/test'],
+    'php': ['php/test'],
+    'perl': ['perl/test'],
+    'rust': ['rust/tests'],
+    'java': ['java/test'],
+    'lua': ['lua/test'],
+    'csharp': ['csharp/test'],
+    'elixir': ['elixir/test'],
+    'clojure': ['clojure/test'],
+    'dart': ['dart/test'],
+    'kotlin': ['kotlin/test'],
+    'swift': ['swift/test'],
+    'scala': ['scala/test'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj'}

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The csharp port. NO PACKAGE REFERENCES - not System.Text.Json
+       either: §16 permits exactly one runtime dependency (voxgig/struct,
+       which has no csharp port), so Json.cs is the parser and a `dotnet
+       restore` has nothing to fetch. That is also what makes `make test`
+       work offline. -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Voxgig.Plugin</RootNamespace>
+    <AssemblyName>VoxgigPlugin</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+</Project>

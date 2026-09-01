@@ -4,11 +4,11 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P5, two of fourteen.** All **19 corpus sections** exist — 539
-entries — with the driver contract in `DOCS.md` §4. **Five
-implementations pass every one of them**: `typescript/` (canonical),
-`go/`, `python/`, `javascript/` and `ruby/`, and `make check` is the
-whole gate. What that means for you is in "Where to start" at the
+**Status: P5 tier-3 complete, fourteen of fourteen.** All **19 corpus
+sections** exist — 539 entries — with the driver contract in `DOCS.md`
+§4. **Seventeen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+`perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
+`dart/`, `kotlin/`, `swift/` and `scala/`, and `make check` is the whole gate. What that means for you is in "Where to start" at the
 bottom, and the live per-item state is
 [`doc/plan/status.md`](doc/plan/status.md).
 
@@ -43,6 +43,18 @@ And one this repo adds:
    the corpus exists to catch.
 
    The plugin library must never be used to implement its own tests.
+
+   **That covers the TYPING, not just the comparison.** A runner that
+   writes its own `same` but asks the library "is this a map", "what are
+   its keys", or "is this a string" has only moved the shared code one
+   level down — and map-versus-list is precisely what the corpus checks,
+   so a port that misclassifies would misclassify in the oracle too and
+   stay green. Every runner asks the LANGUAGE (or reads the port's own
+   tag, where a language has no answer — lua stamps a metatable, perl
+   reads SV flags) and enumerates keys for itself. Reading a VALUE the
+   port produces is fine and sometimes unavoidable: an error's `code`, a
+   present-null sentinel, `JSON::PP::Boolean`. Borrowing a JUDGEMENT is
+   not.
 
 
 ## 2. The layout
@@ -208,15 +220,26 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0–P4 are done and P5 is under way: `typescript/` is the canonical,
-`go/` and `python/` are the proving pair, `javascript/` and `ruby/` are
-P5's first two, and all five pass all 19 corpus sections.
+P0–P4 are done and **P5's fourteen tier-3 ports are complete**:
+`typescript/` is the canonical, `go/` and `python/` are the proving
+pair, and all seventeen implementations pass all 19 corpus sections.
 
-**Next is the rest of P5.** Only six of its fourteen have a toolchain in
-the usual environment — javascript, ruby, php, java, rust and perl — and
-porting a language nobody can execute ships an implementation nobody has
-run, which is the thing the corpus exists to prevent. Say which are
-gated rather than shipping unverifiable work.
+**Next is P6's six tier-4 ports, and the three corpus gaps §18 of the
+handover records.** The gaps first, because they are cheap and because
+every port added after them inherits the check: shape validation at
+catalog REGISTRATION (§10.1) is pinned by nothing — no corpus definition
+carries a `shape` at all; `providersof` comparing refs uncanonicalized
+(§4 rule 5, §11.1) changes no answer any entry observes; and whether
+`nest` counts the inner host as an open resource (§6.5) is free, because
+no `nest` entry asserts `open` while an inner host is live.
+
+Every tier-3 toolchain is reachable, but not all of them are
+preinstalled: lua, csharp, elixir, clojure, kotlin and scala come from
+`apt`, and dart and swift are pinned tarballs the CI workflow fetches.
+**Porting a language nobody can execute ships an implementation nobody
+has run**, which is the thing the corpus exists to prevent — install the
+toolchain, or say which are gated rather than shipping unverifiable
+work.
 
 **If you are writing a port, read
 [`doc/plan/handover.md`](doc/plan/handover.md) §13 before you start.**

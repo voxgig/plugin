@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-08-24**. The register in
+Live snapshot, **2026-09-01**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -13,9 +13,33 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**voxgig/plugin#18** — list-valued `before`/`after` across canonical and
-all four ports, plus the `config/normorder` set that makes a rewritten
-order block visible at all. OPEN.
+**P5's fourteen tier-3 ports are complete.** Twelve landed in this
+session — `php`, `perl`, `rust`, `java`, `lua`, `csharp`, `elixir`,
+`clojure`, `dart`, `kotlin`, `swift`, `scala` — joining `javascript` and
+`ruby`. **Seventeen implementations now pass all 539 corpus entries**, and
+`make check` runs every one of them.
+
+They found **nothing further wrong with the canonical**, which is the
+result a settled contract should produce. What they found instead is
+**three places two implementations could disagree and the corpus would
+not notice** — the same three in every language, mutation-tested
+independently:
+
+1. **Shape validation at catalog REGISTRATION is pinned by nothing.**
+   No corpus definition carries a `shape` at all, so §10.1's "fails
+   once, and in the same place everywhere" is unreachable.
+2. **`providersof` comparing refs uncanonicalized** changes no answer
+   any entry observes.
+3. **Whether `nest` counts the inner host as an open resource** is a
+   free choice.
+
+handover.md §18 has all of it, plus a fourth that is a SCALE gap rather
+than a coverage one (dart's unstable sort above 32 elements), the two
+port-side bugs the corpus DID catch, and two non-mutations recorded so
+nobody re-derives them.
+
+**Pick these up first.** They are cheap, they are pure-corpus work, and
+every P6 port added after them inherits the check.
 
 Merged since this section last named a tip:
 

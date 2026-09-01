@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The suite is an EXE, not a test framework project: no xunit, no
+       NUnit, no `dotnet test`. A conformance suite whose only job is to
+       run one corpus and report which entries disagree does not need a
+       framework, and a PackageReference would be the one thing §16 does
+       not allow. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Voxgig.Plugin.Test</RootNamespace>
+    <AssemblyName>Runner</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../src/VoxgigPlugin.csproj" />
+  </ItemGroup>
+
+</Project>
