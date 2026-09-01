@@ -1003,8 +1003,14 @@ sub apply {
     # --- phase 2: declare and patch EVERYTHING, in load order ----------
     for my $ref (@$want) {
         my $ent = $norm->{instance}{$ref};
-        $self->declare($ref, { options => $optionsof{$ref},
-                               order => $ent->{order}, pos => $ent->{pos} });
+        # NO OPTIONS HERE, and the omission is the fix rather than an
+        # oversight. `declare` ADOPTS the options hash it is handed as the
+        # instance's own, so passing the resolved hash made target and
+        # source THE SAME HASH in the refill below - which cleared its own
+        # source and left a first-time instance with no options at all.
+        # `declare` makes its own empty hash and the refill fills it, so
+        # both paths are now one path.
+        $self->declare($ref, { order => $ent->{order}, pos => $ent->{pos} });
         # The bar is REASSERTED ON EVERY APPLY, in both directions - a
         # document that turns the instance back on clears it, which is the
         # whole point of a config switch.

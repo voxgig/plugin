@@ -26,7 +26,7 @@ programmatic API over the same normalized model.
 
 **P5 tier-3 complete — fourteen of fourteen.** The design is complete
 and agreed with its first host, the contract is complete (all 19 corpus
-sections, 539 entries), and there are **seventeen implementations**:
+sections, 552 entries), and there are **seventeen implementations**:
 `typescript/` the canonical, plus `go/`, `python/`, `javascript/`,
 `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`,
 `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. **All
@@ -70,7 +70,7 @@ remedy is the usual one: an entry each, in the canonical first.
 |---|---|
 | design | complete — [`docs/design/plugin.md`](./docs/design/plugin.md) |
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
-| corpus | **539 entries across all 19 sections** — the contract is complete |
+| corpus | **552 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
 | ports | **seventeen, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. Next: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P6's six tier-4 ports. |
 

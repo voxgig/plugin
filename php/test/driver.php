@@ -377,8 +377,37 @@ class Driver
                 ), self::nothing()];
 
             case 'define':
-                // The catalog is pre-seeded with the probe set; `define`
-                // names which entry backs this definition.
+                // §10.1's static registration: the definition ENTERS THE
+                // CATALOG here, and registration is where its option
+                // shape is validated (§9.4) — before any load, so a
+                // malformed shape fails at one moment in every host
+                // rather than whenever a document happens to exercise
+                // the key.
+                //
+                // The catalog is pre-seeded with the probe set, so
+                // re-registering a probe by name is the identity this
+                // command has always been; `shape` is what makes it do
+                // work. A name the probe set does not hold registers a
+                // bare definition — enough to reach the catalog, and
+                // never loaded.
+                // §4.2's three keys, all of them live. `probe` names the
+                // PROBE whose callbacks back the definition and `name` is
+                // what the definition is called — two keys that ten
+                // entries passed as equal strings, so a driver ignoring
+                // `probe` passed them all.
+                $source = array_key_exists('probe', $cmd)
+                    ? $cmd['probe'] : ($cmd['name'] ?? null);
+                $definition = ['name' => $cmd['name'] ?? null];
+                foreach (self::probes() as $d) {
+                    if ($source === $d['name']) {
+                        $definition = $d;
+                        $definition['name'] = $cmd['name'] ?? null;
+                    }
+                }
+                if (array_key_exists('shape', $cmd)) {
+                    $definition['shape'] = $cmd['shape'];
+                }
+                $host->define($definition);
                 return [$host, self::nothing()];
 
             case 'load':

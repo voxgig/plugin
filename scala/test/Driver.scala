@@ -282,9 +282,29 @@ object Driver {
           defaults = cmd.at("defaults"),
           profile = cmd.at("profile").asString
         )), None)
-      // The catalog is pre-seeded with the probe set; `define` names which
-      // entry backs this definition.
-      case "define"     => (host, None)
+      // Section 10.1's static registration: the definition ENTERS THE
+      // CATALOG here, and registration is where its option shape is
+      // validated (section 9.4) - before any load, so a malformed shape
+      // fails at one moment in every host rather than whenever a document
+      // happens to exercise the key.
+      //
+      // The catalog is pre-seeded with the probe set, so re-registering a
+      // probe by name is the identity this command has always been;
+      // `shape` is what makes it do work. A name the probe set does not
+      // hold registers a bare definition - enough to reach the catalog, and
+      // never loaded.
+      case "define" =>
+        // Section 4.2's three keys, all of them live. `probe` names the
+        // PROBE whose callbacks back the definition and `name` is what the
+        // definition is called - two keys that ten entries passed as equal
+        // strings, so a driver ignoring `probe` passed them all.
+        val dname = cmd.at("name").asString.getOrElse("")
+        val source = cmd.at("probe").asString.getOrElse(dname)
+        val base = probes.find(_.name == source)
+          .map(_.copy(name = dname)).getOrElse(Definition(name = dname))
+        val definition = if (cmd.has("shape")) base.copy(shape = cmd.at("shape")) else base
+        host.define(definition)
+        (host, None)
       case "load"       => host.load(ref, spec); (host, None)
       case "ready" =>
         // declare FIRST, so the ordering block and definition reach the

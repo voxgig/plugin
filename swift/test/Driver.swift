@@ -286,9 +286,42 @@ enum Driver {
                 defaults: cmd.at("defaults"),
                 profile: cmd.at("profile").asString
             )), nil)
-        // The catalog is pre-seeded with the probe set; `define` names which
-        // entry backs this definition.
-        case "define": return (host, nil)
+        // Section 10.1's static registration: the definition ENTERS THE
+        // CATALOG here, and registration is where its option shape is
+        // validated (section 9.4) - before any load, so a malformed shape
+        // fails at one moment in every host rather than whenever a document
+        // happens to exercise the key.
+        //
+        // The catalog is pre-seeded with the probe set, so re-registering a
+        // probe by name is the identity this command has always been;
+        // `shape` is what makes it do work. A name the probe set does not
+        // hold registers a bare definition - enough to reach the catalog,
+        // and never loaded.
+        case "define":
+            // Section 4.2's three keys, all of them live. `probe` names
+            // the PROBE whose callbacks back the definition and `name` is
+            // what the definition is called - two keys that ten entries
+            // passed as equal strings, so a driver ignoring `probe` passed
+            // them all.
+            let dname = cmd.at("name").asString ?? ""
+            let source = cmd.at("probe").asString ?? dname
+            var definition = Definition(name: dname)
+            for d in probes() where d.name == source {
+                definition = Definition(
+                    name: dname,
+                    define: d.define,
+                    activate: d.activate,
+                    deactivate: d.deactivate,
+                    close: d.close,
+                    reconfigure: d.reconfigure,
+                    shape: d.shape
+                )
+            }
+            if cmd.has("shape") {
+                definition.shape = cmd.at("shape")
+            }
+            try host.define(definition)
+            return (host, nil)
         case "load": try host.load(ref, spec); return (host, nil)
         case "ready":
             // declare FIRST, so the ordering block and definition reach the

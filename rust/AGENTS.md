@@ -56,7 +56,7 @@ Three mutations survive, and none is a licence to relax the code:
   `Rc<RefCell<_>>` so the registry, the `Inst` a callback holds, and any
   closure that captured it all see one set of values.
 - The driver's probe closures capture the `Inst` that owns them — an `Rc`
-  cycle that is never collected. Deliberate, bounded (539 entries and the
+  cycle that is never collected. Deliberate, bounded (552 entries and the
   process exits), and said out loud in `tests/support/driver.rs`.
 - `make build` is a real compile, so a type error in a file no test
   exercises still fails.

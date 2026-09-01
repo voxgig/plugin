@@ -16,18 +16,24 @@ a wrong status file is worse than none.**
 **P5's fourteen tier-3 ports are complete.** Twelve landed in this
 session — `php`, `perl`, `rust`, `java`, `lua`, `csharp`, `elixir`,
 `clojure`, `dart`, `kotlin`, `swift`, `scala` — joining `javascript` and
-`ruby`. **Seventeen implementations now pass all 539 corpus entries**, and
+`ruby`. **Seventeen implementations now pass all 552 corpus entries**, and
 `make check` runs every one of them.
 
 They found **nothing further wrong with the canonical**, which is the
 result a settled contract should produce. What they found instead is
 **three places two implementations could disagree and the corpus would
 not notice** — the same three in every language, mutation-tested
-independently:
+independently. **The first is now closed; two remain:**
 
-1. **Shape validation at catalog REGISTRATION is pinned by nothing.**
-   No corpus definition carries a `shape` at all, so §10.1's "fails
-   once, and in the same place everywhere" is unreachable.
+1. ~~Shape validation at catalog REGISTRATION is pinned by nothing.~~
+   **CLOSED** — `declare/shape` (7 entries) and `declare/register` (3).
+   Nothing carried a `shape` because the driver's `define` command was a
+   **no-op in all seventeen ports**, so `catalog.add`'s check was
+   unreachable by construction; `define` is now implemented everywhere,
+   all three of its documented keys live. Closing it uncovered a
+   canonical bug — **`apply` dropped a first-time instance's options
+   entirely** — now fixed in the eight ports that had it and pinned by
+   three new `apply/idempotent` entries.
 2. **`providersof` comparing refs uncanonicalized** changes no answer
    any entry observes.
 3. **Whether `nest` counts the inner host as an open resource** is a
@@ -38,8 +44,10 @@ than a coverage one (dart's unstable sort above 32 elements), the two
 port-side bugs the corpus DID catch, and two non-mutations recorded so
 nobody re-derives them.
 
-**Pick these up first.** They are cheap, they are pure-corpus work, and
-every P6 port added after them inherits the check.
+**Pick 2 and 3 up first.** They are pure-corpus work — an entry each,
+no driver change — and every P6 port added after them inherits the
+check. Gap 1 was described the same way and was not: see §18 for why
+"no entry carries X" is worth one question before it is sized.
 
 Merged since this section last named a tip:
 
@@ -53,7 +61,7 @@ and python ports) and **P5's first two** (javascript, ruby) — merged as
 as `f7656aa`, review follow-ups merged in voxgig/station#10. **C3 is
 discharged.**
 
-plugin `main` is **`6a4be0c`**; station `main` is **`dcfdd0a`**, which is
+plugin `main` is **`9ffe3f9`**; station `main` is **`dcfdd0a`**, which is
 **95 commits past the `2036cd6` this section used to name** — the npm and
 OIDC release work plus voxgig/station#15, #16 and #17 all landed in
 between. C1 and C2 were discharged by voxgig/plugin#7; C3 by
@@ -82,12 +90,18 @@ bands, vacuous satisfaction of an absent name, ties by declaration
 position rather than alphabet, and the innermost pin. That was
 deliberate, and it makes P3 a move rather than a rewrite.
 
-**The rest of P5.** javascript and ruby are in; **only four of the
-remaining twelve have a toolchain in the usual environment** — php,
-java, rust and perl. lua, csharp, swift, kotlin, scala, clojure, dart
-and elixir do not, and porting a language nobody can execute ships an
-implementation nobody has run. Say which are gated rather than shipping
-unverifiable work — the same call station's Stage 5 made.
+**The two remaining corpus gaps, then P6's tier-4 ports.** Gap 1 is
+closed (above). Gaps 2 and 3 are corpus-only — `providersof` without
+`canon` needs an entry whose requirement name is NOT already canonical
+(a trailing `$` against a bare `provides`), and `nest` needs an entry
+asserting `open` while an inner host is live. Neither needs a driver
+change, which is what made gap 1 different.
+
+Then **P6's six tier-4 ports**: `c` and `cpp` first — gcc/g++ 13.3.0 are
+present — and `zig`, `haskell`, `ocaml`, `lean` after their toolchains
+are installed and verified. Porting a language nobody can execute ships
+an implementation nobody has run; say which are gated rather than
+shipping unverifiable work — the same call station's Stage 5 made.
 
 **Read [`handover.md`](handover.md) §13 first if you are porting.** All
 six defects the pair found were of two kinds — a rule the design states

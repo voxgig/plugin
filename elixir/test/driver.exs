@@ -266,9 +266,34 @@ defmodule Driver do
            "dependency" => Types.get(cmd, "dependency")
          }), @nothing}
 
-      # The catalog is pre-seeded with the probe set; `define` names which
-      # entry backs this definition.
-      "define" -> {host, @nothing}
+      # Section 10.1's static registration: the definition ENTERS THE
+      # CATALOG here, and registration is where its option shape is
+      # validated (section 9.4) - before any load, so a malformed shape
+      # fails at one moment in every host rather than whenever a document
+      # happens to exercise the key.
+      #
+      # The catalog is pre-seeded with the probe set, so re-registering a
+      # probe by name is the identity this command has always been;
+      # `shape` is what makes it do work. A name the probe set does not
+      # hold registers a bare definition - enough to reach the catalog,
+      # and never loaded.
+      "define" ->
+        # Section 4.2's three keys, all of them live. `probe` names the
+        # PROBE whose callbacks back the definition and `name` is what the
+        # definition is called - two keys that ten entries passed as equal
+        # strings, so a driver ignoring `probe` passed them all.
+        name = Types.get(cmd, "name")
+        source = if Types.has(cmd, "probe"), do: Types.get(cmd, "probe"), else: name
+        definition =
+          case Enum.find(probes(), fn d -> source == Types.get(d, "name") end) do
+            nil -> %{"name" => name}
+            found -> Map.put(found, "name", name)
+          end
+        definition =
+          if Types.has(cmd, "shape"),
+            do: Map.put(definition, "shape", Types.get(cmd, "shape")),
+            else: definition
+        nothing(host, fn -> Host.define(host, definition) end)
       "load" -> nothing(host, fn -> Host.load(host, ref, spec) end)
       "ready" ->
         # declare FIRST, so the ordering block and definition reach the

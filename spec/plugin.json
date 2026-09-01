@@ -421,6 +421,116 @@
                 "log": []
               }
             }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "W"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "apply/idempotent#options-first-time",
+            "match": {
+              "out": {
+                "result": "Wx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "W"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "W"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "Wx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "W"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "Z"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "apply/idempotent#options-changed",
+            "match": {
+              "out": {
+                "result": "Zx"
+              }
+            }
           }
         ]
       },
@@ -4200,6 +4310,80 @@
           }
         ]
       },
+      "register": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "adapter",
+                "probe": "noisy"
+              },
+              {
+                "do": "load",
+                "options": {
+                  "code": "probe_boom",
+                  "fail": "define"
+                },
+                "ref": "adapter$a"
+              }
+            ],
+            "doc": true,
+            "err": "probe_boom",
+            "id": "declare/register#probe-differs-from-name"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "adapter",
+                "probe": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "adapter$a"
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "id": "declare/register#backed-by-probe",
+            "match": {
+              "out": {
+                "result": ":x",
+                "status": {
+                  "adapter$a": "live"
+                }
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "adapter",
+                "probe": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "adapter$a"
+              },
+              {
+                "do": "list"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": {
+                  "adapter$a": "live"
+                }
+              }
+            }
+          }
+        ]
+      },
       "seq": {
         "set": [
           {
@@ -4326,6 +4510,213 @@
             "match": {
               "out": {
                 "result": 0
+              }
+            }
+          }
+        ]
+      },
+      "shape": {
+        "set": [
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe",
+                "shape": {
+                  "m": {
+                    "$MERGE": {
+                      "deep": 0
+                    }
+                  }
+                }
+              }
+            ],
+            "doc": true,
+            "err": "plugin_shape_invalid",
+            "id": "declare/shape#at-registration"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe",
+                "shape": {
+                  "m": {
+                    "$MERGE": "merge"
+                  }
+                }
+              }
+            ],
+            "err": "plugin_shape_invalid"
+          },
+          {
+            "cmd": [
+              {
+                "catch": true,
+                "do": "define",
+                "name": "shaped",
+                "shape": {
+                  "m": {
+                    "$MERGE": {
+                      "deep": 0
+                    }
+                  }
+                }
+              },
+              {
+                "do": "load",
+                "ref": "shaped$a"
+              }
+            ],
+            "err": "plugin_unknown_definition",
+            "id": "declare/shape#rejected-not-registered"
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe",
+                "shape": {
+                  "wrap": "S"
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "doc": true,
+            "id": "declare/shape#reaches-resolution",
+            "match": {
+              "out": {
+                "result": "Sx"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {}
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": ":x"
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "define",
+                "name": "probe",
+                "shape": {
+                  "provides": {
+                    "$MERGE": "append"
+                  }
+                }
+              },
+              {
+                "do": "apply",
+                "doc": {
+                  "default": {
+                    "probe": {
+                      "options": {
+                        "provides": [
+                          {
+                            "name": "a"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "instance": {
+                    "probe$x": {
+                      "options": {
+                        "provides": [
+                          {
+                            "name": "b"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "capability",
+                "name": "a"
+              }
+            ],
+            "id": "declare/shape#directive-at-apply",
+            "match": {
+              "out": {
+                "result": [
+                  "probe$x"
+                ]
+              }
+            }
+          },
+          {
+            "cmd": [
+              {
+                "do": "apply",
+                "doc": {
+                  "default": {
+                    "probe": {
+                      "options": {
+                        "provides": [
+                          {
+                            "name": "a"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "instance": {
+                    "probe$x": {
+                      "options": {
+                        "provides": [
+                          {
+                            "name": "b"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "do": "capability",
+                "name": "a"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": []
               }
             }
           }

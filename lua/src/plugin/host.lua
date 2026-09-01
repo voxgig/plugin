@@ -1071,8 +1071,14 @@ function Host:apply(doc, profile)
   -- --- phase 2: declare and patch EVERYTHING, in load order ------
   for _, ref in ipairs(want) do
     local ent = T.getv(norm.instance, ref)
+    -- NO OPTIONS HERE, and the omission is the fix rather than an
+    -- oversight. `declare` ADOPTS the options table it is handed as the
+    -- instance's own, so passing the resolved table made target and
+    -- source THE SAME TABLE in the refill below - which cleared its own
+    -- source and left a first-time instance with no options at all.
+    -- `declare` makes its own empty table and the refill fills it, so
+    -- both paths are now one path.
     self:declare(ref, T.map {
-      options = optionsof[ref],
       order = T.getv(ent, 'order'),
       pos = T.getv(ent, 'pos'),
     })

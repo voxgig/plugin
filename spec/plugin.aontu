@@ -7,9 +7,10 @@
 # tests. Edit this file, run `npm run build-spec` in tools/, and commit
 # both. Never hand-edit the JSON (§16, prime directive 5).
 #
-# STATUS: P2. The corpus is COMPLETE against §15.3 — all nineteen
-# sections, 417 entries, every one running green against the canonical
-# TypeScript port.
+# STATUS: P5 complete. The corpus is COMPLETE against §15.3 — all
+# nineteen sections, 552 entries (417 at P2, when this line was first
+# written), every one running green against the canonical TypeScript
+# port AND the sixteen ports of it.
 #
 # P0 built the machinery and proved it turns over on an EMPTY corpus,
 # which was its exit criterion: `make spec` compiles this file and
@@ -1019,10 +1020,11 @@ primary: config: {
   # an invalid shape into its catalog and raises only at resolution time
   # passes all of them.
   #
-  # That timing is a CATALOG behaviour and needs a driver section
-  # (§10.1's makeCatalog) to observe. It is item 1.7's neighbour in
-  # doc/plan/progress.md rather than a gap here, and this comment says so
-  # instead of the group claiming coverage it cannot have.
+  # That timing is a CATALOG behaviour and needs a driver to observe.
+  # `declare/shape` is where it lives, and it is written the other way
+  # round: every entry there stops at `define`, so a port that defers the
+  # check raises nothing and fails. The two groups are the domain and the
+  # moment, and neither implies the other.
   #
   # Stating the domain is not pedantry: without it each port picks its own
   # reading of {"deep": 0} — reject, replace, unlimited merge, or clamp to
@@ -3988,6 +3990,139 @@ primary: declare: {
       match: { out: { result: 0 } }
     }
   ]
+
+
+  # `define` REGISTERS, AND THE DEFINITION NEED NOT BE NAMED AFTER THE
+  # PROBE BACKING IT (DOCS.md §4.2). `probe` names the catalog entry whose
+  # callbacks are used; `name` is what the definition is called, and a ref
+  # resolves by NAME. Ten entries already passed `probe` beside an
+  # IDENTICAL `name`, so nothing distinguished the two keys and a driver
+  # ignoring `probe` outright passed every one of them — which every
+  # driver did, `define` having been a no-op until this group.
+  register: set: [
+    {
+      id: 'declare/register#probe-differs-from-name', doc: true
+      cmd: [
+        { do: 'define', name: 'adapter', probe: 'noisy' }
+        { do: 'load', ref: 'adapter$a', options: { fail: 'define', code: 'probe_boom' } }
+      ]
+      err: 'probe_boom'
+    }
+    # The pre-seeded `adapter` is a bare record probe that binds nothing,
+    # so a driver that took the name and ignored `probe` answers 'x'.
+    {
+      id: 'declare/register#backed-by-probe'
+      cmd: [
+        { do: 'define', name: 'adapter', probe: 'probe' }
+        { do: 'ready', ref: 'adapter$a' }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: ':x', status: { 'adapter$a': 'live' } } }
+    }
+    # ...and the definition IS named `adapter`, so §10.1's "the definition
+    # that comes back must be named what was asked for" is satisfied by
+    # the ref rather than by the probe it borrowed.
+    {
+      cmd: [
+        { do: 'define', name: 'adapter', probe: 'probe' }
+        { do: 'ready', ref: 'adapter$a' }
+        { do: 'list' }
+      ]
+      match: { out: { result: { 'adapter$a': 'live' } } }
+    }
+  ]
+
+
+  # THE OPTION SHAPE IS VALIDATED WHEN IT ENTERS THE CATALOG (§10.1),
+  # not when a document exercises the key.
+  #
+  # `config/optmergebad` pins the DOMAIN — which shapes are rejected —
+  # and says in its own comment that it cannot pin the TIMING, because
+  # every entry there hands `resolveoptions` a shape already in hand. A
+  # port that took an invalid shape into its catalog and raised only at
+  # resolution passed all eleven. This group closes that: every entry
+  # below stops at `define`, with NO load and NO document, so a port
+  # that defers raises nothing and fails rather than passing quietly.
+  #
+  # Timing is the whole of §9.4's claim. A shape checked at resolution
+  # fails in a different place in every host — under the first document
+  # that touches the key, which in station is a deploy rather than a
+  # startup — and "fails once, and in the same place everywhere" is the
+  # property the stated domain exists to deliver.
+  shape: set: [
+    {
+      id: 'declare/shape#at-registration', doc: true
+      cmd: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': { deep: 0 } } } } ]
+      err: 'plugin_shape_invalid'
+    }
+    # The word form too, so the raise is not one special case of `deep`.
+    {
+      cmd: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': 'merge' } } } ]
+      err: 'plugin_shape_invalid'
+    }
+    # A REJECTED REGISTRATION LEAVES NOTHING BEHIND. Without this, a port
+    # could store the definition and then raise, and the next `load`
+    # would quietly succeed against a definition the catalog was told to
+    # refuse. `catch` lets the run continue past the raise so the second
+    # command can ask.
+    {
+      id: 'declare/shape#rejected-not-registered'
+      cmd: [
+        { do: 'define', name: 'shaped', shape: { m: { '$MERGE': { deep: 0 } } }, catch: true }
+        { do: 'load', ref: 'shaped$a' }
+      ]
+      err: 'plugin_unknown_definition'
+    }
+    # ...AND A VALID SHAPE IS KEPT, not merely inspected and dropped.
+    # §10.1: "a catalog entry carries the definition's option shape, and
+    # it is readable before the definition is loaded". Validating at
+    # registration and discarding would pass every entry above while
+    # making the check pointless, so the shape is followed all the way
+    # to a resolved option: the shape's non-directive values are the
+    # level-1 defaults (§9.3, `config/optladder#1`), and the probe wraps
+    # the `c` chain with `options.wrap`.
+    {
+      id: 'declare/shape#reaches-resolution', doc: true
+      cmd: [
+        { do: 'define', name: 'probe', shape: { wrap: 'S' } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'Sx' } }
+    }
+    # The same run WITHOUT the shape, because 'Sx' alone does not say
+    # where the S came from.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: ':x' } }
+    }
+    # A $MERGE DIRECTIVE FROM THE CATALOG DRIVES THE MERGE. The pair
+    # above only moves a default; this moves the merge rule itself, which
+    # is what the shape is for. `provides` is a list, so the library
+    # default REPLACES it and the instance's `b` would be the only
+    # capability; `append` keeps the document default's `a` as well.
+    {
+      id: 'declare/shape#directive-at-apply'
+      cmd: [
+        { do: 'define', name: 'probe', shape: { provides: { '$MERGE': 'append' } } }
+        { do: 'apply', doc: { plugin: 1
+            default: { probe: { options: { provides: [ { name: 'a' } ] } } }
+            instance: { 'probe$x': { options: { provides: [ { name: 'b' } ] } } } } }
+        { do: 'capability', name: 'a' }
+      ]
+      match: { out: { result: ['probe$x'] } }
+    }
+    { cmd: [
+        { do: 'apply', doc: { plugin: 1
+            default: { probe: { options: { provides: [ { name: 'a' } ] } } }
+            instance: { 'probe$x': { options: { provides: [ { name: 'b' } ] } } } } }
+        { do: 'capability', name: 'a' }
+      ]
+      match: { out: { result: [] } } }
+  ]
 }
 
 
@@ -4347,6 +4482,49 @@ primary: apply: {
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
       ]
       match: { out: { log: [] } }
+    }
+    # AND THE OPTIONS REACH THE INSTANCE ON THE FIRST APPLY.
+    #
+    # No entry anywhere observed an option that arrived through `apply`,
+    # and the canonical was silently dropping every one of them: `apply`
+    # resolves the options and hands the map to `declare`, which for a
+    # ref declared for the first time ADOPTS that map — so the refill
+    # afterwards cleared its own source and left the instance with
+    # nothing. Applying the same document a SECOND time filled them in,
+    # because by then the two maps were distinct. Every existing apply
+    # entry passed, because each asserted status, log or open and none
+    # asserted a value the options decide.
+    #
+    # `wrap` is read by the probe's `c` binding at call time, so the
+    # chain result is the option, not a copy of it.
+    {
+      id: 'apply/idempotent#options-first-time', doc: true
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'Wx' } }
+    }
+    # ...and are still there after a second, identical apply — the fix
+    # must not trade the first apply for the second.
+    {
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'Wx' } }
+    }
+    # A re-apply that CHANGES the value still lands, which is what the
+    # refill exists for: the binding closed over the map at `define`.
+    {
+      id: 'apply/idempotent#options-changed'
+      cmd: [
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
+        { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'Z' } } } } }
+        { do: 'chain', point: 'c', arg: 'x' }
+      ]
+      match: { out: { result: 'Zx' } }
     }
   ]
 

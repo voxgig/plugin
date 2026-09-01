@@ -433,9 +433,40 @@ func docmd(host *plugin.Host, c map[string]any) (*plugin.Host, *produced, error)
 		}), nil, nil
 
 	case "define":
-		// The catalog is pre-seeded with the probe set; `define` names
-		// which entry backs this definition.
-		return nil, nil, nil
+		// §10.1's static registration: the definition ENTERS THE CATALOG
+		// here, and registration is where its option shape is validated
+		// (§9.4) — before any load, so a malformed shape fails at one
+		// moment in every host rather than whenever a document happens
+		// to exercise the key.
+		//
+		// The catalog is pre-seeded with the probe set, so re-registering
+		// a probe by name is the identity this command has always been;
+		// `shape` is what makes it do work. A name the probe set does not
+		// hold registers a bare definition — enough to reach the catalog,
+		// and never loaded.
+		{
+			// §4.2's three keys, all of them live. `probe` names the
+			// PROBE whose callbacks back the definition and `name` is
+			// what the definition is called — two keys that ten entries
+			// passed as equal strings, so a driver ignoring `probe`
+			// passed them all.
+			name := tostr(c["name"])
+			source := name
+			if p, ok := c["probe"]; ok {
+				source = tostr(p)
+			}
+			def := plugin.Definition{Name: name}
+			for _, d := range Probes() {
+				if source == d.Name {
+					def = d
+					def.Name = name
+				}
+			}
+			if shape, ok := c["shape"]; ok {
+				def.Shape = shape
+			}
+			return nil, nil, host.Define(def)
+		}
 
 	case "load":
 		_, err := host.Load(ref, spec)
