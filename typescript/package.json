@@ -1,6 +1,6 @@
 {
   "name": "@voxgig/plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Plugin: multi-language plugin architecture",
   "license": "MIT",
   "repository": {
