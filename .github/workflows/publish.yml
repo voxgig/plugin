@@ -56,6 +56,8 @@ jobs:
 
     permissions:
       contents: read
+      # Reads ci.yml's conclusion for this SHA, below.
+      actions: read
       # The whole point. Without this the OIDC token cannot be minted and
       # the publish falls back to looking for a token that does not exist.
       id-token: write
@@ -122,23 +124,56 @@ jobs:
       # can be pushed at any commit, ci.yml does not run on tags, and the
       # `npm test` above is this one port — so a commit where typescript
       # and the corpus agree but propagation broke elsewhere would sail
-      # through and publish. Requiring the commit to be ON MAIN borrows
-      # the gate that already exists: ci.yml runs the full seventeen-port
-      # matrix on every pull request and every push to main, so a commit
-      # main contains is a commit `make check` has passed.
-      - name: tagged commit must be on main
-        if: startsWith(github.ref, 'refs/tags/')
+      # through and publish.
+      #
+      # TWO CONDITIONS, because either alone is a hole. Ancestry of main
+      # says the commit went through review; it does NOT say CI passed,
+      # since `repo-tag` pushes the branch and the tag seconds apart and
+      # this job would happily race the matrix — or outrun a matrix that
+      # goes on to fail. So the run itself is looked up, by SHA, and must
+      # have COMPLETED and SUCCEEDED. Not guarded on `refs/tags/` either:
+      # a `workflow_dispatch` publish needs the same proof.
+      - name: full CI must have passed on this commit
+        if: ${{ !inputs.dryrun }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # FETCH_HEAD, not origin/main: on a TAG checkout the action's
           # refspec need not create a remote-tracking branch ref, but the
           # fetch on the line above always sets FETCH_HEAD.
           git fetch --no-tags --quiet origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
-            echo "$GITHUB_SHA is not on main, so the full seventeen-port CI" >&2
-            echo "matrix has never run on it. Tag a commit that main contains." >&2
+            echo "$GITHUB_SHA is not on main. Publish a commit main contains." >&2
             exit 1
           fi
-          echo "$GITHUB_SHA is on main"
+          echo "$GITHUB_SHA is on main; waiting for ci.yml to conclude on it"
+
+          deadline=$(( SECONDS + 1800 ))
+          while :; do
+            run=$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" \
+              --jq '[.workflow_runs[]
+                     | select(.path == ".github/workflows/ci.yml")]
+                    | sort_by(.run_started_at) | last // {}')
+            status=$(printf '%s' "$run" | jq -r '.status // "missing"')
+            conclusion=$(printf '%s' "$run" | jq -r '.conclusion // ""')
+
+            if [ "$status" = completed ]; then
+              if [ "$conclusion" = success ]; then
+                echo "ci.yml succeeded on $GITHUB_SHA"
+                break
+              fi
+              echo "ci.yml concluded '$conclusion' on $GITHUB_SHA — not publishing" >&2
+              exit 1
+            fi
+
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "gave up waiting for ci.yml on $GITHUB_SHA (last status: $status)" >&2
+              exit 1
+            fi
+            echo "  ci.yml is '$status' — waiting"
+            sleep 20
+          done
 
       # On a tag, the tag and the manifest must agree. They drift the moment
       # someone tags before bumping, and the failure mode without this check

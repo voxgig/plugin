@@ -107,7 +107,10 @@ Three places the layout still forced an adaptation, all deliberate:
   `node_modules`, and the next thing `prepublishOnly` does is invoke
   `tsc`. That ordering deletes the compiler and then asks for it.
 - **`repo-tag` tags `typescript-vX.Y.Z`**, not `vX.Y.Z`: seventeen ports
-  share this repository and `publish.yml` keys on that prefix.
+  share this repository and `publish.yml` keys on that prefix. It also
+  pushes **that tag by name**, where struct pushes `--tags`: `--tags`
+  sends every local tag, which in a repository this size can leak an
+  unrelated work-in-progress tag or fire a second release.
 
 **`repo-publish` does not publish.** In struct it ends in `npm stage
 publish`; here it ends at `repo-tag`, because pushing the tag is what
@@ -139,14 +142,34 @@ published has no settings page — PyPI lets you pre-register a name, npm
 does not. So the bootstrap is, once, in this order:
 
 1. Publish `0.1.0` by hand with a granular access token scoped to this one
-   package: plain `npm publish` from `typescript/`, with the token in
-   `NODE_AUTH_TOKEN`. **Not `--provenance`** — provenance can only be
-   generated on a supported CI provider, and npm aborts the publish with
-   `Automatic provenance generation not supported for provider` rather
-   than skipping the attestation. So the bootstrap release is the one
-   unsigned one; every release after it is signed, because the workflow
-   passes the flag from inside Actions. `publishConfig.access` is already
-   `public`, which a scoped package's first publish needs.
+   package. From `typescript/`, with the token in `$NPM_TOKEN`:
+
+   ```bash
+   export NPM_CONFIG_USERCONFIG="$(mktemp)"
+   printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" \
+     > "$NPM_CONFIG_USERCONFIG"
+   npm publish
+   rm -f "$NPM_CONFIG_USERCONFIG"
+   ```
+
+   **`NODE_AUTH_TOKEN` on its own does nothing here**, which is the trap
+   worth spelling out. npm maps only environment variables prefixed
+   `npm_config_`; `NODE_AUTH_TOKEN` works in CI solely because
+   `actions/setup-node` writes an `.npmrc` containing the literal
+   `${NODE_AUTH_TOKEN}` for npm to expand. With no such file, exporting it
+   authenticates nothing and the publish fails. A throwaway
+   `NPM_CONFIG_USERCONFIG` is used rather than `npm login` or
+   `npm config set` because both of those leave the token sitting in
+   `~/.npmrc` afterwards, and this token is meant to be revoked minutes
+   later.
+
+   **Not `--provenance`** — provenance can only be generated on a
+   supported CI provider, and npm aborts the publish with `Automatic
+   provenance generation not supported for provider` rather than skipping
+   the attestation. So the bootstrap release is the one unsigned one;
+   every release after it is signed, because the workflow passes the flag
+   from inside Actions. `publishConfig.access` is already `public`, which
+   a scoped package's first publish needs.
 2. On npmjs.com, `@voxgig/plugin` → Settings → Trusted Publisher → GitHub
    Actions, with organization `voxgig`, repository `plugin`, workflow file
    `publish.yml`.
@@ -155,6 +178,13 @@ does not. So the bootstrap is, once, in this order:
    remove.
 
 Every release after that is the workflow, and the token stays revoked.
+
+The workflow will not publish a commit unless **`ci.yml` has completed
+successfully on that exact SHA** — it looks the run up and waits for it,
+rather than inferring anything from the commit being on main. `repo-tag`
+pushes the branch and the tag seconds apart, so without the wait a
+release would race the seventeen-port matrix, and without the conclusion
+check it would sail past a matrix that went on to fail.
 
 Two things that are load-bearing and look like decoration:
 
