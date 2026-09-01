@@ -409,9 +409,39 @@ fn docmd(host: &Host, cmd: &Value) -> Step {
 
     match verb {
         "host" => Ok((newhost(cmd)?, None)),
-        // The catalog is pre-seeded with the probe set; `define` names
-        // which entry backs this definition.
-        "define" => none(host),
+        // §10.1's static registration: the definition ENTERS THE CATALOG
+        // here, and registration is where its option shape is validated
+        // (§9.4) - before any load, so a malformed shape fails at one
+        // moment in every host rather than whenever a document happens
+        // to exercise the key.
+        //
+        // The catalog is pre-seeded with the probe set, so re-registering
+        // a probe by name is the identity this command has always been;
+        // `shape` is what makes it do work. A name the probe set does not
+        // hold registers a bare definition - enough to reach the catalog,
+        // and never loaded.
+        "define" => {
+            // §4.2's three keys, all of them live. `probe` names the
+            // PROBE whose callbacks back the definition and `name` is what
+            // the definition is called - two keys that ten entries passed
+            // as equal strings, so a driver ignoring `probe` passed them
+            // all.
+            let name = cmd.get("name");
+            let name = name.as_str().unwrap_or("").to_string();
+            let source = cmd.get("probe");
+            let source = source.as_str().unwrap_or(&name).to_string();
+            let mut definition = Definition::named(&name);
+            for d in probes() {
+                if source == d.name {
+                    definition = Definition { name: name.clone(), ..d };
+                }
+            }
+            if cmd.has("shape") {
+                definition.shape = cmd.get("shape");
+            }
+            host.define(definition)?;
+            none(host)
+        }
         "load" => {
             host.load(&eref, &spec)?;
             none(host)

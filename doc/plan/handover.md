@@ -933,30 +933,71 @@ ends. Two more pin it through `hold`, which names the holder, and one
 pins that the selection does not survive the consumer's own restart.
 
 
-## 18. What twelve more ports found, and the three things the corpus still cannot see
+## 18. What twelve more ports found, and the two things the corpus still cannot see
 
 P5's fourteen tier-3 ports are complete: `php`, `perl`, `rust`, `java`,
 `lua`, `csharp`, `elixir`, `clojure`, `dart`, `kotlin`, `swift` and
 `scala` joined `javascript` and `ruby`, and **all seventeen
-implementations pass all 539 entries**. Each port's own `AGENTS.md`
+implementations pass all 552 entries**. Each port's own `AGENTS.md`
 carries its language-specific traps; this section carries only what is
 the CORPUS's business rather than a port's.
 
-### The three gaps every port finds
+### The three gaps every port finds — one now closed
 
-Mutation testing each port against the whole corpus produces the same
-three survivors, in every language and independently:
+Mutation testing each port against the whole corpus produced the same
+three survivors, in every language and independently. **The first is
+now closed; the other two remain.**
 
-**1. Shape validation at catalog REGISTRATION is pinned by nothing.**
+**1. Shape validation at catalog REGISTRATION was pinned by nothing.
+CLOSED — `declare/shape`, seven entries, plus `declare/register`.**
 §10.1 puts `check_shape` in `catalog.add` so that a malformed shape
-"fails once, and in the same place everywhere". **No corpus definition
-carries a `shape` at all** — the driver's nine probes have none — so
-the check is reachable only through `resolve_options`, and every port
-could defer it to resolution time and stay green. That is precisely the
-divergence §10.1 exists to prevent: a host that registers a definition
-with `{"$MERGE": "nonsense"}` would fail at a different moment in every
-implementation. **This one is new**, found independently by elixir,
-clojure, dart, kotlin, swift and scala.
+"fails once, and in the same place everywhere". No corpus definition
+carried a `shape` at all, so the check was reachable only through
+`resolve_options` and every port could defer it to resolution time and
+stay green.
+
+The reason nothing carried one turned out to be the whole of the gap,
+and it was not what "no definition carries a shape" suggests: **the
+driver's `define` command was a NO-OP in all seventeen ports.** DOCS.md
+§4.2 documents it as `name`, `probe?`, `shape?` — "register a definition
+in the catalog" — and every port's implementation was `break`, with a
+comment explaining that the catalog is pre-seeded so the command only
+*names* an entry. So `catalog.add`'s shape check was unreachable by
+construction, and the `probe` key was ignored in the ten entries that
+passed it. A corpus entry carrying a shape had nowhere to put it.
+
+Closing the gap therefore meant implementing `define` in every port
+first — all three keys, `probe` defaulting to `name` (not to the literal
+`probe`, which DOCS.md said and which would have re-backed every `dep`,
+`noisy` and `greedy` definition with the wrong probe). `declare/shape`
+then pins the TIMING that `config/optmergebad` says in its own comment it
+cannot: every entry stops at `define`, with no load and no document, so a
+port that defers raises nothing and fails. Two of its entries also pin
+that a valid shape is KEPT rather than validated and dropped, and one
+that a rejected registration leaves nothing behind.
+
+**Implementing it found a canonical bug of exactly the class §17
+describes.** `apply` resolved an instance's options, handed the map to
+`declare` — which ADOPTS it as the instance's own for a ref declared for
+the first time — and then refilled that same map from itself, clearing
+its own source. **A first-time `apply` gave the instance no options at
+all**; applying the identical document a second time filled them in,
+because by then `declare` returned the existing entry and the two maps
+were distinct. Every `apply` entry in the corpus asserted status, log or
+open, and not one asserted a value the options decide, so 539 entries and
+seventeen implementations never saw it. `apply/idempotent` now carries
+three entries that do. Present in canonical, go, javascript, python,
+ruby, perl, lua and dart; absent from php, java, csharp, kotlin, rust,
+swift, scala, elixir and clojure, whose `declare` copies the map or whose
+values are immutable — a fifty-fifty split that is itself the argument
+for the entry.
+
+Lua additionally failed the new group for a driver reason worth
+recording: its `probes()` returns PLAIN tables, and `T.getv` answers nil
+for anything without the map metatable, so the lookup missed every time
+and `define` replaced the probe with a definition that had no callbacks.
+Five unrelated groups went red at once, which is what a driver bug looks
+like and what a library bug does not.
 
 **2. `providersof` comparing refs uncanonicalized.** §11.1 lets a REF
 satisfy a requirement, and §4 rule 5 says ports canonicalize before
@@ -969,10 +1010,17 @@ inner host's teardown in the outer instance's scope; whether that also
 increments `open` is a free choice, because no `nest` entry asserts
 `open` while an inner host is live.
 
-None of the three is a defect in any port — every port implements the
-design. They are places where **two implementations could disagree and
-the corpus would not notice**, which is the same category §17 records,
-and the same remedy applies: an entry each, in the canonical first.
+Neither remaining gap is a defect in any port — every port implements
+the design. They are places where **two implementations could disagree
+and the corpus would not notice**, which is the same category §17
+records, and the same remedy applies: an entry each, in the canonical
+first. Both are corpus-only; unlike gap 1, neither needs a driver change.
+
+**"Cheap" was wrong about gap 1, and the reason generalizes.** A gap
+described as "no entry carries X" deserves one question before it is
+sized: *can* an entry carry X? Here it could not — the command that
+would have carried it did nothing — and the fix was seventeen driver
+implementations plus a canonical bug fix, not a handful of corpus rows.
 
 ### One gap that is a SCALE gap rather than a coverage gap
 

@@ -953,8 +953,14 @@ class Host {
     // --- phase 2: declare and patch EVERYTHING, in load order -----------
     for (final ref in want) {
       final ent = t.get(norm['instance'], ref);
+      // NO OPTIONS HERE, and the omission is the fix rather than an
+      // oversight. `declare` ADOPTS the options map it is handed as the
+      // instance's own, so passing the resolved map made target and
+      // source THE SAME MAP in the refill below - which cleared its own
+      // source and left a first-time instance with no options at all.
+      // `declare` makes its own empty map and the refill fills it, so
+      // both paths are now one path.
       declare(ref, {
-        'options': optionsof[ref],
         'order': t.get(ent, 'order'),
         'pos': t.get(ent, 'pos')
       });

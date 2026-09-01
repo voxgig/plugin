@@ -299,9 +299,39 @@ local function docmd(host, cmd)
   if 'host' == verb then
     return newhost(cmd), M.NOTHING
   end
-  -- The catalog is pre-seeded with the probe set; `define` names which
-  -- entry backs this definition.
-  if 'define' == verb then return host, M.NOTHING end
+  -- Section 10.1's static registration: the definition ENTERS THE
+  -- CATALOG here, and registration is where its option shape is
+  -- validated (section 9.4) - before any load, so a malformed shape
+  -- fails at one moment in every host rather than whenever a document
+  -- happens to exercise the key.
+  --
+  -- The catalog is pre-seeded with the probe set, so re-registering a
+  -- probe by name is the identity this command has always been; `shape`
+  -- is what makes it do work. A name the probe set does not hold
+  -- registers a bare definition - enough to reach the catalog, and never
+  -- loaded.
+  if 'define' == verb then
+    local name = T.getv(cmd, 'name')
+    -- `M.probes()` builds PLAIN tables, not `T.map`s, so read `d.name`
+    -- directly: `T.getv` answers nil for anything without the map
+    -- metatable, and every lookup would miss - silently replacing the
+    -- probe with a definition that has no callbacks.
+    local source = T.getv(cmd, 'probe')
+    if nil == source then source = name end
+    local definition = { name = name }
+    for _, d in ipairs(M.probes()) do
+      if source == d.name then
+        definition = {}
+        for k, v in pairs(d) do definition[k] = v end
+        definition.name = name
+      end
+    end
+    if nil ~= T.getv(cmd, 'shape') then
+      definition.shape = T.getv(cmd, 'shape')
+    end
+    host:define(definition)
+    return host, M.NOTHING
+  end
 
   if 'load' == verb then
     host:load(ref, spec)

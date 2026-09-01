@@ -222,9 +222,29 @@
                             ;; `restart`.
                             "dependency" (t/get cmd "dependency")})
               nothing]
-      ;; The catalog is pre-seeded with the probe set; `define` names which
-      ;; entry backs this definition.
-      "define" [host nothing]
+      ;; Section 10.1's static registration: the definition ENTERS THE
+      ;; CATALOG here, and registration is where its option shape is
+      ;; validated (section 9.4) - before any load, so a malformed shape
+      ;; fails at one moment in every host rather than whenever a document
+      ;; happens to exercise the key.
+      ;;
+      ;; The catalog is pre-seeded with the probe set, so re-registering a
+      ;; probe by name is the identity this command has always been;
+      ;; `shape` is what makes it do work. A name the probe set does not
+      ;; hold registers a bare definition - enough to reach the catalog,
+      ;; and never loaded.
+      ;; Section 4.2's three keys, all of them live. `probe` names the
+      ;; PROBE whose callbacks back the definition and `name` is what the
+      ;; definition is called - two keys that ten entries passed as equal
+      ;; strings, so a driver ignoring `probe` passed them all.
+      "define" (let [dname (t/get cmd "name")
+                     source (if (t/has? cmd "probe") (t/get cmd "probe") dname)
+                     found (first (filter #(= source (t/get % "name")) (probes)))
+                     definition (if found (assoc found "name" dname) {"name" dname})
+                     definition (if (t/has? cmd "shape")
+                                  (assoc definition "shape" (t/get cmd "shape"))
+                                  definition)]
+                 (none #(h/define host definition)))
       "load" (none #(h/load host ref spec))
       ;; declare FIRST, so the ordering block and definition reach the
       ;; instance - `ready` walks the staircase, it does not carry

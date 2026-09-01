@@ -404,10 +404,51 @@ namespace Voxgig.Plugin.Test
             {
                 case "host":
                     return new Step(NewHost(cmd), NOTHING);
-                // The catalog is pre-seeded with the probe set; `define`
-                // names which entry backs this definition.
+                // §10.1's static registration: the definition ENTERS THE
+                // CATALOG here, and registration is where its option shape
+                // is validated (§9.4) — before any load, so a malformed
+                // shape fails at one moment in every host rather than
+                // whenever a document happens to exercise the key.
+                //
+                // The catalog is pre-seeded with the probe set, so
+                // re-registering a probe by name is the identity this
+                // command has always been; `shape` is what makes it do
+                // work. A name the probe set does not hold registers a
+                // bare definition — enough to reach the catalog, and
+                // never loaded.
                 case "define":
+                {
+                    // §4.2's three keys, all of them live. `probe` names
+                    // the PROBE whose callbacks back the definition and
+                    // `name` is what the definition is called — two keys
+                    // that ten entries passed as equal strings, so a
+                    // driver ignoring `probe` passed them all.
+                    var defname = Types.Str(Types.Get(cmd, "name"));
+                    var source = Types.Has(cmd, "probe")
+                        ? Types.Str(Types.Get(cmd, "probe")) : defname;
+                    var definition = new Definition(defname);
+                    foreach (var d in Probes())
+                    {
+                        if (d.Name == source)
+                        {
+                            definition = new Definition(defname)
+                            {
+                                Define = d.Define,
+                                Activate = d.Activate,
+                                Deactivate = d.Deactivate,
+                                Close = d.Close,
+                                Reconfigure = d.Reconfigure,
+                                Shape = d.Shape,
+                            };
+                        }
+                    }
+                    if (Types.Has(cmd, "shape"))
+                    {
+                        definition.Shape = Types.Get(cmd, "shape");
+                    }
+                    host.Define(definition);
                     return new Step(host, NOTHING);
+                }
                 case "load":
                     host.Load(eref, spec);
                     return new Step(host, NOTHING);

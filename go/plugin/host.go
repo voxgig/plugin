@@ -1399,8 +1399,15 @@ func (h *Host) apply(doc any, profile string) error {
 	for _, ref := range want {
 		ent := norm.Instance[ref]
 		pos := ent.Pos
+		// NO OPTIONS HERE, and the omission is the fix rather than an
+		// oversight. `declare` ADOPTS the options map it is handed as
+		// the instance's own, so passing the resolved map made target
+		// and source THE SAME MAP in the refill below — which cleared
+		// its own source and left a first-time instance with no options
+		// at all. `declare` makes its own empty map and the refill fills
+		// it, so both paths are now one path.
 		if _, err := h.declare(ref, DeclareSpec{
-			Options: optionsof[ref], Order: ent.Order, Pos: &pos}); nil != err {
+			Order: ent.Order, Pos: &pos}); nil != err {
 			return err
 		}
 		// The bar is REASSERTED ON EVERY APPLY, in both directions — a

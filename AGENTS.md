@@ -5,7 +5,7 @@ Read this before changing anything. The design is
 below (§n) are to it.
 
 **Status: P5 tier-3 complete, fourteen of fourteen.** All **19 corpus
-sections** exist — 539 entries — with the driver contract in `DOCS.md`
+sections** exist — 552 entries — with the driver contract in `DOCS.md`
 §4. **Seventeen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
 `dart/`, `kotlin/`, `swift/` and `scala/`, and `make check` is the whole gate. What that means for you is in "Where to start" at the
@@ -224,14 +224,30 @@ P0–P4 are done and **P5's fourteen tier-3 ports are complete**:
 `typescript/` is the canonical, `go/` and `python/` are the proving
 pair, and all seventeen implementations pass all 19 corpus sections.
 
-**Next is P6's six tier-4 ports, and the three corpus gaps §18 of the
-handover records.** The gaps first, because they are cheap and because
-every port added after them inherits the check: shape validation at
-catalog REGISTRATION (§10.1) is pinned by nothing — no corpus definition
-carries a `shape` at all; `providersof` comparing refs uncanonicalized
-(§4 rule 5, §11.1) changes no answer any entry observes; and whether
-`nest` counts the inner host as an open resource (§6.5) is free, because
-no `nest` entry asserts `open` while an inner host is live.
+**Next is P6's six tier-4 ports, and the two corpus gaps that remain of
+the three §18 of the handover records.** The gaps first, because every
+port added after them inherits the check: `providersof` comparing refs
+uncanonicalized (§4 rule 5, §11.1) changes no answer any entry observes,
+and whether `nest` counts the inner host as an open resource (§6.5) is
+free, because no `nest` entry asserts `open` while an inner host is live.
+Both are corpus-only — an entry each, no port change.
+
+**The first gap is CLOSED: `declare/shape` and `declare/register`.** It
+was not cheap, and §18's "cheap" was wrong about it. Nothing carried a
+`shape` because the driver's `define` command was a NO-OP in all
+seventeen ports — a documented three-key verb (DOCS.md §4.2) that
+registered nothing, so `catalog.add`'s shape check was unreachable by
+construction and its `probe` key was ignored wherever ten entries passed
+it. Closing it meant implementing `define` everywhere first. Doing so
+found a canonical bug the corpus had never been able to see: **`apply`
+dropped the options of a first-time instance entirely**, because
+`declare` adopts the options map it is handed and the refill that
+followed then cleared its own source. A second, identical `apply` filled
+them in. Every existing `apply` entry asserted status, log or open, and
+none asserted a value the options decide. Fixed in canonical, go,
+javascript, python, ruby, perl, lua and dart; php, java, csharp, kotlin,
+rust, swift, scala, elixir and clojure never had it, their `declare`
+copying or their values being immutable.
 
 Every tier-3 toolchain is reachable, but not all of them are
 preinstalled: lua, csharp, elixir, clojure, kotlin and scala come from

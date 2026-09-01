@@ -379,10 +379,43 @@ public final class Driver {
     switch (null == verb ? "" : verb) {
       case "host":
         return new Step(newhost(cmd), NOTHING);
-      // The catalog is pre-seeded with the probe set; `define` names which
-      // entry backs this definition.
-      case "define":
+      // §10.1's static registration: the definition ENTERS THE CATALOG
+      // here, and registration is where its option shape is validated
+      // (§9.4) - before any load, so a malformed shape fails at one
+      // moment in every host rather than whenever a document happens to
+      // exercise the key.
+      //
+      // The catalog is pre-seeded with the probe set, so re-registering a
+      // probe by name is the identity this command has always been;
+      // `shape` is what makes it do work. A name the probe set does not
+      // hold registers a bare definition - enough to reach the catalog,
+      // and never loaded.
+      case "define": {
+        // §4.2's three keys, all of them live. `probe` names the PROBE
+        // whose callbacks back the definition and `name` is what the
+        // definition is called - two keys that ten entries passed as
+        // equal strings, so a driver ignoring `probe` passed them all.
+        String defname = Types.str(Types.get(cmd, "name"));
+        String source = Types.has(cmd, "probe")
+            ? Types.str(Types.get(cmd, "probe")) : defname;
+        Definition definition = new Definition(defname);
+        for (Definition d : probes()) {
+          if (d.name.equals(source)) {
+            definition = new Definition(defname);
+            definition.define = d.define;
+            definition.activate = d.activate;
+            definition.deactivate = d.deactivate;
+            definition.close = d.close;
+            definition.reconfigure = d.reconfigure;
+            definition.shape = d.shape;
+          }
+        }
+        if (Types.has(cmd, "shape")) {
+          definition.shape = Types.get(cmd, "shape");
+        }
+        host.define(definition);
         return new Step(host, NOTHING);
+      }
       case "load":
         host.load(ref, spec);
         return new Step(host, NOTHING);

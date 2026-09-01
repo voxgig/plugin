@@ -363,7 +363,7 @@ needs it present, because the next section will.
 | `do` | keys | effect |
 |---|---|---|
 | `host` | `reserved?`, `keys?`, `defaults?`, `profile?`, `points?`, `dependency?` | rebuild the host with these construction options, discarding the current one. `points` declares extension points and their `kind`/`pin` (§7). `dependency` is `restart` (the default) or `hold` (§11.3). Only valid as the **first** command. |
-| `define` | `name`, `probe?`, `shape?` | register a definition in the catalog. `probe` names the catalog entry (§4.3); default is `probe`. |
+| `define` | `name`, `probe?`, `shape?` | register a definition in the catalog (§10.1). `name` is what the definition is CALLED — the name a ref resolves by. `probe` names the probe whose callbacks back it (§4.3), defaulting to `name` itself, so `{name: 'noisy'}` gets the `noisy` probe and `{name: 'adapter', probe: 'noisy'}` registers noisy's behaviour under another name. `shape` is the option shape, **validated here rather than at resolution** (§9.4), which is what `declare/shape` pins. |
 | `load` | `ref`, `options?`, `order?`, `definition?` | declare if absent, then load. `order` is the instance's ordering block (§4.4); `definition` names the catalog entry when it differs from the ref's name. |
 | `ready` | `ref` | run the whole forward path in one call (§5.1) |
 | `hostdeclare` | `ref`, `options?`, `order?`, `definition?` | §9.1's **host-owned** declaration: the embedding host installing the instance whose name it reserved. Bypasses the reservation check that every other input layer goes through. |

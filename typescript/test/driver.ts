@@ -236,10 +236,27 @@ export function drive(cmds: Cmd[]): any {
           dependency: c.dependency,
         })
         break
-      case 'define':
-        // The catalog is pre-seeded with the probe set; `define` names
-        // which entry backs this definition.
+      case 'define': {
+        // §10.1's static registration: the definition ENTERS THE CATALOG
+        // here, and registration is where its option shape is validated
+        // (§9.4) — before any load, so a malformed shape fails at one
+        // moment in every host rather than whenever a document happens
+        // to exercise the key.
+        //
+        // §4.2's three keys, all of them live. `probe` names the PROBE
+        // whose callbacks back the definition and `name` is what the
+        // definition is called — two keys that ten entries passed as
+        // equal strings, so a driver ignoring `probe` passed them all.
+        // `shape` is the option shape, and its arrival is what makes
+        // this command more than a re-registration of the pre-seeded
+        // probe set.
+        const from = undefined === c.probe ? c.name : c.probe
+        let def: any = { name: c.name }
+        for (const d of probes()) if (from === d.name) def = { ...d, name: c.name }
+        if (undefined !== c.shape) def.shape = c.shape
+        host.define(def)
         break
+      }
       case 'load':
         host.load(c.ref, { options: c.options, order: c.order, definition: c.definition })
         break
