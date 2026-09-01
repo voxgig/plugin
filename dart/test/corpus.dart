@@ -45,6 +45,32 @@ Map<String, List<dynamic>> section(dynamic spec, String name) {
 String label(String group, int i, dynamic entry) =>
     (p.get(entry, 'id') ?? '$group#$i') as String;
 
+/// Deep equality over spec values. Key order never matters; list order
+/// always does.
+///
+/// AGENTS.md section 1: "The plugin library must never be used to implement
+/// its own tests." A shared comparison lets a broken implementation and its
+/// oracle be wrong together and stay green, so the corpus's equality is
+/// written here rather than imported.
+bool same(dynamic a, dynamic b) {
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final k in a.keys) {
+      if (!b.containsKey(k) || !same(a[k], b[k])) return false;
+    }
+    return true;
+  }
+  if (a is List || b is List) {
+    if (a is! List || b is! List || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!same(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  if (a is Map || b is Map) return false;
+  return a == b;
+}
+
 /// Partial match: every key the expectation names must agree, and keys it
 /// does not name are ignored. `__EXISTS__` asserts presence without pinning
 /// a value; `/re/` matches a string as a regular expression.
@@ -81,7 +107,7 @@ bool matches(dynamic expect, dynamic actual) {
     return true;
   }
 
-  return p.same(expect, actual);
+  return same(expect, actual);
 }
 
 /// Run one entry against a subject and report the disagreement, if any.
@@ -132,7 +158,7 @@ String? check(dynamic entry, dynamic Function(dynamic) subject) {
     return 'unexpected raise: ${p.codeOf(raised)} ${p.messageOf(raised)}';
   }
 
-  if (p.has(entry, 'out') && !p.same(p.get(entry, 'out'), value)) {
+  if (p.has(entry, 'out') && !same(p.get(entry, 'out'), value)) {
     return 'expected ${p.encode(p.get(entry, 'out'))}, got ${p.encode(value)}';
   }
 

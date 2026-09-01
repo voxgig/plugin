@@ -100,6 +100,39 @@ function M.regexlite(pattern, text)
   return nil ~= text:find(lit, 1, true)
 end
 
+-- Deep equality over spec values. Key order never matters; list order
+-- always does.
+--
+-- AGENTS.md section 1: "The plugin library must never be used to implement
+-- its own tests." A shared comparison lets a broken implementation and its
+-- oracle be wrong together and stay green, so the corpus's equality is
+-- written here rather than imported.
+--
+-- The TAGS are the oracle's own business rather than the library's: this
+-- port tags every table it builds so `{}` can be told from `[]`, and the
+-- corpus decoder is what produced the expected side.
+function M.same(a, b)
+  if T.ismap(a) or T.ismap(b) then
+    if not (T.ismap(a) and T.ismap(b)) then return false end
+    local ka, kb = T.keys(a), T.keys(b)
+    if #ka ~= #kb then return false end
+    for i = 1, #ka do
+      if ka[i] ~= kb[i] then return false end
+      if not M.same(a[ka[i]], b[ka[i]]) then return false end
+    end
+    return true
+  end
+  if T.islist(a) or T.islist(b) then
+    if not (T.islist(a) and T.islist(b)) then return false end
+    if #a ~= #b then return false end
+    for i = 1, #a do
+      if not M.same(a[i], b[i]) then return false end
+    end
+    return true
+  end
+  return a == b
+end
+
 -- Partial match: every key the expectation names must agree, and keys it
 -- does not name are ignored. `__EXISTS__` asserts presence without pinning
 -- a value; `/re/` matches a string as a regular expression.
@@ -145,7 +178,7 @@ function M.matches(expect, actual)
     return true
   end
 
-  return T.same(expect, got)
+  return M.same(expect, got)
 end
 
 -- Run one entry against a subject and report the disagreement, if any.
@@ -195,7 +228,7 @@ function M.check(entry, subject)
     return 'unexpected raise: ' .. T.codeof(value) .. ' ' .. T.message(value)
   end
 
-  if T.has(entry, 'out') and not T.same(entry.out, value) then
+  if T.has(entry, 'out') and not M.same(entry.out, value) then
     return 'expected ' .. T.encode(entry.out) .. ', got ' .. T.encode(value)
   end
 

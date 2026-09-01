@@ -53,8 +53,29 @@ object Corpus {
           want.zip(got.items).forall { case (e, a) => matches(e, Some(a)) }
       case VMap(_) =>
         got.isMap && expect.keys.forall(k => matches(expect.at(k), got.get(k)))
-      case _ => expect == got
+      case _ => same(expect, got)
     }
+  }
+
+  /** Deep equality over spec values. Key order never matters; list order
+    * always does.
+    *
+    * AGENTS.md section 1: "The plugin library must never be used to implement
+    * its own tests." `Value`'s own `==` is library code and the JSON equality
+    * rule `capability/match` exists to pin, so a shared defect would let the
+    * implementation and its oracle be wrong together and stay green.
+    */
+  def same(a: Value, b: Value): Boolean = (a, b) match {
+    case (VNull, VNull)             => true
+    case (VBool(x), VBool(y))       => x == y
+    case (VNum(x), VNum(y))         => x == y
+    case (VStr(x), VStr(y))         => x == y
+    case (VList(x), VList(y))       =>
+      x.length == y.length && x.zip(y).forall { case (p, q) => same(p, q) }
+    case (VMap(x), VMap(y))         =>
+      x.size == y.size && x.forall { case (k, v) => y.get(k).exists(same(v, _)) }
+    case (VOpaque(x), VOpaque(y))   => x eq y
+    case _                          => false
   }
 
   /** Run one entry against a subject and report the disagreement, if any.
@@ -99,7 +120,7 @@ object Corpus {
         Some("expected a raise, got: " + value.json)
 
       case Right(value) =>
-        if (entry.has("out") && entry.at("out") != value) {
+        if (entry.has("out") && !same(entry.at("out"), value)) {
           Some("expected " + entry.at("out").json + ", got " + value.json)
         } else if (entry.has("match") &&
           !matches(entry.at("match"), Some(Value.map("in" -> entry.at("in"), "out" -> value)))) {

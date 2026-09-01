@@ -59,7 +59,30 @@ enum Corpus {
             return expect.keys.allSatisfy { matches(expect.at($0), got.get($0)) }
         }
 
-        return expect == got
+        return same(expect, got)
+    }
+
+    /// Deep equality over spec values. Key order never matters; list order
+    /// always does.
+    ///
+    /// AGENTS.md section 1: "The plugin library must never be used to implement
+    /// its own tests." `Value`'s own `==` is library code and the JSON equality
+    /// rule `capability/match` exists to pin, so a shared defect would let the
+    /// implementation and its oracle be wrong together and stay green.
+    static func same(_ a: Value, _ b: Value) -> Bool {
+        switch (a, b) {
+        case (.null, .null): return true
+        case (.bool(let x), .bool(let y)): return x == y
+        case (.num(let x), .num(let y)): return x == y
+        case (.str(let x), .str(let y)): return x == y
+        case (.list(let x), .list(let y)):
+            return x.count == y.count && zip(x, y).allSatisfy { same($0, $1) }
+        case (.map(let x), .map(let y)):
+            return x.count == y.count
+                && x.allSatisfy { k, v in y[k].map { same(v, $0) } ?? false }
+        case (.opaque(let x), .opaque(let y)): return x === y
+        default: return false
+        }
     }
 
     /// Run one entry against a subject and report the disagreement, if any.
@@ -104,7 +127,7 @@ enum Corpus {
             return "unexpected raise: \(Types.codeOf(e)) \(Types.messageOf(e))"
         }
 
-        if entry.has("out"), entry.at("out") != value {
+        if entry.has("out"), !same(entry.at("out"), value) {
             return "expected \(entry.at("out").json), got \(value.json)"
         }
 

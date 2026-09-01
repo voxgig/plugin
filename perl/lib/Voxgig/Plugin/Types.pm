@@ -18,6 +18,7 @@ package Voxgig::Plugin::Types;
 use strict;
 use warnings;
 use B ();
+use Scalar::Util qw(blessed reftype);
 use builtin qw(is_bool);
 no warnings 'experimental::builtin';
 
@@ -179,6 +180,13 @@ sub _json {
     $s =~ s/\n/\\n/g;
     $s =~ s/\t/\\t/g;
     $s =~ s/\r/\\r/g;
+    $s =~ s/\x08/\\b/g;
+    $s =~ s/\x0c/\\f/g;
+    # THE WHOLE CONTROL RANGE, not the five spellings with a short escape.
+    # A cause or detail carrying \x01 - which a foreign library's message
+    # can - emitted the raw byte inside quotes, and the message stopped
+    # being the parseable JSON section 12 pins it as.
+    $s =~ s/([\x00-\x1f])/sprintf('\\u%04x', ord($1))/ge;
     return '"' . $s . '"';
 }
 
@@ -220,13 +228,21 @@ sub fail_with {
 # keeps that code (Host::run reads this to decide whether to wrap).
 sub codeof {
     my ($err) = @_;
-    return '' if !defined $err;
-    return '' if !ref $err;
-    if ('HASH' eq ref $err || eval { $err->isa('Voxgig::Plugin::Error') }) {
-        my $code = eval { $err->{code} };
-        return defined $code ? $code : '';
+    return '' if !defined $err || !ref $err;
+
+    # `ref` ON A BLESSED REFERENCE RETURNS THE CLASS NAME, NOT 'HASH', so
+    # gating on `'HASH' eq ref` read only unblessed hashes and this
+    # library's own class - an isa check wearing a duck's hat, and the
+    # opposite of what the comment above claims. A plugin raising its own
+    # coded object had the code dropped and `Host::run` rewrote it to
+    # `plugin_<phase>_failed`. `reftype` is the flag `ref` masks.
+    my $code;
+    if (blessed($err) && $err->can('code')) {
+        $code = eval { $err->code };
+    } elsif ('HASH' eq (reftype($err) // '')) {
+        $code = $err->{code};
     }
-    return '';
+    return defined $code && !ref $code ? "$code" : '';
 }
 
 1;

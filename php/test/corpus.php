@@ -20,7 +20,6 @@ namespace Voxgig\Plugin\Test;
 use Voxgig\Plugin\PluginError;
 
 use function Voxgig\Plugin\codeof;
-use function Voxgig\Plugin\samescalar;
 
 require_once __DIR__ . '/../src/plugin.php';
 
@@ -120,10 +119,30 @@ class Corpus
         if (is_array($a) || is_array($b)) {
             return false;
         }
-        // Type-strict on booleans and null, numeric across int and float:
-        // `true == 1` is true in PHP and `1 === 1.0` is false, and JSON
-        // agrees with neither.
-        return samescalar($a, $b);
+        return self::samescalar($a, $b);
+    }
+
+    /**
+     * Type-strict on booleans and null, numeric across int and float:
+     * `true == 1` is true in PHP and `1 === 1.0` is false, and JSON agrees
+     * with neither.
+     *
+     * WRITTEN HERE RATHER THAN IMPORTED, and AGENTS.md section 1 says why:
+     * "The plugin library must never be used to implement its own tests."
+     * `Capability::samescalar` is one of the behaviours `capability/match`
+     * exists to pin, so an oracle calling it would agree with a broken
+     * implementation and stay green - the two would be wrong together and
+     * nothing would say so.
+     *
+     * @param mixed $a
+     * @param mixed $b
+     */
+    private static function samescalar($a, $b): bool
+    {
+        if ((is_int($a) || is_float($a)) && (is_int($b) || is_float($b))) {
+            return $a == $b;
+        }
+        return $a === $b;
     }
 
     /**
@@ -190,7 +209,7 @@ class Corpus
             return true;
         }
 
-        return samescalar($expect, $actual);
+        return self::samescalar($expect, $actual);
     }
 
     /**

@@ -33,6 +33,24 @@
   [group i entry]
   (or (t/get entry "id") (str group "#" i)))
 
+;; AGENTS.md section 1: the plugin library must never be used to implement
+;; its own tests. A shared comparison lets a broken implementation and its
+;; oracle be wrong together and stay green, so the corpus's equality is
+;; written here rather than taken from `voxgig.plugin.types`.
+(defn same
+  "Deep equality over spec values. Key order never matters; list order
+  always does."
+  [a b]
+  (cond
+    (and (number? a) (number? b)) (== a b)
+    (and (map? a) (map? b))
+    (and (= (count a) (count b))
+         (every? (fn [[k v]] (and (contains? b k) (same v (b k)))) a))
+    (and (sequential? a) (sequential? b))
+    (and (= (count a) (count b)) (every? identity (map same a b)))
+    (or (sequential? a) (sequential? b) (map? a) (map? b)) false
+    :else (= a b)))
+
 (defn matches?
   "Partial match: every key the expectation names must agree, and keys it
   does not name are ignored. `__EXISTS__` asserts presence without pinning
@@ -60,7 +78,7 @@
                                        (if (contains? actual k) (actual k) missing)))
                      (t/sorted-keys expect)))
 
-        :else (t/same expect actual)))))
+        :else (same expect actual)))))
 
 (defn- err-verdict [entry e]
   (let [want (t/get entry "err")
@@ -84,7 +102,7 @@
   (cond
     (t/has? entry "err") (str "expected a raise, got: " (t/encode value))
 
-    (and (t/has? entry "out") (not (t/same (t/get entry "out") value)))
+    (and (t/has? entry "out") (not (same (t/get entry "out") value)))
     (str "expected " (t/encode (t/get entry "out")) ", got " (t/encode value))
 
     (and (t/has? entry "match")

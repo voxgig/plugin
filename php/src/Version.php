@@ -41,7 +41,24 @@ const COMPONENT_MAX = 2147483647;
  */
 function component(string $digits, string $whole, string $field): int
 {
-    if ((int)$digits > COMPONENT_MAX) {
+    // COMPARE THE DIGITS, NOT THE CAST. PHP casts a numeric string wider
+    // than PHP_INT_MAX to ZERO rather than saturating at it, so
+    // `(int)$digits > COMPONENT_MAX` is FALSE for a thousand nines and the
+    // component silently becomes 0 - a syntactically valid but wildly
+    // oversized version accepted as `0.0.0`. Every other port guards this
+    // explicitly (go's `Atoi` errors, rust's `parse` errors, java and
+    // kotlin parse through a big integer, javascript gets `Infinity`), and
+    // go's comment records the same trap with a louder failure.
+    //
+    // The regex admits only `\d+`, so the digits carry no sign and no
+    // point: with leading zeros stripped, LONGER IS LARGER and equal
+    // lengths compare lexicographically. `strcmp` rather than `>` so the
+    // answer does not depend on PHP's numeric-string comparison, which is
+    // the rule that caused the problem in the first place.
+    $trimmed = ltrim($digits, '0');
+    $bound = (string)COMPONENT_MAX;
+    if (strlen($trimmed) > strlen($bound)
+        || (strlen($trimmed) === strlen($bound) && strcmp($trimmed, $bound) > 0)) {
         fail_with('plugin_bad_range',
                   'version component out of range in ' . $whole . ': ' . $digits,
                   [$field => $whole]);

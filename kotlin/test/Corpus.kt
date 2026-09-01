@@ -83,7 +83,28 @@ object Corpus {
             }
         }
 
-        return Types.same(expect, actual)
+        return same(expect, actual)
+    }
+
+    /**
+     * Deep equality over spec values. Key order never matters; list order
+     * always does.
+     *
+     * AGENTS.md section 1: "The plugin library must never be used to implement
+     * its own tests." A shared comparison lets a broken implementation and its
+     * oracle be wrong together and stay green, so the corpus's equality is
+     * written here rather than imported.
+     */
+    fun same(a: Any?, b: Any?): Boolean {
+        if (a is Map<*, *> || b is Map<*, *>) {
+            if (a !is Map<*, *> || b !is Map<*, *> || a.size != b.size) return false
+            return a.all { (k, v) -> b.containsKey(k) && same(v, b[k]) }
+        }
+        if (a is List<*> || b is List<*>) {
+            if (a !is List<*> || b !is List<*> || a.size != b.size) return false
+            return a.indices.all { same(a[it], b[it]) }
+        }
+        return if (null == a) null == b else a == b
     }
 
     /**
@@ -137,7 +158,7 @@ object Corpus {
             return "unexpected raise: ${Types.codeOf(raised)} ${Types.messageOf(raised)}"
         }
 
-        if (Types.has(entry, "out") && !Types.same(Types.get(entry, "out"), value)) {
+        if (Types.has(entry, "out") && !same(Types.get(entry, "out"), value)) {
             return "expected ${Json.write(Types.get(entry, "out"))}, got ${Json.write(value)}"
         }
 

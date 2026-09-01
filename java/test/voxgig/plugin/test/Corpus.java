@@ -135,7 +135,53 @@ public final class Corpus {
       return true;
     }
 
-    return Types.same(expect, got);
+    return same(expect, got);
+  }
+
+  /**
+   * Deep equality over spec values. Key order never matters; list order
+   * always does.
+   *
+   * <p>AGENTS.md section 1: "The plugin library must never be used to
+   * implement its own tests." A shared comparison lets a broken
+   * implementation and its oracle be wrong together and stay green, so the
+   * corpus's equality is written here rather than imported.
+   */
+  @SuppressWarnings("unchecked")
+  static boolean same(Object a, Object b) {
+    if (a instanceof Map || b instanceof Map) {
+      if (!(a instanceof Map) || !(b instanceof Map)) {
+        return false;
+      }
+      Map<String, Object> ma = (Map<String, Object>) a;
+      Map<String, Object> mb = (Map<String, Object>) b;
+      if (ma.size() != mb.size()) {
+        return false;
+      }
+      for (Map.Entry<String, Object> e : ma.entrySet()) {
+        if (!mb.containsKey(e.getKey()) || !same(e.getValue(), mb.get(e.getKey()))) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (a instanceof List || b instanceof List) {
+      if (!(a instanceof List) || !(b instanceof List)) {
+        return false;
+      }
+      List<Object> la = (List<Object>) a;
+      List<Object> lb = (List<Object>) b;
+      if (la.size() != lb.size()) {
+        return false;
+      }
+      for (int i = 0; i < la.size(); i++) {
+        if (!same(la.get(i), lb.get(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return null == a ? null == b : a.equals(b);
   }
 
   /**
@@ -193,7 +239,7 @@ public final class Corpus {
       return "unexpected raise: " + Types.codeof(raised) + " " + raised.getMessage();
     }
 
-    if (Types.has(entry, "out") && !Types.same(Types.get(entry, "out"), value)) {
+    if (Types.has(entry, "out") && !same(Types.get(entry, "out"), value)) {
       return "expected " + Json.write(Types.get(entry, "out")) + ", got " + Json.write(value);
     }
 

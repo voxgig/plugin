@@ -21,7 +21,8 @@ use strict;
 use warnings;
 use sort 'stable';
 use JSON::PP ();
-use Voxgig::Plugin::Types qw(fail_with ismap sortstrings sortedkeys stable_sort_by);
+use Scalar::Util qw(looks_like_number);
+use Voxgig::Plugin::Types qw(fail_with ismap jsontype sortstrings sortedkeys stable_sort_by);
 use Voxgig::Plugin::Ref qw(canon_ref refname);
 
 use Exporter 'import';
@@ -153,7 +154,20 @@ sub env_parsevalue {
     my $parsed = eval {
         JSON::PP->new->allow_nonref->decode(defined $value ? $value : '')
     };
-    return $@ ? $value : $parsed;
+    return $value if $@;
+
+    # A JSON INTEGER WIDER THAN PERL'S IV COMES BACK AS A STRING. JSON::PP
+    # cannot hold `922337203685477580812345` in an IV or an NV without
+    # loss, so it hands back the digits as a plain scalar - and `jsontype`
+    # then reads `str` where the canonical's `JSON.parse` publishes a
+    # number. Numify it: javascript loses the same precision at 2**53 and
+    # still calls the result a number, so this agrees with the canonical
+    # on the TYPE, which is what the ladder and every capability
+    # comparison actually read.
+    if ('str' eq jsontype($parsed) && $value =~ /\A\s*-?[0-9]/ && looks_like_number($value)) {
+        return 0 + $parsed;
+    }
+    return $parsed;
 }
 
 1;

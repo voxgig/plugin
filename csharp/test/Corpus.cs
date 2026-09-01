@@ -170,7 +170,55 @@ namespace Voxgig.Plugin.Test
                 return true;
             }
 
-            return Types.Same(expect, got);
+            return Same(expect, got);
+        }
+
+        /// <summary>
+        /// Deep equality over spec values. Key order never matters; list order
+        /// always does.
+        /// </summary>
+        /// <remarks>
+        /// AGENTS.md section 1: "The plugin library must never be used to implement
+        /// its own tests." A shared comparison lets a broken implementation and its
+        /// oracle be wrong together and stay green, so the corpus's equality is
+        /// written here rather than imported.
+        /// </remarks>
+        public static bool Same(object expect, object got)
+        {
+            if (expect is IDictionary<string, object> || got is IDictionary<string, object>)
+            {
+                if (!(expect is IDictionary<string, object> a)
+                    || !(got is IDictionary<string, object> b)
+                    || a.Count != b.Count)
+                {
+                    return false;
+                }
+                foreach (var pair in a)
+                {
+                    if (!b.TryGetValue(pair.Key, out var other) || !Same(pair.Value, other))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            if (expect is IList<object> || got is IList<object>)
+            {
+                if (!(expect is IList<object> la) || !(got is IList<object> lb)
+                    || la.Count != lb.Count)
+                {
+                    return false;
+                }
+                for (var i = 0; i < la.Count; i++)
+                {
+                    if (!Same(la[i], lb[i]))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return null == expect ? null == got : expect.Equals(got);
         }
 
         /// <summary>
@@ -239,7 +287,7 @@ namespace Voxgig.Plugin.Test
                 return "unexpected raise: " + Types.CodeOf(raised) + " " + raised.Message;
             }
 
-            if (Types.Has(entry, "out") && !Types.Same(Types.Get(entry, "out"), value))
+            if (Types.Has(entry, "out") && !Same(Types.Get(entry, "out"), value))
             {
                 return "expected " + Json.Write(Types.Get(entry, "out"))
                        + ", got " + Json.Write(value);

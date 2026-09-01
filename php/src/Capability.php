@@ -132,12 +132,20 @@ function matchvalue($want, $got): bool
         if (!is_array($got)) {
             return false;
         }
-        // An EMPTY array is a map here, not a list: `{}` as a requirement
-        // is "no constraint", which is the reading a partial match wants.
-        // PHP cannot tell it from `[]` (php/AGENTS.md), and no corpus
-        // entry writes either as a `match` value - so this is a choice
-        // recorded rather than a behaviour pinned.
-        if (!array_is_list($want) || [] === $want) {
+        // AN EMPTY `$want` TAKES ITS SHAPE FROM `$got`. `[]` is both the
+        // empty map and the empty list in PHP (php/AGENTS.md), so the port
+        // has to choose - and choosing once, for all of them, is wrong in
+        // one direction or the other: read as a map, `match: {modes: []}`
+        // accepts a provider advertising `modes: ["write"]` where the
+        // canonical rejects it on length; read as a list, `match: {opts:
+        // {}}` rejects a provider carrying options where the canonical
+        // accepts. Deciding on `$got` agrees with the canonical whenever
+        // the requirement and the capability have the SAME shape, which is
+        // every case a document plausibly writes, and leaves only the
+        // mismatched shapes - where the canonical's own answer is that the
+        // two are simply not equal - undecidable here.
+        $wantmap = [] === $want ? !array_is_list($got) : !array_is_list($want);
+        if ($wantmap) {
             foreach ($want as $k => $v) {
                 if (!array_key_exists($k, $got) || !matchvalue($v, $got[$k])) {
                     return false;

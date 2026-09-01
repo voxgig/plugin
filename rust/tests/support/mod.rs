@@ -51,6 +51,31 @@ pub enum Got {
     Present(Value),
 }
 
+/// Deep equality over spec values. Key order never matters; list order
+/// always does.
+///
+/// AGENTS.md section 1: "The plugin library must never be used to implement
+/// its own tests." A shared comparison lets a broken implementation and its
+/// oracle be wrong together and stay green, so the corpus's equality is
+/// written here rather than imported.
+pub fn same(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::Num(x), Value::Num(y)) => x == y,
+        (Value::Str(x), Value::Str(y)) => x == y,
+        (Value::List(x), Value::List(y)) => {
+            x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same(p, q))
+        }
+        (Value::Map(x), Value::Map(y)) => {
+            x.len() == y.len()
+                && x.iter()
+                    .all(|(k, v)| y.get(k).map(|o| same(v, o)).unwrap_or(false))
+        }
+        _ => false,
+    }
+}
+
 /// Partial match: every key the expectation names must agree, and keys it
 /// does not name are ignored. `__EXISTS__` asserts presence without
 /// pinning a value; `/re/` matches a string as a regular expression.
@@ -109,7 +134,7 @@ pub fn matches(expect: &Value, actual: &Got) -> bool {
         });
     }
 
-    expect.same(&actual)
+    same(expect, &actual)
 }
 
 /// A LITERAL-WITH-ANCHORS MATCHER, NOT A REGEX ENGINE.
@@ -224,7 +249,7 @@ where
         }
     };
 
-    if entry.has("out") && !entry.get("out").same(&value) {
+    if entry.has("out") && !same(&entry.get("out"), &value) {
         return Some(format!(
             "expected {}, got {}",
             entry.get("out").json(),
