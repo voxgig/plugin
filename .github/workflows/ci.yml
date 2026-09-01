@@ -89,7 +89,7 @@ jobs:
       matrix:
         # P4 is complete; P5 is under way. P6 adds the rest.
         port: [typescript, go, python, javascript, ruby, php, perl, rust, java, lua,
-               csharp, elixir, clojure]
+               csharp, elixir, clojure, dart]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -136,6 +136,16 @@ jobs:
       # there is no deps.edn to resolve and no leiningen to install.
       - if: matrix.port == 'clojure'
         run: sudo apt-get update && sudo apt-get install -y clojure
+      # dart is not in ubuntu's archive at all, so this is the SDK zip from
+      # Google's own bucket at a PINNED version rather than a floating
+      # channel - the same reason every action here is pinned to a SHA. The
+      # port has no pubspec and so nothing to fetch after this.
+      - if: matrix.port == 'dart'
+        run: |
+          curl -fsSL -o /tmp/dartsdk.zip \
+            https://storage.googleapis.com/dart-archive/channels/stable/release/3.13.2/sdk/dartsdk-linux-x64-release.zip
+          unzip -q /tmp/dartsdk.zip -d /opt
+          echo /opt/dart-sdk/bin >> "$GITHUB_PATH"
       - run: make build-${{ matrix.port }}
       - run: make test-${{ matrix.port }}
       - run: make inspect-${{ matrix.port }}

@@ -1,0 +1,13 @@
+# Warnings are errors. Dart's analyser reports an unused local, an
+# unreachable branch and a dead null-aware operator as NOTES by default, and
+# every one of those is a defect this repo would otherwise ship - a
+# `?? 0` on a value that can never be null is a reader being told something
+# untrue about the type.
+analyzer:
+  errors:
+    dead_code: error
+    unused_local_variable: error
+    unused_import: error
+    unnecessary_null_comparison: error
+    invalid_null_aware_operator: error
+    unused_element: error

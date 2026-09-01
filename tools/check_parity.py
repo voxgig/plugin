@@ -65,6 +65,7 @@ PORTS = {
     'csharp': ['csharp/src'],
     'elixir': ['elixir/lib'],
     'clojure': ['clojure/src'],
+    'dart': ['dart/lib'],
 }
 
 SKIP_DIRS = {'node_modules', 'dist', 'build', 'target', '__pycache__', 'bin', 'obj', '.lake'}
