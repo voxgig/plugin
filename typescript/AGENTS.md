@@ -179,6 +179,23 @@ does not. So the bootstrap is, once, in this order:
 
 Every release after that is the workflow, and the token stays revoked.
 
+**`0.1.2` was the bootstrap, and it is the one unsigned release.** The
+workflow ran on its tag and got all the way to the end — the same 68-file
+tarball, byte for byte, `shasum
+cbf469c5c528a6f9c5b90f64ebb79b157b5c753b`, matching what is on the
+registry — and failed only at `npm publish` with `ENEEDAUTH`, because
+step 2 had not been done yet. So the machinery is proven; only the
+registration was missing.
+
+**`ENEEDAUTH` here does not mean a token is missing.** It means the OIDC
+token was minted and npm found no trusted publisher registered for the
+package. npm's own advice for that error is to run `npm login`, which is
+the one thing this arrangement exists to avoid — the workflow prints the
+real cause instead. If you see it, do step 2, not `npm login`.
+
+A failed publish cannot simply be re-run once the version exists on the
+registry: npm refuses to replace a published version. Bump and tag again.
+
 The workflow will not publish a commit unless **`ci.yml` has completed
 successfully on that exact SHA** — it looks the run up and waits for it,
 rather than inferring anything from the commit being on main. `repo-tag`

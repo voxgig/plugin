@@ -201,6 +201,21 @@ jobs:
       #
       # `access` is public via package.json's publishConfig, so it holds
       # for the by-hand bootstrap publish too rather than living only here.
+      #
+      # The failure to expect here is `ENEEDAUTH`, and npm's own advice for
+      # it — "authorize this machine using `npm login`" — is exactly the
+      # wrong move: a token on this runner is the thing trusted publishing
+      # removes. It means the OIDC token was minted and npm found no
+      # trusted publisher registered for the package, so the message says
+      # that instead of leaving the next person to follow npm's.
       - name: publish
         if: ${{ !inputs.dryrun }}
-        run: npm publish --provenance
+        run: |
+          if ! npm publish --provenance; then
+            echo "::error title=npm publish failed::If the error above is \
+          ENEEDAUTH, no npm token is missing - the trusted publisher is not \
+          registered. Set it at npmjs.com > @voxgig/plugin > Settings > \
+          Trusted Publisher: GitHub Actions, organization voxgig, repository \
+          plugin, workflow publish.yml. Do NOT add an npm token to this repo."
+            exit 1
+          fi
