@@ -187,3 +187,6 @@ erl_crash.dump
 # typescript: struct-style split output (src -> dist, test -> dist-test)
 dist-test/
 typescript/.tsbuild/
+
+# c port build output
+c/build/
