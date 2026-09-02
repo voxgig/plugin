@@ -14,6 +14,8 @@
 #include "../src/capability.h"
 #include "../src/resolve.h"
 #include "../src/env.h"
+#include "../src/config.h"
+#include "../src/graph.h"
 
 /* --- ref: the four pure functions ----------------------------------- */
 
@@ -127,6 +129,40 @@ static Subject env_subject(const char *group) {
   return sub_applyenv;
 }
 
+/* --- config: normalization and the ten-level ladder ------------------ */
+
+static Value *sub_normalizeconfig(Value *e, void *ctx) {
+  (void)ctx;
+  return normalizeconfig(vget(e, "in"));
+}
+
+static Value *sub_resolveoptions(Value *e, void *ctx) {
+  (void)ctx;
+  return resolveoptions(vget(e, "in"));
+}
+
+/* The prefix IS the dispatch: `norm*` groups normalize, `opt*` groups
+ * resolve. A group with neither prefix gets no subject and fails
+ * loudly, rather than being silently skipped. */
+static Subject config_subject(const char *group) {
+  if (0 == strncmp(group, "norm", 4)) return sub_normalizeconfig;
+  if (0 == strncmp(group, "opt", 3)) return sub_resolveoptions;
+  return NULL;
+}
+
+/* --- graph: resolved/blocked, and the explanation ------------------- */
+
+static Value *sub_resolvegraph(Value *e, void *ctx) {
+  (void)ctx;
+  return resolvegraph(vget(e, "in"));
+}
+
+static Subject graph_subject(const char *group) {
+  if (0 == strcmp(group, "resolve")) return sub_resolvegraph;
+  if (0 == strcmp(group, "blocked")) return sub_resolvegraph;
+  return NULL;
+}
+
 /* Dispatch a whole section, failing loudly on a group with no subject:
  * a group the runner does not know is a group silently not run. */
 static void run_section(Tally *t, const char *section,
@@ -168,6 +204,8 @@ int main(void) {
   run_section(&t, "capability", capability_subject);
   run_section(&t, "resolve", resolve_subject);
   run_section(&t, "env", env_subject);
+  run_section(&t, "config", config_subject);
+  run_section(&t, "graph", graph_subject);
 
   if (0 == t.entries) {
     printf("c: no corpus entries ran\n");
