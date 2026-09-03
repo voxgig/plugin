@@ -1471,11 +1471,11 @@ void host_close(Host *h) {
     }
   }
   /* A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
-canonical wraps the teardown in `try/finally`; here an unload that
-raises would skip the reset and leave the host permanently
-`coordinated`, so a caller that catches the error and carries on under
-`dependency: "hold"` gets ad-hoc deactivation with the holder check
-silently off. */
+   * canonical wraps the teardown in `try/finally`; here an unload that
+   * raises would skip the reset and leave the host permanently
+   * `coordinated`, so a caller that catches the error and carries on
+   * under `dependency: "hold"` gets ad-hoc deactivation with the holder
+   * check silently off. Catch, reset, re-raise is C's `finally`. */
   volatile size_t i = 0;
   CatchFrame f;
   if (0 == PLUGIN_TRY(&f)) {

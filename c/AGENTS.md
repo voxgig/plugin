@@ -12,6 +12,17 @@ needs and costs the thing C ports actually fail at: a `free` on a path
 the corpus does not exercise. **Nothing frees an individual value, so
 nothing can double-free one.**
 
+**THE ARENA IS PROCESS-GLOBAL, AND SO IS THE PENDING ERROR** — not
+per-host. Two threads allocating `Value`s race the arena's bump pointer
+and get overlapping storage, *even on separate `Host`s*, and the pending
+error `plugin_caught` reads is one slot for the whole process. **This
+port does not claim thread safety**, per
+[`../docs/ADR.md`](../docs/ADR.md) ADR-2: the baseline contract is
+single-threaded, and a host driving this port from more than one thread
+must serialise its own calls. This is worth stating separately from
+ADR-2's general position because the sharing here is wider than a host's
+own state — it is every `Value` in the process.
+
 ## setjmp/longjmp, and why it is safe HERE
 
 The canonical raises, and the corpus is full of entries asserting what

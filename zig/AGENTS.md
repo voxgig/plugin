@@ -39,6 +39,16 @@ Exactly as in `c`, and for the same reason: a zig function literal that
 captures is not a value you can store. `chain` gets an explicit
 `*Chain` to call back into, and a binding's `ctx` is its `*Inst`.
 
+## Thread safety: not claimed
+
+`pending`, and the arena below it, are **module-global** rather than
+per-host — the same shape `c` has, arrived at because zig's errors carry
+no payload. Two threads racing them corrupt values and lose errors even
+on separate `Host`s. **This port does not claim thread safety**, per
+[`../docs/ADR.md`](../docs/ADR.md) ADR-2: the baseline contract is
+single-threaded, and a host driving this port from more than one thread
+must serialise its own calls.
+
 ## The arena, and why nothing here frees
 
 Same argument `c` makes — every `Value` lives in one arena, so nothing
