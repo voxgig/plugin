@@ -1599,7 +1599,7 @@ tier table promises is that no *corpus behaviour* depends on anyone
 paying it.
 
 **The choice itself, and what it costs, is recorded once in
-[`docs/ARD.md`](../ARD.md) ARD-1** — including the part this section
+[`docs/ADR.md`](../ADR.md) ADR-1** — including the part this section
 does not say, which is that no port ships a live resolver yet.
 
 ### 10.4 Security posture

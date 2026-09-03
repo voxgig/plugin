@@ -68,7 +68,7 @@ plugin/
 ├── CLAUDE.md                    points here
 ├── Makefile                     test / parity / probes / spec aggregates
 ├── docs/design/plugin.md        THE DESIGN
-├── docs/ARD.md                  architecture design records — the
+├── docs/ADR.md                  architecture decision records — the
 │                                decisions that are expensive to reverse
 ├── spec/
 │   ├── plugin.aontu             THE CONTRACT — edit this

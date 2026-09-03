@@ -1,4 +1,4 @@
-# Architecture Design Records
+# Architecture Decision Records
 
 One record per architectural decision that is **expensive to reverse**
 and **not obvious from the code**. A record says what was decided, what
@@ -18,10 +18,10 @@ the old one is marked so.
 
 | # | Decision | Status |
 |---|---|---|
-| [1](#ard-1--static-loading-is-preferred-dynamic-only-when-cheap) | Static loading is preferred; dynamic only when cheap | Accepted |
+| [1](#adr-1--static-loading-is-preferred-dynamic-only-when-cheap) | Static loading is preferred; dynamic only when cheap | Accepted |
 
 
-## ARD-1 — Static loading is preferred; dynamic only when cheap
+## ADR-1 — Static loading is preferred; dynamic only when cheap
 
 **Status:** Accepted. Design §10; security posture §10.4; non-goals §21.
 
