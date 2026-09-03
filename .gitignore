@@ -193,6 +193,7 @@ c/build/
 cpp/build/
 ocaml/build/
 haskell/build/
+zig/build/
 *.cmi
 *.cmx
 *.cmt
