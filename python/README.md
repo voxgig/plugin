@@ -14,6 +14,21 @@ make clean
 No dependencies, and no test framework beyond the standard library.
 Python 3.8+.
 
+## Install
+
+Not on PyPI yet. `pyproject.toml` makes the port an ordinary package, so
+a host declares it from git:
+
+```
+voxgig-plugin @ git+https://github.com/voxgig/plugin.git#subdirectory=python
+```
+
+or, working from a checkout, puts this directory on `PYTHONPATH`.
+[sekreto](https://github.com/voxgig/sekreto)'s python port is the first
+host to do so: its secret providers are plugin definitions, and the
+built-in ones ship in its core while the rest live in its `plugins/`
+folder.
+
 ## Layout
 
 | | |

@@ -201,3 +201,4 @@ lean/.lake/
 *.cmti
 *.cma
 *.cmxa
+*.egg-info/

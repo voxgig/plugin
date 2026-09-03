@@ -90,6 +90,14 @@ is not a thought experiment), and **P6**'s six tier-4 ports — see
 the six defects the proving pair found were all of two kinds, and both
 are found by making another implementation decide from the same text.
 
+[sekreto](https://github.com/voxgig/sekreto) is the second host, and
+the first to adopt the library rather than implement its semantics
+natively: each of its secret-store providers is a definition, the four
+built-in ones ship in its core, and the rest live in a `plugins/` folder
+per port and are handed to the host statically, by the calling project,
+at construction. Its typescript, go and python ports run on this repo's
+ports of the same names; the rest follow as they adopt.
+
 The initial use case is [station](https://github.com/voxgig/station)
 loading generated SDKs as plugins: twenty-plus SDK instances declared in
 one config file, constructed lazily at the point of use, each managing
