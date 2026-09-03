@@ -217,12 +217,12 @@ let providerdefine (i : inst) =
       if not (V.has i.options "value") then Some (V.vstr i.iref)
       else Some (opt i "value"))
     (opt i "band");
-  let pr = V.vmap () in
-  V.set pr "name"
-    (if V.is_null (opt i "capability") then V.vstr "v" else opt i "capability");
-  if not (V.is_null (opt i "version")) then V.set pr "version" (opt i "version");
-  if not (V.is_null (opt i "priority")) then
-    V.set pr "priority" (opt i "priority");
+  (* The capability records come from [options.provides] VERBATIM, and
+     there is no second source. An earlier draft of this probe also
+     synthesized one from [options.capability]/[version]/[priority] --
+     three keys the canonical's [provider] does not read and no corpus
+     entry sets -- and then dropped it on the floor. Dead code a reader
+     would take for behaviour. *)
   let provides = opt i "provides" in
   if V.is_list provides then List.iter (Host.provides i) (V.items provides)
 

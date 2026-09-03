@@ -196,10 +196,12 @@ static void providerdefine(Inst& i) {
     if (!has(self->options(), "value")) return vstr(self->ref());
     return opt(*self, "value");
   }, opt(i, "band"));
-  V pr = vmap();
-  set(pr, "name", isnull(opt(i, "capability")) ? vstr("v") : opt(i, "capability"));
-  if (!isnull(opt(i, "version"))) set(pr, "version", opt(i, "version"));
-  if (!isnull(opt(i, "priority"))) set(pr, "priority", opt(i, "priority"));
+  /* The capability records come from `options.provides` VERBATIM, and
+   * there is no second source. An earlier draft of this probe also
+   * synthesized one from `options.capability`/`version`/`priority` —
+   * three keys the canonical's `provider` does not read and no corpus
+   * entry sets — and then dropped it on the floor. Dead code a reader
+   * would take for behaviour. */
   V provides = opt(i, "provides");
   if (islist(provides)) {
     for (size_t k = 0; k < len(provides); k++) i.provides(at(provides, k));

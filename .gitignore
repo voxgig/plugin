@@ -192,6 +192,7 @@ typescript/.tsbuild/
 c/build/
 cpp/build/
 ocaml/build/
+haskell/build/
 *.cmi
 *.cmx
 *.cmt

@@ -240,10 +240,12 @@ static void provider_define(Inst *i) {
   Value *point = opt(i, "point");
   inst_bind(i, visstr(point) ? vasstr(point) : "v", provider_hook, NULL, i,
             opt(i, "band"));
-  Value *pr = vmap();
-  vset(pr, "name", visnull(opt(i, "capability")) ? vstr("v") : opt(i, "capability"));
-  if (!visnull(opt(i, "version"))) vset(pr, "version", opt(i, "version"));
-  if (!visnull(opt(i, "priority"))) vset(pr, "priority", opt(i, "priority"));
+  /* The capability records come from `options.provides` VERBATIM, and
+   * there is no second source. An earlier draft of this probe also
+   * synthesized one from `options.capability`/`version`/`priority` —
+   * three keys the canonical's `provider` does not read and no corpus
+   * entry sets — and then dropped it on the floor. Dead code a reader
+   * would take for behaviour. */
   Value *provides = opt(i, "provides");
   if (vislist(provides)) {
     for (size_t k = 0; k < vlen(provides); k++) inst_provides(i, vat(provides, k));
