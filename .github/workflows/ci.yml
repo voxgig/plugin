@@ -87,9 +87,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # P4 is complete; P5 is under way. P6 adds the rest.
+        # P4, P5 and P6 are complete: every port in the repo is here.
+        #
+        # THIS LIST IS THE FOURTH REGISTRATION A NEW PORT NEEDS, after
+        # `LANGS`, `check_parity.py` and `check_probes.py`. A port absent
+        # from it is built and tested by nobody on GitHub while `make
+        # check` passes locally, which is exactly the shape of the gap
+        # review found in `check_probes.py`: the gate stays green
+        # BECAUSE the port is missing from it.
         port: [typescript, go, python, javascript, ruby, php, perl, rust, java, lua,
-               csharp, elixir, clojure, dart, kotlin, swift, scala]
+               csharp, elixir, clojure, dart, kotlin, swift, scala,
+               c, cpp, ocaml, haskell, zig, lean]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -166,6 +174,46 @@ jobs:
           sudo mkdir -p /opt/swift
           sudo tar xzf /tmp/swift.tar.gz -C /opt/swift --strip-components=1
           echo /opt/swift/usr/bin >> "$GITHUB_PATH"
+      # c and cpp need NO STEP AT ALL: the image ships gcc/g++ 13.3.0,
+      # both ports build with `cc`/`c++` and no library beyond libc, and
+      # `make inspect` prints the version each got.
+      #
+      # ghc and ocaml come from ubuntu's archive rather than ghcup or
+      # opam, for the reason every other apt line here gives: the port
+      # has nothing to resolve afterwards (haskell has no cabal file,
+      # ocaml no dune project), and an unpinned installer would be a
+      # worse trade than a package that names itself. 24.04 carries ghc
+      # 9.4.7 and ocaml 4.14.1, which is what these ports are written
+      # against; `make inspect` prints what arrived.
+      - if: matrix.port == 'haskell'
+        run: sudo apt-get update && sudo apt-get install -y ghc
+      - if: matrix.port == 'ocaml'
+        run: sudo apt-get update && sudo apt-get install -y ocaml
+      # zig is not in the archive, so this is the tarball from
+      # ziglang.org at a PINNED version — the same reason every action
+      # here is pinned to a SHA. 0.13.0 specifically: the port's imports
+      # are rooted at `zig/run.zig` because 0.13 restricts imports to the
+      # root source file's directory and has no `--main-mod-path`.
+      - if: matrix.port == 'zig'
+        run: |
+          curl -fsSL -o /tmp/zig.tar.xz \
+            https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
+          sudo mkdir -p /opt/zig
+          sudo tar xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+          echo /opt/zig >> "$GITHUB_PATH"
+      # lean comes from a pinned GitHub RELEASE ASSET rather than
+      # elan, which would fetch a toolchain this workflow cannot pin.
+      # The asset is `.tar.zst`; ubuntu-latest ships zstd, and the
+      # explicit `--use-compress-program` says so rather than relying on
+      # tar's suffix detection.
+      - if: matrix.port == 'lean'
+        run: |
+          curl -fsSL -o /tmp/lean.tar.zst \
+            https://github.com/leanprover/lean4/releases/download/v4.15.0/lean-4.15.0-linux.tar.zst
+          sudo mkdir -p /opt/lean
+          sudo tar --use-compress-program=unzstd -xf /tmp/lean.tar.zst \
+            -C /opt/lean --strip-components=1
+          echo /opt/lean/bin >> "$GITHUB_PATH"
       - run: make build-${{ matrix.port }}
       - run: make test-${{ matrix.port }}
       - run: make inspect-${{ matrix.port }}
