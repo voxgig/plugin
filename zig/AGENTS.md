@@ -97,11 +97,13 @@ Zig confines a module's imports to its root's directory, and refuses a
 file that lands in two modules — so a host cannot reach `host.zig`,
 `value.zig` and `types.zig` through three roots in one directory.
 `src/plugin.zig` is the one root a consumer names
-(`-Mplugin=<checkout>/zig/src/plugin.zig`), re-exporting what a host
-needs; the test driver in `test/` keeps importing the files directly,
-because it lives beside them. Everything a host might reach goes
-through that file, so a new module a host should see is one line
-there.
+(`-Mplugin=<checkout>/zig/src/plugin.zig`), and it re-exports **every**
+module under `src/` — the canonical surface is the whole of it (api
+parity), and a root that exposed the handful its first host needed
+would make `resolveorder`, `resolvecandidates` and `applyenv`
+unreachable by construction. The test driver in `test/` keeps importing
+the files directly, because it lives beside them. A new file under
+`src/` is one line in the root.
 
 ## Build
 

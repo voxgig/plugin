@@ -8,16 +8,24 @@
 //! lives beside them; a consumer cannot, and this is what it gets
 //! instead — the same role `index.ts` plays for the typescript port.
 //!
-//! What a host needs: the host and its catalog (`host`, `catalog`), the
-//! dynamic value every option and export is made of (`value`), the
-//! error mechanism a definition raises through (`types`), and the four
-//! pure ref functions (`ref`).
+//! EVERY MODULE, not the handful the first host happened to need: the
+//! canonical surface is the whole of it (AGENTS.md, api parity), and a
+//! root that exposed part of it would make the rest unreachable by
+//! construction. A new file under `src/` is one line here.
 
 pub const value = @import("value.zig");
 pub const types = @import("types.zig");
 pub const ref = @import("ref.zig");
-pub const catalog = @import("catalog.zig");
-pub const host = @import("host.zig");
 pub const version = @import("version.zig");
 pub const capability = @import("capability.zig");
+pub const resolve = @import("resolve.zig");
+pub const env = @import("env.zig");
 pub const config = @import("config.zig");
+pub const graph = @import("graph.zig");
+pub const depend = @import("depend.zig");
+pub const order = @import("order.zig");
+pub const point = @import("point.zig");
+pub const @"export" = @import("export.zig");
+pub const catalog = @import("catalog.zig");
+pub const inst = @import("inst.zig");
+pub const host = @import("host.zig");
