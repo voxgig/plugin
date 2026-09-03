@@ -44,7 +44,7 @@ pub fn resolveexport(spec: ?*v.Value, exported: ?*v.Value) t.Err!?*v.Value {
     }
 
     // An alias: the NAME, not a ref. Look at every instance of it.
-    var byname = std.ArrayList(*v.Value).init(v.arena());
+    var byname = v.List(*v.Value).init(v.arena());
     for (v.items(exported)) |e| {
         const eref = v.asStr(v.get(e, "ref"));
         if (std.mem.eql(u8, ref.refname(eref), head) and
@@ -67,7 +67,7 @@ pub fn resolveexport(spec: ?*v.Value, exported: ?*v.Value) t.Err!?*v.Value {
     std.mem.sort([]const u8, refs, {}, lessStr);
 
     const list = v.vlist();
-    var names = std.ArrayList(u8).init(v.arena());
+    var names = v.List(u8).init(v.arena());
     for (refs, 0..) |r, i| {
         if (i > 0) names.appendSlice(", ") catch @panic("oom");
         names.appendSlice(r) catch @panic("oom");

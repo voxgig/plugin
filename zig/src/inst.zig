@@ -49,11 +49,11 @@ pub const Inst = struct {
     /// be silently ignored.
     barred: bool = false,
     unmet: *v.Value,
-    scope: std.ArrayList(*ScopeEntry),
+    scope: v.List(*ScopeEntry),
     /// Declared in `define`, inserted only when activation SUCCEEDS
     /// (§8.1). Holding them until then is what makes a failed activate
     /// leave nothing behind.
-    bindings: std.ArrayList(point.Bound),
+    bindings: v.List(point.Bound),
     inner: ?*Host = null,
     /// Declared in `define`, and VISIBLE while merely `loaded` (§11):
     /// they are data, and hiding them would make the loaded state
@@ -97,7 +97,7 @@ pub const Host = struct {
     /// Set for the duration of a bulk teardown, so `held` knows this is
     /// a coordinated operation rather than an ad-hoc deactivation.
     coordinated: bool = false,
-    instances: std.ArrayList(*Inst),
+    instances: v.List(*Inst),
     log: *v.Value,
     events: *v.Value,
     seqn: f64 = 0,

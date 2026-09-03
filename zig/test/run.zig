@@ -177,28 +177,40 @@ fn listed(names: []const []const u8, want: []const u8) bool {
 /// It also refuses a corpus with no PLUGIN.version, because that block
 /// is what turns on strict entry validation in every runner and a corpus
 /// that lost it must not silently downgrade this port's checking.
-fn coverage(tally: *corpus.Tally) !void {
-    const out = std.io.getStdOut().writer();
+/// One line to stdout. Modern zig writes through a buffered writer
+/// that needs the I/O `main` was handed; legacy zig has a global.
+fn say(comptime fmt: []const u8, args: anytype) void {
+    if (v.modern) {
+        var buffer: [4096]u8 = undefined;
+        var w = std.Io.File.stdout().writer(corpus.io.?, &buffer);
+        w.interface.print(fmt, args) catch return;
+        w.interface.flush() catch return;
+    } else {
+        std.io.getStdOut().writer().print(fmt, args) catch return;
+    }
+}
+
+fn coverage(tally: *corpus.Tally) void {
     const spec = corpus.corpus();
     const primary = v.get(spec, "primary");
     const meta = v.get(spec, "PLUGIN");
 
     if (v.asNum(v.get(meta, "version")) != 1) {
         tally.failures += 1;
-        try out.print("coverage: corpus PLUGIN.version must be 1\n", .{});
+        say("coverage: corpus PLUGIN.version must be 1\n", .{});
     }
 
     for (v.sortedKeys(primary)) |name| {
         if (listed(&PURE, name) or listed(&DRIVER, name)) continue;
         tally.failures += 1;
-        try out.print("coverage: corpus section no test runs: {s}\n", .{name});
+        say("coverage: corpus section no test runs: {s}\n", .{name});
     }
 
     for ([_][]const []const u8{ &PURE, &DRIVER }) |list| {
         for (list) |name| {
             if (v.has(primary, name)) continue;
             tally.failures += 1;
-            try out.print(
+            say(
                 "coverage: tests name a section the corpus does not have: {s}\n",
                 .{name},
             );
@@ -209,14 +221,14 @@ fn coverage(tally: *corpus.Tally) !void {
     // covers a fraction of it is the failure worth catching.
     if (tally.entries < 400) {
         tally.failures += 1;
-        try out.print(
+        say(
             "coverage: only {d} corpus entries ran; the corpus has far more\n",
             .{tally.entries},
         );
     }
 }
 
-pub fn main() !void {
+fn run() void {
     var tally = corpus.Tally{};
 
     corpus.runSection(&tally, "ref", refSubject);
@@ -229,16 +241,29 @@ pub fn main() !void {
 
     for (DRIVER) |s| corpus.runSection(&tally, s, driverSubject);
 
-    try coverage(&tally);
+    coverage(&tally);
 
-    const out = std.io.getStdOut().writer();
     if (tally.entries == 0) {
-        try out.print("zig: no corpus entries ran\n", .{});
+        say("zig: no corpus entries ran\n", .{});
         std.process.exit(1);
     }
     if (tally.failures > 0) {
-        try out.print("\nzig: {d} failure(s) of {d} entries\n", .{ tally.failures, tally.entries });
+        say("\nzig: {d} failure(s) of {d} entries\n", .{ tally.failures, tally.entries });
         std.process.exit(1);
     }
-    try out.print("zig: {d} corpus entries, all pass\n", .{tally.entries});
+    say("zig: {d} corpus entries, all pass\n", .{tally.entries});
+}
+
+/// Modern zig hands `main` the process's I/O and environment; legacy
+/// zig hands it nothing. The runner is the same either way.
+pub const main = if (v.modern) mainModern else mainLegacy;
+
+fn mainModern(init: std.process.Init) void {
+    corpus.io = init.io;
+    corpus.env = init.environ_map;
+    run();
+}
+
+fn mainLegacy() void {
+    run();
 }

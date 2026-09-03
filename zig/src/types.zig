@@ -50,7 +50,7 @@ pub fn formatError(code: []const u8, text: []const u8, details: ?*v.Value) []con
     // Values render as COMPACT JSON, so a value containing a space or a
     // bracket cannot break the parse and a list renders as an array. The
     // bracket is absent entirely when no field applies.
-    var tail = std.ArrayList(u8).init(v.arena());
+    var tail = v.List(u8).init(v.arena());
     for (detail_order) |k| {
         if (!v.has(details, k)) continue;
         if (tail.items.len > 0) tail.append(' ') catch @panic("oom");
