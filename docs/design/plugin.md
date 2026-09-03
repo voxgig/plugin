@@ -1598,6 +1598,10 @@ code loading can have it, at that price, in its own resolver. What the
 tier table promises is that no *corpus behaviour* depends on anyone
 paying it.
 
+**The choice itself, and what it costs, is recorded once in
+[`docs/ARD.md`](../ARD.md) ARD-1** — including the part this section
+does not say, which is that no port ships a live resolver yet.
+
 ### 10.4 Security posture
 
 Loading a plugin is executing code. The library states the obvious
