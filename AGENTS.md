@@ -81,11 +81,13 @@ plugin/
 │   ├── status.md                live snapshot: in flight, blocked, pick up first
 │   ├── handover.md              what a landed change decided, and what it cost
 │   └── contracts.md             the four cross-repo obligations, C1-C4
+├── VERSION                      the one version line, all 23 ports (ADR-4)
 ├── tools/
 │   ├── build-spec.js            aontu -> json
 │   ├── check-spec-shape.js      corpus sources against the spec-format shape
 │   ├── check_parity.py          every port defines the canonical API
-│   └── check_probes.py          every port implements every probe
+│   ├── check_probes.py          every port implements every probe
+│   └── check_versions.py        manifests match VERSION; tag.yml tags every port
 ├── typescript/                  CANONICAL — src/ and test/
 ├── go/                          port — plugin/ (library) and test/ (driver + runner)
 ├── python/                      port — voxgig_plugin/ (library) and test/

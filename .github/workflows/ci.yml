@@ -76,6 +76,11 @@ jobs:
       # The probe catalog is a contract, not a fixture: a driver
       # section's expected `log` is written against what `noisy` does.
       - run: make probes
+      # Release metadata: every manifest that states a version states
+      # VERSION (ADR-4), and tag.yml tags every port the Makefile builds.
+      # Here rather than only at release time, because both failures are
+      # cheap to fix in a PR and expensive to find while cutting tags.
+      - run: make versions
 
   # One job per port, modelled on omni's ci.yml. `fail-fast: false` so a
   # single failing language is named in the UI rather than buried in a

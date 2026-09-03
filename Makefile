@@ -34,7 +34,7 @@
 # P4 is complete; P5 is under way. P6 the rest.
 LANGS = typescript go python javascript ruby php perl rust java lua csharp elixir clojure dart kotlin swift scala c cpp ocaml haskell zig lean
 
-.PHONY: all test build inspect clean parity probes check spec spec-check omni-check
+.PHONY: all test build inspect clean parity probes versions check spec spec-check omni-check
 
 all: test
 
@@ -107,6 +107,14 @@ parity:
 probes:
 	@python3 tools/check_probes.py
 
+# VERSION is the one version line (docs/ADR.md ADR-4): every port ships at
+# it and the release tags `<port>/vX.Y.Z` say so. Most ports declare no
+# version at all - for those the tag IS the version - so this checks only
+# the four manifests that state one, plus their lockfiles, which `npm ci`
+# and `cargo build --locked` would otherwise reject in CI.
+versions:
+	@python3 tools/check_versions.py
+
 # Prove the corpus still runs under voxgig/omni's own runner (ADR-3).
 #
 # NOT part of `check`, and deliberately: it needs voxgig/omni checked out
@@ -116,4 +124,4 @@ probes:
 omni-check:
 	@node tools/omni-check.js
 
-check: spec-check parity probes test
+check: spec-check parity probes versions test

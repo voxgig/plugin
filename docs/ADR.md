@@ -21,6 +21,7 @@ the old one is marked so.
 | [1](#adr-1--static-loading-is-preferred-dynamic-only-when-cheap) | Static loading is preferred; dynamic only when cheap | Accepted |
 | [2](#adr-2--thread-safety-is-a-per-port-property-not-a-corpus-behaviour) | Thread safety is a per-port property, not a corpus behaviour | Accepted |
 | [3](#adr-3--the-corpus-is-in-omnis-format-the-runners-are-not-omni-yet) | The corpus is in omni's format; the runners are not omni yet | Accepted |
+| [4](#adr-4--one-version-line-and-the-tag-is-the-release-for-twenty-one-ports) | One version line, and the tag is the release for twenty-one ports | Accepted |
 
 
 ## ADR-1 — Static loading is preferred; dynamic only when cheap
@@ -398,3 +399,132 @@ change.
   and the probe-catalog contract are plugin's own additions today; if
   omni grows an equivalent, the per-port test layer shrinks to almost
   nothing.
+
+
+---
+
+## ADR-4 — One version line, and the tag is the release for twenty-one ports
+
+**Status:** Accepted. Supersedes nothing; the per-port versions it
+replaces were never written down as a decision.
+
+### Context
+
+Twenty-three ports, and only two of them are packages anyone can
+install. `typescript` is `@voxgig/plugin` and `javascript` is
+`@voxgig/plugin-js`, both on npm through `publish.yml` and npm trusted
+publishing. The other twenty-one publish to no registry at all: `go`,
+`rust`, `dart` and `lean` are consumed by git ref, and the remaining
+seventeen are consumed by vendoring a source directory.
+
+That left two questions the repository had answered only by accident.
+
+**What version is a port at?** Four manifests state a version
+(`typescript/package.json`, `javascript/package.json`,
+`python/pyproject.toml`, `rust/Cargo.toml`) and nineteen ports state
+none anywhere. The four had drifted to three different numbers — 0.1.6,
+0.1.1 and 0.1.0 twice — none of which meant anything, because the
+corpus they all pass is the same corpus. A consumer asking "which
+version of the ruby port matches `@voxgig/plugin` 0.1.6?" had no way to
+answer, and neither did we.
+
+**How does a port without a registry get released?** It did not. Six
+releases of the canonical port had happened and no other port had ever
+carried a tag, so the only way to pin the go port was a SHA — and a SHA
+does not tell you which corpus it passes.
+
+### Decision
+
+**`VERSION` at the repository root is the one version line.** It holds
+plain semver and nothing else. `0.1.6` means *all twenty-three ports are
+at that corpus* — not that each port changed, but that this commit is
+the release point for every one of them.
+
+**Every manifest that states a version must equal it.**
+`tools/check_versions.py` enforces that, over the four manifests and
+their lockfiles, and runs as part of `make check`. A port that states no
+version is not required to invent one: for it the tag IS the version.
+
+**Every port is tagged `<port>/vX.Y.Z`, at one commit, by `tag.yml`.**
+Twenty-three tags per release, written atomically.
+
+**The separator is a slash because Go says so.**
+`github.com/voxgig/plugin/go` is a subdirectory module: the go command
+resolves v0.1.6 of it from the tag `go/v0.1.6` and ignores every tag
+without that exact prefix. One repository cannot sensibly run two tag
+conventions, so the npm ports took go's — which is also
+[voxgig/omni](https://github.com/voxgig/omni)'s shape, so the two
+repositories now read the same way.
+
+### Why the alternatives lost
+
+**Per-port version lines** — each port versioning on its own changes.
+This is what npm, cargo and pub all assume, and it is the right answer
+for a repository whose parts change independently. This one's do not:
+every port implements the same 572-entry corpus, and a corpus change
+propagates to all twenty-three in one change set (AGENTS.md §1). Ports
+here move together by construction, so twenty-three independent version
+lines would encode a variation the repository does not have, and would
+leave the "which ruby matches which typescript" question unanswered in
+exactly the way it already was.
+
+**A dash separator, `<port>-vX.Y.Z`** — what `publish.yml` used for its
+first six releases. Go makes it unusable: a tag `go-v0.1.6` is invisible
+to the go command, so the go port could never be released under it. A
+slash for go and a dash for everything else is two conventions and a
+footnote; one convention and six historical tags left alone is cheaper.
+
+**Deriving `tag.yml`'s port list from the Makefile** — no duplication,
+no drift. Rejected because that file writes tags that cannot be taken
+back, and a regex over a Makefile is not what should decide which. The
+list is literal and `check_versions.py` holds the two in agreement
+instead, which fails on a developer's machine rather than in a release.
+
+### Consequences
+
+**Good.**
+
+- A version number now means something across the whole repository. "The
+  ruby port at 0.1.6" resolves to a tag, and that tag is a commit whose
+  full CI matrix went green.
+- Twenty-one ports became pinnable. `go get
+  github.com/voxgig/plugin/go@v0.1.6` works; so does vendoring
+  `ruby/v0.1.6`.
+- A bump is a one-line reviewable diff, and `make check` refuses a tree
+  whose manifests disagree with it — including lockfiles, which
+  otherwise fail later and less clearly at `npm ci`.
+
+**Bad, and accepted.**
+
+- **A port with no change still gets a new version.** Release 0.1.7 will
+  tag `lua/v0.1.7` whether or not the lua port was touched. That is the
+  cost of a shared line, and it is the honest reading: what changed is
+  the corpus the port passes.
+- **Adding a port is now a five-place change**, not four — the Makefile,
+  `check_parity.py`, `check_probes.py`, the CI matrix, and `tag.yml`.
+  The drift check makes forgetting the fifth a failure rather than a
+  silently unreleasable port.
+- **The go tag is irreversible.** proxy.golang.org and sum.golang.org
+  cache a version permanently: moving or deleting a tag reaches users as
+  a security error, and the only withdrawal is `retract` in a new
+  version. Every guard in `tag.yml` exists because of this, and a
+  mistaken release cannot be undone, only superseded.
+- **Two tag conventions are visible in the history.**
+  `typescript-v0.1.0` through `typescript-v0.1.6` and
+  `javascript-v0.1.1` are the old shape. They are not rewritten — a
+  published tag is history.
+
+### Revisit if
+
+- **A port genuinely diverges.** If one port needs a release the others
+  do not — a language-specific packaging fix, say — the shared line
+  becomes a lie rather than a simplification, and per-port versions with
+  a recorded corpus level would be the answer.
+- **A registry gains automation.** PyPI for `python`, crates.io for
+  `rust`, NuGet for `csharp`: each would publish under this same version,
+  and each needs its own trusted-publisher registration. Nothing here
+  blocks that; the version line is what those publishes would read.
+- **The tag count becomes the cost.** Twenty-three tags per release is
+  already enough that `git tag -l` needs a filter. If ports reach fifty,
+  a single `vX.Y.Z` tag plus a manifest mapping ports to it may beat
+  one tag each — at the price of go, which would then need its own.

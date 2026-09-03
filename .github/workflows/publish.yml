@@ -25,11 +25,23 @@
 name: publish
 
 on:
-  # PREFIXED PER PORT, not a bare `v*`: this repository holds twenty-three
-  # ports and two of them are npm packages. Each ecosystem owns its own
-  # prefix rather than fighting over the tag space.
+  # `<port>/vX.Y.Z`, PREFIXED PER PORT and matching voxgig/omni. All
+  # twenty-three ports are tagged (tag.yml); only two of them are npm
+  # packages, so each ecosystem owns its own prefix rather than fighting
+  # over the tag space.
+  #
+  # THE SEPARATOR IS A SLASH BECAUSE GO SAYS SO. `github.com/voxgig/plugin/go`
+  # is a subdirectory module, and the go command resolves version v0.1.6 of
+  # it from the tag `go/v0.1.6` and IGNORES every tag without that exact
+  # prefix. One repository cannot sensibly run two tag conventions, so the
+  # npm ports took go's. Tags through `typescript-v0.1.6` and
+  # `javascript-v0.1.1` are the old dash shape and are left where they are:
+  # a published tag is history, not something to rewrite.
+  #
+  # `*` does not match `/` in a GitHub ref filter, which is what keeps
+  # `typescript/v*` from also matching a hypothetical `typescript/v1/beta`.
   push:
-    tags: ['typescript-v*', 'javascript-v*']
+    tags: ['typescript/v*', 'javascript/v*']
   workflow_dispatch:
     inputs:
       port:
@@ -124,7 +136,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             PORT='${{ inputs.port }}'
           else
-            PORT="${GITHUB_REF_NAME%%-v*}"
+            PORT="${GITHUB_REF_NAME%%/v*}"
           fi
           case "$PORT" in
             typescript|javascript) ;;
@@ -139,9 +151,9 @@ jobs:
             echo "port=$PORT"
             echo "version=$VERSION"
             echo "name=$NAME"
-            echo "tag=$PORT-v$VERSION"
+            echo "tag=$PORT/v$VERSION"
           } >> "$GITHUB_OUTPUT"
-          echo "$NAME $VERSION -> tag $PORT-v$VERSION"
+          echo "$NAME $VERSION -> tag $PORT/v$VERSION"
 
       - name: install
         working-directory: ${{ steps.resolve.outputs.port }}
@@ -267,11 +279,16 @@ jobs:
             exit 1
           fi
 
-  # THE TAG A DISPATCH RELEASE NEVER GOT. On a `<port>-v*` push the tag is
+  # THE TAG A DISPATCH RELEASE NEVER GOT. On a `<port>/v*` push the tag is
   # what triggered the run and already exists; on a `workflow_dispatch`
   # nothing creates it — so the version reaches npm and is unfindable by tag
-  # in git. This has already happened twice: tags exist for 0.1.0, 0.1.1 and
-  # 0.1.2, while 0.1.3 and 0.1.4 are both on npm with no tag at all.
+  # in git. This has already happened twice: `@voxgig/plugin` 0.1.3 and 0.1.4
+  # are both on npm with no tag at all.
+  #
+  # tag.yml tags every port for a full release and would cover these two as
+  # well, but this job stays: a publish that tags nothing is the failure mode
+  # being fixed, and it must not depend on someone remembering a second
+  # dispatch. Both are idempotent at HEAD, so they compose.
   #
   # Mirrors omni's release.yml `tag` job. Its `needs.publish.result ==
   # 'skipped'` allowance is deliberately NOT copied: omni skips its publish

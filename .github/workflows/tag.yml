@@ -1,0 +1,282 @@
+# Cuts the release tags for a full release: `<port>/v<VERSION>`, for every
+# port at once.
+#
+# WHY A TAG IS THE WHOLE RELEASE FOR TWENTY-ONE OF THE TWENTY-THREE PORTS.
+# Only `typescript` and `javascript` are packages on a registry, and
+# publish.yml releases those. The rest are consumed straight from this
+# repository - `go` and `rust` and `dart` by git ref, the others by vendoring
+# a source directory - so for them there is nothing to upload and the tag is
+# the only thing that says "this commit is 0.1.6". A port with no tag is a
+# port a consumer can only pin by SHA.
+#
+# NOT release/publish.yml, and that separation is the security shape of these
+# two files. publish.yml is registered with npm trusted publishing against its
+# FILENAME and holds `id-token: write`; nothing that needs no registry
+# credential belongs anywhere near it. This workflow holds `contents: write`
+# and no token of any other kind, and its tag job runs git and nothing else -
+# no npm, no build, no project code.
+#
+# THE SEPARATOR IS A SLASH BECAUSE GO SAYS SO. `github.com/voxgig/plugin/go`
+# is a subdirectory module: the go command resolves version v0.1.6 of it from
+# the tag `go/v0.1.6` and IGNORES every tag without that exact prefix. Cargo,
+# pub, tools.deps and Lake impose no naming rule and take the same shape for
+# consistency - and so, now, do the two npm ports. The dash-shaped tags up to
+# `typescript-v0.1.6` are history and are left alone.
+#
+# A GO TAG CANNOT BE TAKEN BACK. proxy.golang.org and sum.golang.org cache a
+# version permanently and hostilely: moving or deleting a tag surfaces to
+# users as a SECURITY ERROR, not as a missing version, and the only withdrawal
+# is `retract` in a NEW version. Everything below is shaped by that - dispatch
+# from main only, full CI green on the exact commit, no tag may already exist
+# anywhere but on this commit, and the push is `--atomic` so a run either
+# writes every tag or none of them.
+#
+# THE VERSION IS NOT AN INPUT. It is read from `VERSION` at the repository
+# root, which `make check` holds every declaring manifest to (ADR-4). A text
+# box on the Actions page is not reviewable; a one-line diff is.
+
+name: tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      port:
+        description: 'Port to tag, or "all" for a full release'
+        required: true
+        type: string
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: the commit must be sound before it is tagged
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    permissions:
+      contents: read
+      # Reads ci.yml's conclusion for this SHA, below.
+      actions: read
+
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tags: ${{ steps.resolve.outputs.tags }}
+      count: ${{ steps.resolve.outputs.count }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Tags and the main-ancestry check below both need real history.
+          fetch-depth: 0
+
+      # TAGS COME FROM main. `workflow_dispatch` accepts any branch, so
+      # without this the Actions UI could tag a feature branch -
+      # irreversibly, for go.
+      - name: Dispatches must come from main
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF_NAME" = "main" ] || {
+            echo "::error::dispatch ref is $GITHUB_REF_NAME; tags must come from main"
+            exit 1
+          }
+
+      - name: Resolve the tags to write
+        id: resolve
+        env:
+          PORT: ${{ inputs.port }}
+        run: |
+          set -euo pipefail
+
+          # The same list as the Makefile's LANGS. Kept literal rather than
+          # parsed out of it: this file writes irreversible tags, and a
+          # regex over a Makefile is not the thing to trust with that.
+          ALL='typescript go python javascript ruby php perl rust java lua
+               csharp elixir clojure dart kotlin swift scala c cpp ocaml
+               haskell zig lean'
+
+          if [ "$PORT" = all ]; then
+            PORTS="$ALL"
+          else
+            # Word by word, not a substring test: `case " $ALL " in *" $PORT "*)`
+            # would accept "c cpp" (adjacent in the list) and reject "cpp c",
+            # which is a silently port-order-dependent input.
+            PORTS=''
+            for want in $PORT; do
+              found=''
+              for have in $ALL; do
+                [ "$want" = "$have" ] && found=1 && break
+              done
+              [ -n "$found" ] || {
+                echo "::error::'$want' is not a port of this repository"
+                exit 1
+              }
+              PORTS="$PORTS $want"
+            done
+          fi
+
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          # Plain semver. Go rejects anything else outright, and the other
+          # twenty-two gain nothing from being looser than the strictest
+          # consumer.
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
+            echo "::error::VERSION '$VERSION' is not X.Y.Z"
+            exit 1
+          }
+
+          # EVERY manifest that states a version must already agree with
+          # VERSION. Tagging 0.1.6 onto a tree whose package.json still says
+          # 0.1.5 is exactly the drift the tag is supposed to rule out.
+          python3 tools/check_versions.py
+
+          HEAD_SHA="$(git rev-parse HEAD)"
+          WRITE=''
+          SKIP=''
+          for port in $PORTS; do
+            tag="$port/v$VERSION"
+            # EXISTENCE IS NOT ENOUGH. `--verify` only asks whether the name
+            # resolves; a tag on a DIFFERENT commit means someone already
+            # released this version from another tree, and moving it is the
+            # one thing a go tag never survives.
+            at="$(git rev-parse -q --verify "refs/tags/$tag^{commit}" 2>/dev/null || true)"
+            if [ -z "$at" ]; then
+              WRITE="$WRITE $tag"
+            elif [ "$at" = "$HEAD_SHA" ]; then
+              # publish.yml already tagged the port it published. Idempotent
+              # rather than an error, so one dispatch still finishes a release.
+              SKIP="$SKIP $tag"
+            else
+              echo "::error::$tag exists on $at, not this commit ($HEAD_SHA)"
+              exit 1
+            fi
+          done
+
+          WRITE="$(echo $WRITE)"
+          SKIP="$(echo $SKIP)"
+          COUNT="$(echo $WRITE | wc -w | tr -d ' ')"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tags=$WRITE" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Tagging $VERSION at \`$HEAD_SHA\`"
+            echo
+            echo "**$COUNT to write:** ${WRITE:-(none)}"
+            echo
+            echo "**already on this commit:** ${SKIP:-(none)}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # THE PORT'S OWN SUITE IS NOT ENOUGH, so this asks for all of them.
+      # A tag can be pushed at any commit, ci.yml does not run on tags, and
+      # a full release claims that twenty-three ports agree with the corpus
+      # at this commit - a claim only the full matrix supports.
+      #
+      # TWO CONDITIONS, because either alone is a hole. Ancestry of main says
+      # the commit went through review; it does NOT say CI passed. So the run
+      # itself is looked up, by SHA, and must have COMPLETED and SUCCEEDED.
+      #
+      # This is the same gate publish.yml applies, and it is cheaper as well
+      # as stronger than installing twenty-three toolchains here to re-run
+      # what ci.yml already ran on this exact commit.
+      - name: full CI must have passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "::error::$GITHUB_SHA is not on main. Tag a commit main contains."
+            exit 1
+          fi
+          echo "$GITHUB_SHA is on main; waiting for ci.yml to conclude on it"
+
+          deadline=$(( SECONDS + 1800 ))
+          while :; do
+            run=$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" \
+              --jq '[.workflow_runs[]
+                     | select(.path == ".github/workflows/ci.yml")]
+                    | sort_by(.run_started_at) | last // {}')
+            status=$(printf '%s' "$run" | jq -r '.status // "missing"')
+            conclusion=$(printf '%s' "$run" | jq -r '.conclusion // ""')
+
+            if [ "$status" = completed ]; then
+              if [ "$conclusion" = success ]; then
+                echo "ci.yml succeeded on $GITHUB_SHA"
+                break
+              fi
+              echo "::error::ci.yml concluded '$conclusion' on $GITHUB_SHA — not tagging"
+              exit 1
+            fi
+
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::gave up waiting for ci.yml on $GITHUB_SHA (last status: $status)"
+              exit 1
+            fi
+            echo "  ci.yml is '$status' — waiting"
+            sleep 20
+          done
+
+  tag:
+    name: tag
+    needs: check
+    # Nothing to do when every tag is already on this commit.
+    if: needs.check.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # git, and nothing else.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag the release
+        env:
+          TAGS: ${{ needs.check.outputs.tags }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          HEAD_SHA="$(git rev-parse HEAD)"
+          REFS=''
+          for tag in $TAGS; do
+            # RE-CHECKED HERE, not trusted from the check job: minutes passed
+            # and this is a fresh checkout, so a tag could have appeared in
+            # between. Cheap, and the alternative is unrecoverable.
+            at="$(git rev-parse -q --verify "refs/tags/$tag^{commit}" 2>/dev/null || true)"
+            if [ -n "$at" ]; then
+              [ "$at" = "$HEAD_SHA" ] || {
+                echo "::error::$tag appeared on $at since the check job"
+                exit 1
+              }
+              echo "$tag already points here - skipping"
+              continue
+            fi
+            git tag -a "$tag" -m "$tag"
+            REFS="$REFS refs/tags/$tag"
+          done
+
+          if [ -z "$REFS" ]; then
+            echo "every tag was already in place" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # --atomic: twenty-three tags land together or not at all. A partial
+          # release is the worst outcome here, because the go tag among them
+          # cannot be withdrawn.
+          # shellcheck disable=SC2086
+          git push --atomic origin $REFS
+
+          {
+            echo "### Tagged $VERSION"
+            echo
+            for tag in $TAGS; do echo "- \`$tag\`"; done
+          } >> "$GITHUB_STEP_SUMMARY"

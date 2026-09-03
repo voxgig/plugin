@@ -9,7 +9,7 @@
 
 [project]
 name = "voxgig-plugin"
-version = "0.1.0"
+version = "0.1.6"
 description = "voxgig/plugin: one plugin architecture, every language (the python port)"
 readme = "README.md"
 requires-python = ">=3.8"
