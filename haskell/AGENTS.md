@@ -21,6 +21,33 @@ exactly when it can raise.** `checkname` is pure because it answers
 `Bool`; `parseRef` is `IO` because it raises. `Resolve` is pure
 throughout because nothing in it can fail.
 
+## GHC 9.4, and what a newer one would say
+
+**This port is written against GHC 9.4 (ubuntu 24.04's `ghc` package,
+9.4.7 / base-4.17), and it does not build clean on 9.8 or later.** Two
+`-Wall` changes since then turn into `-Werror` failures:
+
+- **`-Wx-partial`** (in `-Wall` since 9.8) rejects `head` and `tail`.
+  Six sites: `Order.hs` 166 and 175, `Point.hs` 122, `Corpus.hs` 125-126.
+- **base-4.20 exports `foldl'` from `Prelude`**, so `Value.hs`'s
+  `import Data.List (sort, foldl')` becomes redundant under
+  `-Wunused-imports`.
+
+CI pins the compiler for exactly this reason, and it is not a
+belt-and-braces pin: **ubuntu-latest carries its own GHC under
+`/usr/local/.ghcup/bin`, ahead of `/usr/bin` on PATH**, so the workflow's
+`apt-get install ghc` installed a compiler that then went unused and the
+port was built by one several releases newer. The job puts a `ghc`
+symlink at the front of PATH to pin that one binary, and
+`make inspect-haskell` prints what it got.
+
+Closing the gap is a real improvement and a small one — six pattern
+matches and one local fold — but it is not free to *verify*: nothing in
+this repo can compile it under 9.8+, so a fix would be asserted rather
+than checked. Do it in a change that also gives CI a modern GHC to prove
+it against.
+
+
 ## The mutability is on the instance, not inside the Value
 
 `Value` is an immutable ADT. Every field a transition changes is an

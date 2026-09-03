@@ -185,8 +185,24 @@ jobs:
       # worse trade than a package that names itself. 24.04 carries ghc
       # 9.4.7 and ocaml 4.14.1, which is what these ports are written
       # against; `make inspect` prints what arrived.
+      # THE SHIM IS NOT OPTIONAL. ubuntu-latest already carries a GHC of
+      # its own under /usr/local/.ghcup/bin, and that directory precedes
+      # /usr/bin on PATH — so the apt package installed fine and then
+      # nothing used it, and the port was compiled by a GHC several
+      # releases newer than the one it is written against. It failed on
+      # `Data.List (foldl')`, redundant since base-4.20 exports it from
+      # Prelude, and `-Wx-partial` (in `-Wall` since 9.8) would have
+      # taken `head`/`tail` next. A `ghc` symlink at the front of PATH
+      # pins that ONE binary and shadows nothing else in the image;
+      # `make inspect-haskell` prints the version, which is what makes a
+      # surprise here visible rather than silent — as it was not, this
+      # time, until CI said so.
       - if: matrix.port == 'haskell'
-        run: sudo apt-get update && sudo apt-get install -y ghc
+        run: |
+          sudo apt-get update && sudo apt-get install -y ghc
+          mkdir -p /tmp/ghc-shim
+          ln -s /usr/bin/ghc /tmp/ghc-shim/ghc
+          echo /tmp/ghc-shim >> "$GITHUB_PATH"
       - if: matrix.port == 'ocaml'
         run: sudo apt-get update && sudo apt-get install -y ocaml
       # zig is not in the archive, so this is the tarball from
