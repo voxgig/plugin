@@ -1,4 +1,7 @@
-# Publish the canonical typescript port to npm as `@voxgig/plugin`.
+# Publish this repository's two npm ports: the canonical `typescript/` as
+# `@voxgig/plugin`, and `javascript/` as `@voxgig/plugin-js`. Which one a
+# run releases is resolved once, from the dispatch input or the tag prefix,
+# and every step below reads that — see the `resolve` step.
 #
 # NO TOKEN. Authentication is npm TRUSTED PUBLISHING: the `id-token: write`
 # permission lets the job mint a short-lived OIDC token, npm verifies it
@@ -9,11 +12,11 @@
 # THE ONE-TIME BOOTSTRAP. npm cannot do a package's FIRST publish over
 # OIDC — a trusted publisher is configured on an existing package's
 # settings page, and a package that has never been published has no
-# settings page. (PyPI allows pre-registration; npm does not.) So the
-# first `@voxgig/plugin` release is published once by hand with a granular
-# access token, the trusted publisher is configured against this file, and
-# every release after that runs here. `typescript/AGENTS.md` records the
-# whole sequence.
+# settings page. (PyPI allows pre-registration; npm does not.) So each
+# package's FIRST release is published once by hand with a granular access
+# token, the trusted publisher is configured against this file, and every
+# release after that runs here. Both packages are past that point.
+# `typescript/AGENTS.md` records the whole sequence.
 #
 # Action SHAs are pinned rather than floating on a tag, for the reason
 # ci.yml gives: a tag can move, and a supply-chain change to a CI action is
@@ -22,13 +25,18 @@
 name: publish
 
 on:
-  # `typescript-` prefixed, not a bare `v*`: this repository holds
-  # seventeen ports and only one of them is an npm package. The next
-  # ecosystem gets its own prefix rather than fighting over the tag space.
+  # PREFIXED PER PORT, not a bare `v*`: this repository holds twenty-three
+  # ports and two of them are npm packages. Each ecosystem owns its own
+  # prefix rather than fighting over the tag space.
   push:
-    tags: ['typescript-v*']
+    tags: ['typescript-v*', 'javascript-v*']
   workflow_dispatch:
     inputs:
+      port:
+        description: 'Port to publish'
+        required: true
+        type: choice
+        options: [typescript, javascript]
       dryrun:
         description: 'Build, test and pack, but do not publish'
         type: boolean
@@ -41,7 +49,7 @@ on:
 # publishing at once is harmless; two runs of the SAME tag is the only
 # real hazard, and that is exactly what keying on the ref still serializes.
 concurrency:
-  group: publish-typescript-${{ github.ref }}
+  group: publish-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -49,7 +57,7 @@ permissions:
 
 jobs:
   publish:
-    name: publish @voxgig/plugin to npm
+    name: publish to npm
     # A GitHub-HOSTED runner, not self-hosted: provenance generation is
     # only supported on hosted runners.
     runs-on: ubuntu-latest
@@ -65,10 +73,6 @@ jobs:
     outputs:
       version: ${{ steps.resolve.outputs.version }}
       tag: ${{ steps.resolve.outputs.tag }}
-
-    defaults:
-      run:
-        working-directory: typescript
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -109,7 +113,38 @@ jobs:
             }
           ' "$(npm --version)"
 
+      # THE PORT AND THE TAG, RESOLVED ONCE. A dispatch names the port
+      # directly; a tag push carries it as the prefix. Everything below —
+      # the working directory, the guards, the `tag` job — reads these, so
+      # the two paths cannot disagree about what is being released.
+      - name: Resolve the port and version being released
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PORT='${{ inputs.port }}'
+          else
+            PORT="${GITHUB_REF_NAME%%-v*}"
+          fi
+          case "$PORT" in
+            typescript|javascript) ;;
+            *) echo "::error::cannot resolve a port from '$GITHUB_REF_NAME'"; exit 1 ;;
+          esac
+
+          VERSION="$(node -p "require('./$PORT/package.json').version")"
+          NAME="$(node -p "require('./$PORT/package.json').name")"
+          test -n "$VERSION" || { echo "::error::no version in $PORT/package.json"; exit 1; }
+
+          {
+            echo "port=$PORT"
+            echo "version=$VERSION"
+            echo "name=$NAME"
+            echo "tag=$PORT-v$VERSION"
+          } >> "$GITHUB_OUTPUT"
+          echo "$NAME $VERSION -> tag $PORT-v$VERSION"
+
       - name: install
+        working-directory: ${{ steps.resolve.outputs.port }}
         run: npm ci
 
       # BUILD IS ITS OWN STEP. `npm test` runs the compiled suite and does
@@ -117,16 +152,18 @@ jobs:
       # skipped this would test whatever `dist` happened to contain, which
       # after a fresh `npm ci` is nothing.
       - name: build
+        working-directory: ${{ steps.resolve.outputs.port }}
         run: npm run build
 
-      # The corpus gates the release: all 539 entries. A port that cannot
+      # The corpus gates the release: all 572 entries. A port that cannot
       # pass its own contract does not ship.
       - name: test
+        working-directory: ${{ steps.resolve.outputs.port }}
         run: npm test
 
-      # THE TAG ALONE PROVES NOTHING ABOUT THE OTHER SIXTEEN PORTS. A tag
-      # can be pushed at any commit, ci.yml does not run on tags, and the
-      # `npm test` above is this one port — so a commit where typescript
+      # THE TAG ALONE PROVES NOTHING ABOUT THE OTHER PORTS. A tag can be
+      # pushed at any commit, ci.yml does not run on tags, and the `npm
+      # test` above is this one port — so a commit where the published port
       # and the corpus agree but propagation broke elsewhere would sail
       # through and publish.
       #
@@ -179,35 +216,25 @@ jobs:
             sleep 20
           done
 
-      # The name this release is tagged with, resolved ONCE from the
-      # manifest in the commit that was just built and tested. Both the
-      # guard below and the `tag` job read it, so a dispatch release and a
-      # tag push cannot disagree about what the tag should be called.
-      - name: Resolve the release tag
-        id: resolve
-        run: |
-          set -euo pipefail
-          version="$(node -p 'require("./package.json").version')"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=typescript-v$version" >> "$GITHUB_OUTPUT"
-
       # On a tag, the tag and the manifest must agree. They drift the moment
       # someone tags before bumping, and the failure mode without this check
       # is a published version nobody can find by tag.
       - name: tag matches package.json
         if: startsWith(github.ref, 'refs/tags/')
         env:
-          MANIFEST: ${{ steps.resolve.outputs.version }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          NAME: ${{ steps.resolve.outputs.name }}
         run: |
-          tagged="${GITHUB_REF_NAME#typescript-v}"
-          if [ "$tagged" != "$MANIFEST" ]; then
-            echo "tag $GITHUB_REF_NAME says $tagged, package.json says $MANIFEST" >&2
+          set -euo pipefail
+          [ "$GITHUB_REF_NAME" = "$TAG" ] || {
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json ($TAG)"
             exit 1
-          fi
-          echo "publishing $MANIFEST"
+          }
+          echo "publishing $NAME ${{ steps.resolve.outputs.version }}"
 
       - name: pack (dry run)
         if: inputs.dryrun
+        working-directory: ${{ steps.resolve.outputs.port }}
         run: npm publish --provenance --dry-run
 
       # `--provenance` is passed explicitly even though trusted publishing
@@ -227,18 +254,21 @@ jobs:
       # that instead of leaving the next person to follow npm's.
       - name: publish
         if: ${{ !inputs.dryrun }}
+        working-directory: ${{ steps.resolve.outputs.port }}
+        env:
+          NAME: ${{ steps.resolve.outputs.name }}
         run: |
           if ! npm publish --provenance; then
             echo "::error title=npm publish failed::If the error above is \
           ENEEDAUTH, no npm token is missing - the trusted publisher is not \
-          registered. Set it at npmjs.com > @voxgig/plugin > Settings > \
-          Trusted Publisher: GitHub Actions, organization voxgig, repository \
-          plugin, workflow publish.yml. Do NOT add an npm token to this repo."
+          registered. Set it at npmjs.com > $NAME > Settings > Trusted \
+          Publisher: GitHub Actions, organization voxgig, repository plugin, \
+          workflow publish.yml. Do NOT add an npm token to this repo."
             exit 1
           fi
 
-  # THE TAG A DISPATCH RELEASE NEVER GOT. On a `typescript-v*` push the tag
-  # is what triggered the run and already exists; on a `workflow_dispatch`
+  # THE TAG A DISPATCH RELEASE NEVER GOT. On a `<port>-v*` push the tag is
+  # what triggered the run and already exists; on a `workflow_dispatch`
   # nothing creates it — so the version reaches npm and is unfindable by tag
   # in git. This has already happened twice: tags exist for 0.1.0, 0.1.1 and
   # 0.1.2, while 0.1.3 and 0.1.4 are both on npm with no tag at all.
