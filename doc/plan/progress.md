@@ -22,7 +22,7 @@ The four cross-repo obligations have their own register in
 
 | Item | Status | Notes |
 |---|---|---|
-| 0.1 Layout, `Makefile`, `tools/`, `spec/def/plugin-spec.aontu` | DONE | voxgig/plugin#5. `LANGS`/`PORTS` empty and every target wired, so the first port is built, tested and parity-checked from its first commit. |
+| 0.1 Layout, `Makefile`, `tools/`, `spec/def/plugin-spec.aon` | DONE | voxgig/plugin#5. `LANGS`/`PORTS` empty and every target wired, so the first port is built, tested and parity-checked from its first commit. |
 | 0.2 `make spec` / `make spec-check` green on an empty corpus | DONE | voxgig/plugin#5. The empty corpus is the exit criterion, not a gap. |
 | 0.3 CI | DONE | voxgig/plugin#5 (`62e29cf`). Two jobs: spec freshness and api parity. Added because every sibling repo gates on its own checks and plugin had none, so the guards were enforced by nobody. |
 | 0.4 Design on `main` | DONE | voxgig/plugin#4. Prerequisite for 0.1 rather than a tidy-up — P0 builds a skeleton around a document the mainline had never seen. |

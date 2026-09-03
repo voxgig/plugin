@@ -8,7 +8,7 @@
 #   make clean         - clean build artifacts
 #   make parity        - check that every port has the canonical API
 #   make probes        - check that every port implements every probe
-#   make spec          - recompile spec/*.json from spec/*.aontu
+#   make spec          - recompile spec/*.json from spec/*.aon
 #   make spec-check    - fail if a committed spec/*.json is stale
 #   make check         - spec-check + parity + probes + test
 #
@@ -89,7 +89,7 @@ clean:
 # The corpus is the contract (§16, prime directive 2). `spec` compiles the
 # aontu sources; `spec-check` proves the committed JSON still matches them,
 # and additionally checks each source against the spec-format shape in
-# spec/def/plugin-spec.aontu. Never hand-edit spec/*.json.
+# spec/def/plugin-spec.aon. Never hand-edit spec/*.json.
 spec:
 	@cd tools && npm install --no-audit --no-fund --silent && npm run --silent build-spec
 

@@ -326,14 +326,14 @@ before any feature can bind to one.
 §17.2 says the SDK "becomes a host by declaring its existing
 vocabulary: **13 `hook` points**, named exactly as today
 (`PostConstruct`, `PrePoint`, `PreRequest`, …)". sdkgen's
-`model/sdkgen.aontu` declares **eleven** under `main.kit.feature.&.hook`:
+`model/sdkgen.aon` declares **eleven** under `main.kit.feature.&.hook`:
 `PostConstruct`, `PostConstructEntity`, `SetData`, `GetData`,
 `GetMatch`, `PreTarget`, `PreSpec`, `PreRequest`, `PreResponse`,
 `PreResult`, `PostOperation`.
 
 Two of the three names §17.2 uses as examples are in that list. The
 third, `PrePoint`, is **not** — it is declared by sdkgen-station's own
-feature (`.sdk/model/feature/station.aontu`), along with `PreDone` and
+feature (`.sdk/model/feature/station.aon`), along with `PreDone` and
 `PreUnexpected`, because `hook: &:` admits any name a feature cares to
 declare.
 
@@ -788,7 +788,7 @@ The fixes are still right in all five ports: **an embedding host builds
 its pin map in code, in whatever order it likes**, and the corpus only
 ever sees the generator's normalised form. What is wrong is reading the
 green as coverage, which is why both entries now say so in
-`spec/plugin.aontu` and why the surviving mutations were investigated
+`spec/plugin.aon` and why the surviving mutations were investigated
 instead of being patched away.
 
 ### The bridge lost a failed feature

@@ -278,7 +278,7 @@ by review, not by the repo, after twenty-three ports had shipped.
 ### Context
 
 Design §15 says, in these words, that `spec/plugin.json` "compiles from
-`spec/plugin.aontu`, and **every port runs it through
+`spec/plugin.aon`, and **every port runs it through
 [voxgig/omni](https://github.com/voxgig/omni)**".
 
 No port did. All twenty-three shipped a **hand-written corpus runner** —
@@ -320,7 +320,7 @@ Concretely, and all of it landed:
 
 1. **`cmd` is now `in`** — which is what it always was: the single
    argument the driver subject is called with. The corpus uses omni's
-   nine entry fields and no others, and `spec/def/plugin-spec.aontu` now
+   nine entry fields and no others, and `spec/def/plugin-spec.aon` now
    says so rather than carving out a field of plugin's own.
 2. **`err: '<code>'` is now `err: true` with
    `match: {err: {code: '<code>'}}`** — an exact assertion on a

@@ -101,7 +101,7 @@ port — the same two the php port found independently:
   writes a band that is not already an integer.
 
 Neither is a licence to relax the code. If you pin either, pin it in
-`spec/plugin.aontu` and propagate — never by loosening this port.
+`spec/plugin.aon` and propagate — never by loosening this port.
 
 ## Local shape
 

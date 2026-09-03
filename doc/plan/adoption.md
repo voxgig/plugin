@@ -36,7 +36,7 @@ Four, and they frame everything below.
   apply to plan work exactly as to bug fixes.
 
 - **Nothing merges without the corpus.** A behaviour not in
-  `spec/plugin.aontu` does not exist (§18.1).
+  `spec/plugin.aon` does not exist (§18.1).
 
 - **The portability budget binds the canonical, not the review.** No
   reflection-backed APIs, no `Proxy`, no decorators, no meta-level
@@ -51,7 +51,7 @@ Build the machinery that guards the contract, and prove it turns over
 before there is anything to compile. A corpus pipeline first exercised
 on real data is one whose failures arrive mixed up with the data's.
 
-1. Layout, `Makefile`, `spec/def/plugin-spec.aontu`, `tools/`, CI.
+1. Layout, `Makefile`, `spec/def/plugin-spec.aon`, `tools/`, CI.
 2. `make spec` and `make spec-check` green **on an empty corpus** —
    that is the exit criterion, not a placeholder for one.
 

@@ -65,7 +65,7 @@ ports found independently:
   `active: null`, `start: null` or `order: null` for an instance.
 
 None is a licence to relax the code. If they are pinned, they are pinned in
-`spec/plugin.aontu` and propagated to every port.
+`spec/plugin.aon` and propagated to every port.
 
 ## Local shape
 

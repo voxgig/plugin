@@ -7,7 +7,7 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 
 - **TypeScript is canonical**; every other language is a port of it.
 - **The corpus is the contract** — `spec/plugin.json`, generated from
-  `spec/plugin.aontu`. A port that disagrees with it is the thing that's
+  `spec/plugin.aon`. A port that disagrees with it is the thing that's
   wrong. **Never hand-edit the JSON**, and never weaken the corpus to
   make a port pass.
 - **Change canonical first, then propagate** to every port, in one

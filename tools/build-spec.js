@@ -4,14 +4,14 @@
 // build-spec.js — compile aontu test-spec sources into the spec JSON that
 // every language port reads.
 //
-// The .aontu sources are the SOURCE OF TRUTH. The .json beside them is a
+// The .aon sources are the SOURCE OF TRUTH. The .json beside them is a
 // committed build artifact: ports load it directly (no port needs a Node
 // toolchain to run its tests), but nobody edits it by hand. Change a spec,
 // run this, commit both.
 //
 // Usage:
 //   node build-spec.js                    # build every spec in ../spec
-//   node build-spec.js ../spec/plugin.aontu  # build just these entry files
+//   node build-spec.js ../spec/plugin.aon  # build just these entry files
 //   node build-spec.js --check            # rebuild to a temp dir and diff;
 //                                         # non-zero if a .json is stale
 //   node build-spec.js --spec-dir DIR     # build the specs in DIR instead
@@ -19,9 +19,9 @@
 // --check is what CI runs: it proves the committed JSON still matches its
 // aontu source, so a spec edit cannot be merged with a stale artifact.
 //
-// Each entry `<name>.aontu` produces `<name>.json` beside it, via
+// Each entry `<name>.aon` produces `<name>.json` beside it, via
 // @voxgig/model. A `.model-config/` directory must sit alongside the
-// sources; see ../spec/.model-config/model-config.aontu.
+// sources; see ../spec/.model-config/model-config.aon.
 
 'use strict'
 
@@ -60,7 +60,7 @@ function parseArgs(argv) {
   return out
 }
 
-// Every *.aontu in the spec dir that is an ENTRY: a file whose name matches
+// Every *.aon in the spec dir that is an ENTRY: a file whose name matches
 // the .json it produces. Category files imported with @"..." are not
 // entries; by convention they live in a sibling `def/` directory so the two
 // kinds never get confused.
@@ -70,7 +70,7 @@ function findEntries(specDir) {
     process.exit(1)
   }
   return Fs.readdirSync(specDir)
-    .filter((n) => n.endsWith('.aontu'))
+    .filter((n) => n.endsWith('.aon'))
     .sort()
     .map((n) => Path.join(specDir, n))
 }
@@ -85,7 +85,7 @@ function buildOne(entry) {
     throw new Error('voxgig-model not found — run `npm install` in ' + TOOLS)
   }
   execFileSync(bin, [Path.basename(entry)], { cwd: dir, stdio: 'inherit' })
-  const json = entry.replace(/\.aontu$/, '.json')
+  const json = entry.replace(/\.aon$/, '.json')
   if (!Fs.existsSync(json)) {
     throw new Error('build produced no JSON for ' + entry)
   }
@@ -96,7 +96,7 @@ function buildOne(entry) {
 // entry validation in every runner, so a corpus that loses it does not
 // fail — it silently downgrades the checking in twenty-odd ports at once.
 //
-// The spec-format shape (spec/def/plugin-spec.aontu) catches a misspelled
+// The spec-format shape (spec/def/plugin-spec.aon) catches a misspelled
 // key, a wrong type and a wrong value, because those are unification
 // conflicts. It cannot catch ABSENCE: unifying `{}` with `{version: 1}`
 // fills the key in rather than objecting. So absence is checked here,
@@ -146,12 +146,12 @@ function requiremarker(json) {
   }
 }
 
-// A generated JSON whose .aontu source is gone. Nothing rebuilds it, so it
+// A generated JSON whose .aon source is gone. Nothing rebuilds it, so it
 // would sit there forever looking authoritative while no longer having a
 // source of truth - and a freshness check that only rebuilds live entries
 // would never notice.
 function findOrphans(specDir, entries) {
-  const sources = new Set(entries.map((e) => Path.basename(e, '.aontu')))
+  const sources = new Set(entries.map((e) => Path.basename(e, '.aon')))
   return Fs.readdirSync(specDir)
     .filter((n) => n.endsWith('.json'))
     .filter((n) => !sources.has(Path.basename(n, '.json')))
@@ -172,16 +172,16 @@ function main() {
     const orphans = findOrphans(args.specDir, entries)
     if (orphans.length) {
       console.error(
-        'ORPHANED: generated JSON with no .aontu source:\n  ' +
+        'ORPHANED: generated JSON with no .aon source:\n  ' +
         orphans.map((o) => Path.relative(process.cwd(), o)).join('\n  ') +
-        '\n\nDelete it, or restore the .aontu it was built from.'
+        '\n\nDelete it, or restore the .aon it was built from.'
       )
       process.exit(1)
     }
   }
 
   if (0 === entries.length) {
-    console.error('no .aontu entry files found in ' + args.specDir)
+    console.error('no .aon entry files found in ' + args.specDir)
     process.exit(1)
   }
 
@@ -189,7 +189,7 @@ function main() {
   // existing JSON is stashed and restored around the rebuild.
   const stale = []
   for (const entry of entries) {
-    const json = entry.replace(/\.aontu$/, '.json')
+    const json = entry.replace(/\.aon$/, '.json')
 
     if (args.check) {
       // --check NEVER WRITES THE COMMITTED ARTIFACT. It builds into a
@@ -206,7 +206,7 @@ function main() {
       try {
         Fs.cpSync(Path.dirname(entry), work, { recursive: true })
         const mirror = Path.join(work, Path.basename(entry))
-        const mirrorjson = mirror.replace(/\.aontu$/, '.json')
+        const mirrorjson = mirror.replace(/\.aon$/, '.json')
 
         buildOne(mirror)
         requireroot(mirrorjson)
@@ -231,7 +231,7 @@ function main() {
   if (args.check) {
     if (stale.length) {
       console.error(
-        '\nSTALE: these are out of date with their .aontu source:\n  ' +
+        '\nSTALE: these are out of date with their .aon source:\n  ' +
         stale.join('\n  ') +
         '\n\nRun `npm run build-spec` in tools/ and commit the result.'
       )
