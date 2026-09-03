@@ -16,6 +16,7 @@
 #include "../src/env.h"
 #include "../src/config.h"
 #include "../src/graph.h"
+#include "driver.h"
 
 /* --- ref: the four pure functions ----------------------------------- */
 
@@ -163,6 +164,22 @@ static Subject graph_subject(const char *group) {
   return NULL;
 }
 
+/* --- the twelve DRIVER sections ------------------------------------- */
+
+/* Every entry carries `cmd`, and a port needs DOCS.md §4 to run them —
+ * the probe catalog, the command vocabulary, and the canonical
+ * observable {status, open, log, result}. Corpus files alone are not
+ * enough, which is why C2 shipped both together. */
+static Value *sub_drive(Value *e, void *ctx) {
+  (void)ctx;
+  return drive(vget(e, "cmd"));
+}
+
+static Subject driver_subject(const char *group) {
+  (void)group;
+  return sub_drive;
+}
+
 /* Dispatch a whole section, failing loudly on a group with no subject:
  * a group the runner does not know is a group silently not run. */
 static void run_section(Tally *t, const char *section,
@@ -206,6 +223,16 @@ int main(void) {
   run_section(&t, "env", env_subject);
   run_section(&t, "config", config_subject);
   run_section(&t, "graph", graph_subject);
+
+  /* The driver sections, in §15.3's order. Each entry is a command list
+   * against a fresh host. */
+  static const char *DRIVER[] = {
+    "lifecycle", "order", "point", "export", "depend", "declare",
+    "state", "resource", "nest", "trace", "apply", "error", NULL
+  };
+  for (int i = 0; NULL != DRIVER[i]; i++) {
+    run_section(&t, DRIVER[i], driver_subject);
+  }
 
   if (0 == t.entries) {
     printf("c: no corpus entries ran\n");

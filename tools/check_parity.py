@@ -52,6 +52,7 @@ CANONICAL = [
 # Where each port's library source lives (test code is not scanned).
 # P4 is complete; P5 and P6 add the rest.
 PORTS = {
+    'c': ['c/src'],
     'typescript': ['typescript/src'],
     'go': ['go/plugin'],
     'python': ['python/voxgig_plugin'],
