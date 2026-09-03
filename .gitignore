@@ -188,6 +188,13 @@ erl_crash.dump
 dist-test/
 typescript/.tsbuild/
 
-# c and cpp port build output
+# tier-4 port build output
 c/build/
 cpp/build/
+ocaml/build/
+*.cmi
+*.cmx
+*.cmt
+*.cmti
+*.cma
+*.cmxa
