@@ -24,16 +24,16 @@ programmatic API over the same normalized model.
 
 ## Status
 
-**P5 tier-3 complete — fourteen of fourteen.** The design is complete
-and agreed with its first host, the contract is complete (all 19 corpus
-sections, 572 entries), and there are **seventeen implementations**:
+**P5 complete; P6 tier-4 two of six.** The design is complete and
+agreed with its first host, the contract is complete (all 19 corpus
+sections, 572 entries), and there are **nineteen implementations**:
 `typescript/` the canonical, plus `go/`, `python/`, `javascript/`,
 `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`,
-`elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. **All
-seventeen pass every section**, and none of them carries a runtime
-dependency: every one writes its own JSON parser and its own test
-runner, because §16 permits exactly one dependency and no port of it
-exists in those languages.
+`elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, `scala/`, `c/` and
+`cpp/`. **All nineteen pass every section**, and none of them carries a
+runtime dependency: every one writes its own JSON parser and its own
+test runner, because §16 permits exactly one dependency and no port of
+it exists in those languages.
 
 The pair went before the other fourteen ports on purpose — go for
 static-only registration, typed extension points and explicit errors;
@@ -75,7 +75,7 @@ found, not about what was there. §18 of the handover has the account.
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
 | corpus | **572 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
-| ports | **seventeen, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/` and `scala/`. Next: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P6's six tier-4 ports. |
+| ports | **nineteen, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, `scala/`, `c/` and `cpp/`. Next: P3.1's extraction (unblocked — station's Stages 2–3b merged) and P6's remaining four — `zig`, `haskell`, `ocaml`, `lean`. |
 
 Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
 what this repo owes station, and what has actually landed, is

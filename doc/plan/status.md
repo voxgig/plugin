@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-09-01**. The register in
+Live snapshot, **2026-09-03**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -13,11 +13,38 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**P5's fourteen tier-3 ports are complete.** Twelve landed in this
+**P6's tier-4 ports are two of six.** `c` and `cpp` are in, joining
+P5's fourteen. **Nineteen implementations now pass all 572 corpus
+entries**, and `make check` runs every one of them.
+
+**The two tier-4 ports are deliberately not the same port twice**, and
+that is the thing worth carrying forward to `zig`, `haskell`, `ocaml`
+and `lean`. `c` builds by hand what the language lacks — one arena
+(nothing frees an individual value, so nothing can double-free one),
+`setjmp`/`longjmp` for raises, which is safe *because* of the arena, and
+`volatile` on every local straddling a try, which `-Wclobbered` found
+seven of. `cpp` uses what the language has — `shared_ptr`, real
+exceptions, `std::function` closures — and needs none of that
+discipline. Reading the second as a syntax edit of the first is the
+mistake; each port's `AGENTS.md` says which it is.
+
+Three things the corpus caught between them: `point/bail#null-declines`
+wants PRESENCE not non-null (an authored `value: null` IS a value, and
+declines); `resource/scope#difference` wants `acquire` to return a
+handle a plugin can hand back early; and `cpp` inherited `c`'s POSIX-ERE
+dialect for the corpus `match` regexes, which are JavaScript literals —
+glibc tolerates `\/`, libstdc++ does not.
+
+And one the corpus could *not* catch: **`check_probes.py` had no `c`
+row**, so `make probes` reported `c` green without opening a file in
+`c/test`. A checker that silently skips a port is worse than one that
+fails it. Both `c` and `cpp` are now in `LANGS`, in `check_parity.py`
+and in `check_probes.py`.
+
+**P5's fourteen tier-3 ports are complete.** Twelve landed in an earlier
 session — `php`, `perl`, `rust`, `java`, `lua`, `csharp`, `elixir`,
 `clojure`, `dart`, `kotlin`, `swift`, `scala` — joining `javascript` and
-`ruby`. **Seventeen implementations now pass all 572 corpus entries**, and
-`make check` runs every one of them.
+`ruby`.
 
 They found **nothing further wrong with the canonical**, which is the
 result a settled contract should produce. What they found instead is
@@ -52,9 +79,9 @@ than a coverage one (dart's unstable sort above 32 elements), the two
 port-side bugs the corpus DID catch, and two non-mutations recorded so
 nobody re-derives them.
 
-**All three are done, so P6's tier-4 ports are next.** See §18 for what
-the sizing got wrong in both directions — and for why a gap's *name* can
-be narrower than the gap, which is what gap 2 turned out to be.
+**All three are done.** See §18 for what the sizing got wrong in both
+directions — and for why a gap's *name* can be narrower than the gap,
+which is what gap 2 turned out to be.
 
 Merged since this section last named a tip:
 
@@ -97,11 +124,20 @@ bands, vacuous satisfaction of an absent name, ties by declaration
 position rather than alphabet, and the innermost pin. That was
 deliberate, and it makes P3 a move rather than a rewrite.
 
-**P6's six tier-4 ports** — the corpus gaps are all closed (above): `c` and `cpp` first — gcc/g++ 13.3.0 are
-present — and `zig`, `haskell`, `ocaml`, `lean` after their toolchains
-are installed and verified. Porting a language nobody can execute ships
-an implementation nobody has run; say which are gated rather than
-shipping unverifiable work — the same call station's Stage 5 made.
+**P6's remaining four tier-4 ports** — `zig`, `haskell`, `ocaml` and
+`lean`. `c` and `cpp` are done (gcc/g++ 13.3.0 were already present);
+the other four need their toolchains installed and verified first.
+Porting a language nobody can execute ships an implementation nobody
+has run; say which are gated rather than shipping unverifiable work —
+the same call station's Stage 5 made.
+
+What resolves, checked from this container: **ghc 9.4.7 and ocaml
+4.14.1 from apt**; **zig from a ziglang.org tarball**; **lean from a
+pinned GitHub *release asset*** — release assets download fine through
+the proxy, while `api.github.com` answers 403, so a version-discovery
+call will fail where the asset URL does not. Read `c/AGENTS.md` and
+`cpp/AGENTS.md` before starting: between them they say what a
+static-only port has to decide.
 
 **Read [`handover.md`](handover.md) §13 first if you are porting.** All
 six defects the pair found were of two kinds — a rule the design states

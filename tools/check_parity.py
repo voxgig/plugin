@@ -53,6 +53,7 @@ CANONICAL = [
 # P4 is complete; P5 and P6 add the rest.
 PORTS = {
     'c': ['c/src'],
+    'cpp': ['cpp/src'],
     'typescript': ['typescript/src'],
     'go': ['go/plugin'],
     'python': ['python/voxgig_plugin'],

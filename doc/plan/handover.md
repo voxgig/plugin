@@ -1149,6 +1149,82 @@ Recorded so the next port does not spend an afternoon on them:
   documents the intent; it does not change an answer.
 
 
+## 19. The first two tier-4 ports: what a static-only language costs
+
+`c` and `cpp` are P6's first two, and the durable finding is that **they
+are not the same port twice.** The tier-4 label ("static-only", §10.3)
+describes the loader, not the language: it says nothing about whether
+the language has closures, exceptions or a garbage collector, and those
+three are what a port actually costs.
+
+| | `c` | `cpp` |
+|---|---|---|
+| values | one arena, nothing freed | `shared_ptr`, destructors |
+| raises | `setjmp` / `longjmp` | `throw` / `catch` |
+| closures | function pointer + `void *ctx` | `std::function`, capturing |
+| locals across a try | **`volatile`, or undefined** | nothing |
+
+**In `c` the three decisions hold each other up, and that is the part
+worth carrying forward.** The arena is not a shortcut: `longjmp` past a
+frame leaks whatever that frame owned, and nothing here owns anything,
+so there is nothing to leak. Take the arena away and `longjmp` becomes
+unsafe; take `longjmp` away and an error-return discipline lets a missed
+check continue silently past a failure — the one thing the corpus cannot
+see and the one thing it exists to pin.
+
+**`volatile` on every local that straddles a try is a correctness
+requirement, not a warning to silence.** C guarantees only that
+`volatile` locals keep their value across a `longjmp`. `-Wclobbered`
+(on, through `-Werror`) found **seven** while the port was written, in
+`reconcile`, `cascade` and `drive` — every one a flag or an index set
+before a raise and read after it. A reader would have missed all seven.
+
+`cpp` needs none of that, and writing it as a syntax edit of `c` would
+have been the mistake. `std::function` is what makes a chain binding
+read like the canonical — it receives `next` as a callable and writes
+`next(arg)`, where `c` walks an explicit `Chain *` by index.
+
+### What the corpus caught, and what it could not
+
+Three shortcuts the corpus refused:
+
+- **`point/bail#null-declines`** — the `provider` probe must test its
+  `value` option for **presence**, not for non-null. An authored `null`
+  *is* a value, and in `bail` mode a null **declines** so the next
+  binding answers. Reading it as "no value given" and substituting the
+  ref made the probe answer where the contract says it stands aside.
+- **`resource/scope#difference`** and **`lifecycle/resource#unwind`** —
+  `acquire` must return a handle a plugin can hand back early, with the
+  scope keeping the entry so unwinding it twice is a no-op. Stubbing the
+  release count out left `open` high by exactly the number handed back.
+- **The regex dialect, in `cpp` only.** The corpus's `match` patterns
+  are JavaScript `/.../` literals: they escape `/` and `$` the way
+  JavaScript does. POSIX ERE leaves `\/` undefined — **glibc tolerates
+  it, which is why `c` passes with `REG_EXTENDED`, and libstdc++ does
+  not.** Four entries failed on messages that plainly matched. The
+  dialect is ECMAScript, which is `std::regex`'s default; the port had
+  it wrong by copying `c`. Worth stating because the copy was otherwise
+  the right instinct.
+
+And one the corpus could not catch, because it is not corpus-shaped:
+**`check_probes.py` had no `c` row.** `make probes` reported `c` green
+without opening a file in `c/test`. The probes did exist — the row was
+the gap — but a checker that silently skips a port is worse than one
+that fails it, which is the same argument the Makefile's `LANGS`
+comment makes about tolerant `||` branches. Adding a port means three
+registrations, not one: `LANGS`, `check_parity.py`, `check_probes.py`.
+
+### For the remaining four
+
+`zig`, `haskell`, `ocaml` and `lean` are what is left of P6, and their
+toolchains are not installed here. Ask of each what the table above
+asks: does it have closures, does it have exceptions, does it manage
+memory. `haskell` and `ocaml` answer yes to all three and will look more
+like `cpp` than like `c`; `zig` has none of them and will look like
+neither, since it has no `longjmp` either. **Do not port `c` into a
+language that does not need what `c` had to build.**
+
+
 ## 12. Open, and deliberately so
 
 | | |

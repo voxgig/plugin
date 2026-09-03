@@ -35,6 +35,7 @@ PROBES = [
 # because the probes are the driver's and not the library's.
 PORTS = {
     'c': ['c/test'],
+    'cpp': ['cpp/test'],
     'typescript': ['typescript/test'],
     'go': ['go/test'],
     'python': ['python/test'],

@@ -4,11 +4,12 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P5 tier-3 complete, fourteen of fourteen.** All **19 corpus
-sections** exist — 572 entries — with the driver contract in `DOCS.md`
-§4. **Seventeen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+**Status: P5 complete; P6 tier-4 under way, two of six.** All **19
+corpus sections** exist — 572 entries — with the driver contract in
+`DOCS.md` §4. **Nineteen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
-`dart/`, `kotlin/`, `swift/` and `scala/`, and `make check` is the whole gate. What that means for you is in "Where to start" at the
+`dart/`, `kotlin/`, `swift/`, `scala/`, `c/` and `cpp/`, and `make check` is the whole gate. `zig`, `haskell`, `ocaml` and `lean` are what
+remain of P6. What that means for you is in "Where to start" at the
 bottom, and the live per-item state is
 [`doc/plan/status.md`](doc/plan/status.md).
 
@@ -220,15 +221,16 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0–P4 are done and **P5's fourteen tier-3 ports are complete**:
-`typescript/` is the canonical, `go/` and `python/` are the proving
-pair, and all seventeen implementations pass all 19 corpus sections.
+P0–P5 are done and **P6's tier-4 ports are two of six**: `c/` and
+`cpp/` are in, and all nineteen implementations pass all 19 corpus
+sections. **`zig`, `haskell`, `ocaml` and `lean` are what remain** —
+their toolchains are not installed in this container, and the notes on
+getting each one are in `doc/plan/status.md`.
 
-**Next is P6's six tier-4 ports. All three corpus gaps §18 of the
-handover records are now CLOSED** — gap 1 by `declare/shape` and
-`declare/register`, gap 2 by `depend/byref`, gap 3 by `nest/open`. The
-corpus is 572 entries and every one of them is mutation-checked against
-the behaviour it names.
+**All three corpus gaps §18 of the handover records are CLOSED** — gap
+1 by `declare/shape` and `declare/register`, gap 2 by `depend/byref`,
+gap 3 by `nest/open`. The corpus is 572 entries and every one of them
+is mutation-checked against the behaviour it names.
 
 **Gap 1 was the expensive one, and §18's "cheap" was wrong about it.** Nothing carried a
 `shape` because the driver's `define` command was a NO-OP in all
