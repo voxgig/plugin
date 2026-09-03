@@ -194,6 +194,7 @@ cpp/build/
 ocaml/build/
 haskell/build/
 zig/build/
+lean/.lake/
 *.cmi
 *.cmx
 *.cmt

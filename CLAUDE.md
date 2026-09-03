@@ -18,12 +18,12 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 - Build and check with `make spec`, `make spec-check`, `make parity`,
   `make check`.
 
-**Status: P5 complete; P6 tier-4 two of six.** The corpus is 572
-entries across 19 sections, and **nineteen implementations pass every
-one of them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+**Status: P6 COMPLETE — six of six.** The corpus is 572 entries across
+19 sections, and **twenty-three implementations pass every one of
+them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
-`dart/`, `kotlin/`, `swift/`, `scala/`, `c/` and `cpp/`. `zig`,
-`haskell`, `ocaml` and `lean` are what remain of P6.
+`dart/`, `kotlin/`, `swift/`, `scala/`, `c/`, `cpp/`, `ocaml/`,
+`haskell/`, `zig/` and `lean/`.
 `AGENTS.md` §6 says what to pick up; the live per-item state is
 [`doc/plan/status.md`](./doc/plan/status.md).
 

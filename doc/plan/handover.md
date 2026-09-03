@@ -1149,13 +1149,25 @@ Recorded so the next port does not spend an afternoon on them:
   documents the intent; it does not change an answer.
 
 
-## 19. The first two tier-4 ports: what a static-only language costs
+## 19. P6's six tier-4 ports: what a language actually costs
 
-`c` and `cpp` are P6's first two, and the durable finding is that **they
-are not the same port twice.** The tier-4 label ("static-only", §10.3)
-describes the loader, not the language: it says nothing about whether
-the language has closures, exceptions or a garbage collector, and those
-three are what a port actually costs.
+P6 is complete: `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean`, and
+**twenty-three implementations now pass all 572 entries.** The durable
+finding is that the six **are not one port six times.** The tier-4 label
+("static-only", §10.3) describes the **loader**, not the language: it
+says nothing about whether the language has closures, exceptions or a
+garbage collector, and those three are what a port actually costs.
+
+| | closures | exceptions | GC | what the port had to build |
+|---|---|---|---|---|
+| `c` | no | no | no | arena; `setjmp`/`longjmp`; `volatile` discipline |
+| `cpp` | yes | yes | yes | nothing — `shared_ptr`, `throw`, `std::function` |
+| `ocaml` | yes | yes | yes | nothing, but a **mutable** Value (below) |
+| `haskell` | yes | yes | yes | nothing; everything raising is `IO` (below) |
+| `zig` | no | no | no | arena; error unions **with the payload beside** |
+| `lean` | yes | yes | yes | an **explicit instance api** (below) |
+
+Read the first two rows against each other:
 
 | | `c` | `cpp` |
 |---|---|---|
@@ -1184,9 +1196,7 @@ have been the mistake. `std::function` is what makes a chain binding
 read like the canonical — it receives `next` as a callable and writes
 `next(arg)`, where `c` walks an explicit `Chain *` by index.
 
-### What the corpus caught, and what it could not
-
-Three shortcuts the corpus refused:
+### The two shortcuts `c` and `cpp` took, and the corpus refused
 
 - **`point/bail#null-declines`** — the `provider` probe must test its
   `value` option for **presence**, not for non-null. An authored `null`
@@ -1197,32 +1207,101 @@ Three shortcuts the corpus refused:
   `acquire` must return a handle a plugin can hand back early, with the
   scope keeping the entry so unwinding it twice is a no-op. Stubbing the
   release count out left `open` high by exactly the number handed back.
-- **The regex dialect, in `cpp` only.** The corpus's `match` patterns
-  are JavaScript `/.../` literals: they escape `/` and `$` the way
-  JavaScript does. POSIX ERE leaves `\/` undefined — **glibc tolerates
-  it, which is why `c` passes with `REG_EXTENDED`, and libstdc++ does
-  not.** Four entries failed on messages that plainly matched. The
-  dialect is ECMAScript, which is `std::regex`'s default; the port had
-  it wrong by copying `c`. Worth stating because the copy was otherwise
-  the right instinct.
 
-And one the corpus could not catch, because it is not corpus-shaped:
-**`check_probes.py` had no `c` row.** `make probes` reported `c` green
-without opening a file in `c/test`. The probes did exist — the row was
-the gap — but a checker that silently skips a port is worse than one
-that fails it, which is the same argument the Makefile's `LANGS`
-comment makes about tolerant `||` branches. Adding a port means three
-registrations, not one: `LANGS`, `check_parity.py`, `check_probes.py`.
+### The other four, and the two that refused the shape
 
-### For the remaining four
+**`ocaml` — a MUTABLE value, which is not the obvious choice in ML, and
+the corpus forces it.** §9.4's `refill` empties an options map and
+refills it **in place**, precisely so a definition's callbacks — which
+closed over that map at `define` — read the new values. With an
+immutable map, `refill` is a rebinding the callbacks never see and
+`apply/idempotent` fails. The persistence ML would prefer is spent in
+`clone` instead. `defs.ml` exists because OCaml modules cannot be
+mutually recursive across compilation units.
 
-`zig`, `haskell`, `ocaml` and `lean` are what is left of P6, and their
-toolchains are not installed here. Ask of each what the table above
-asks: does it have closures, does it have exceptions, does it manage
-memory. `haskell` and `ocaml` answer yes to all three and will look more
-like `cpp` than like `c`; `zig` has none of them and will look like
-neither, since it has no `longjmp` either. **Do not port `c` into a
-language that does not need what `c` had to build.**
+**`haskell` — everything that can raise is `IO`, and that is the whole
+port.** Haskell *can* `throw` from pure code; it must not here. An
+imprecise exception fires when the thunk is FORCED, and the corpus does
+not merely assert that a call raises — it asserts **what survived a
+raise mid-sequence**. A raise that happens whenever the consumer happens
+to look is a different semantics from one that happens at the call, and
+laziness would let a port pass the "does it raise" entries while getting
+every ordering entry wrong for reasons no reader could see. So the split
+is not taste: **a function is `IO` exactly when it can raise.** The
+mutability sits on the instance (`IORef`), not inside the Value — which
+is the opposite of `ocaml` and equally forced.
+
+**`zig` — errors are values without payloads.** No `throw` carrying an
+object, no `setjmp`; `error.Plugin` and an explicit `try` at every call.
+So the diagnostic **travels beside the error**: `fail` parks a
+`PluginError` and every handler calls `take()` as its FIRST act.
+`pending` holds one error, and a handler that calls something fallible
+before reading it gets the second error's payload with the first error's
+control flow. What it buys over `c`: an explicit `try` means the
+compiler will not let a fallible call be ignored, so the "missed check
+continues silently past a failure" mode `c`'s `longjmp` exists to
+prevent **cannot happen at all** — and there is no `volatile`
+discipline, because there is no `longjmp`.
+
+**`lean` — the kernel rejected the shape every other port uses.** A
+`Definition` holding `Inst → PluginM Unit` puts `Inst` in a negative
+position, and `Inst` holds the `Definition` back:
+
+    (kernel) arg #1 of '_nested.Option_2.some' has a non positive
+    occurrence of the datatypes being declared
+
+That is not a quirk to route around; it is the logic refusing a type
+whose inhabitants could encode a fixed point of `X → X`. So the instance
+api became an **explicit record of closures** — and **that is not a
+compromise**: §6 says a plugin never mutates the host, it declares
+bindings and captures resources through a small API. Lean made explicit
+what the other five leave implicit in a pointer.
+
+### What the corpus caught, across all six
+
+Beyond the two shortcuts above:
+
+- **The regex dialect, in `cpp`.** The corpus's `match` patterns are
+  JavaScript `/.../` literals. POSIX ERE leaves `\/` undefined — glibc
+  tolerates it, so `c` passes with `REG_EXTENDED`; libstdc++ does not.
+  Four entries failed on messages that plainly matched. `ocaml`, `zig`,
+  `haskell` and `lean` all use a **`regexlite`** instead — the
+  literal-with-anchors matcher `lua` already had, which *errors* on any
+  metacharacter it cannot evaluate.
+- **A bad number must be a reported error, not a crash**, first hit in
+  `ocaml` with `float_of_string`. §9.5's env values "parse as JSON,
+  falling back to string", and the fallback can only catch a *reported*
+  failure. Every later port used the option-returning parse.
+
+### And three it could NOT catch
+
+Each is a checker or a copy rather than a behaviour, and each is the
+kind of thing a corpus is structurally unable to see:
+
+1. **`check_probes.py` had no `c` row.** `make probes` reported `c`
+   green without opening a file in `c/test`. The probes existed — the
+   row was the gap. **Adding a port means three registrations**:
+   `LANGS`, `check_parity.py`, `check_probes.py`.
+2. **The `provider` probe carried dead code in three ports.** `c`
+   synthesized a capability record from `options.capability`, `version`
+   and `priority` and dropped it on the floor; `cpp` and `ocaml` copied
+   it. Writing it in Haskell, the natural reading was to **register**
+   that record — a real divergence. The canonical reads none of those
+   three keys and no corpus entry sets them. **Check the canonical, not
+   the nearest port.**
+3. **Lake builds only what a target's import graph reaches.** Fifteen
+   Lean modules sat "green" while every one had a syntax error — they
+   were never compiled, and a module that is not compiled reads exactly
+   like one that compiled cleanly. Both libraries are now
+   `@[default_target]`, `roots` names every module, `src/Plugin.lean`
+   imports the lot, and the Makefile fails if no binary appears.
+
+**Two ports passed 572/572 on the first run** — `zig` and `lean` — which
+is the fifth and sixth port's dividend rather than luck: every mistake
+had already been made and written down. Both were mutation-checked
+rather than trusted (breaking `tagly`'s empty-tag case fails 125 entries
+in each), because "passed first time" is exactly when a runner deserves
+to be doubted.
 
 
 ## 12. Open, and deliberately so

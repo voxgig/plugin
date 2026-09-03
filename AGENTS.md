@@ -4,13 +4,14 @@ Read this before changing anything. The design is
 [`docs/design/plugin.md`](./docs/design/plugin.md); section references
 below (§n) are to it.
 
-**Status: P5 complete; P6 tier-4 under way, two of six.** All **19
-corpus sections** exist — 572 entries — with the driver contract in
-`DOCS.md` §4. **Nineteen implementations pass every one of them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+**Status: P6 COMPLETE — six of six. Every planned port exists.** All
+**19 corpus sections** exist — 572 entries — with the driver contract
+in `DOCS.md` §4, and **twenty-three implementations pass every one of
+them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
-`dart/`, `kotlin/`, `swift/`, `scala/`, `c/` and `cpp/`, and `make check` is the whole gate. `zig`, `haskell`, `ocaml` and `lean` are what
-remain of P6. What that means for you is in "Where to start" at the
-bottom, and the live per-item state is
+`dart/`, `kotlin/`, `swift/`, `scala/`, `c/`, `cpp/`, `ocaml/`,
+`haskell/`, `zig/` and `lean/`, and `make check` is the whole gate. What that means for you is in
+"Where to start" at the bottom, and the live per-item state is
 [`doc/plan/status.md`](doc/plan/status.md).
 
 
@@ -223,11 +224,14 @@ wrong status file is worse than none.
 
 ## 6. Where to start
 
-P0–P5 are done and **P6's tier-4 ports are two of six**: `c/` and
-`cpp/` are in, and all nineteen implementations pass all 19 corpus
-sections. **`zig`, `haskell`, `ocaml` and `lean` are what remain** —
-their toolchains are not installed in this container, and the notes on
-getting each one are in `doc/plan/status.md`.
+**P0–P6 are done.** All twenty-three implementations pass all 19
+corpus sections, and there is no port left on the plan. What remains is
+**P3.1's extraction** against station's merged Stages 2–3b, and the two
+decisions in "Blocked on a human" below.
+
+**If you are here to add a port anyway**, read the tier-4 ports' own
+`AGENTS.md` files first — between them they say what a port has to
+decide, and `handover.md` §19 says what the six of them found.
 
 **All three corpus gaps §18 of the handover records are CLOSED** — gap
 1 by `declare/shape` and `declare/register`, gap 2 by `depend/byref`,

@@ -39,6 +39,7 @@ PORTS = {
     'ocaml': ['ocaml/test'],
     'haskell': ['haskell/test'],
     'zig': ['zig/test'],
+    'lean': ['lean/test'],
     'typescript': ['typescript/test'],
     'go': ['go/test'],
     'python': ['python/test'],

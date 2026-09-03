@@ -57,6 +57,7 @@ PORTS = {
     'ocaml': ['ocaml/src'],
     'haskell': ['haskell/src'],
     'zig': ['zig/src'],
+    'lean': ['lean/src'],
     'typescript': ['typescript/src'],
     'go': ['go/plugin'],
     'python': ['python/voxgig_plugin'],
