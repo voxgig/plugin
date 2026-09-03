@@ -1,0 +1,27 @@
+# The python port, as a package.
+#
+# No dependencies: AGENTS.md section 1 permits `voxgig/struct` and nothing
+# else, and this port does not yet need even that. The package exists so
+# that a host written in Python - sekreto is the first - can declare the
+# port as an ordinary dependency, from git until it is on PyPI:
+#
+#     voxgig-plugin @ git+https://github.com/voxgig/plugin.git#subdirectory=python
+
+[project]
+name = "voxgig-plugin"
+version = "0.1.0"
+description = "voxgig/plugin: one plugin architecture, every language (the python port)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/voxgig/plugin"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["voxgig_plugin"]
