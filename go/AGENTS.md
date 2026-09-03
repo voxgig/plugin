@@ -66,6 +66,11 @@ matches a corpus `match: {"max": 5}` (a `float64`). `bool` is
 deliberately not numeric there, because canonical is type-strict between
 KINDS: `true` never matches `1`.
 
+**THIS PORT CLAIMS THREAD SAFETY** — one of two that do (`elixir` is
+the other), per [`../docs/ADR.md`](../docs/ADR.md) ADR-2. §14's
+guarantee is a per-port property rather than a repo-wide one, so a claim
+here is a commitment this port keeps and not an inherited default.
+
 **The mutex is at the door, and only there.** `Host.enter` is the single
 place `h.mu` is taken; below it the unlocked bodies (`declare`, `load`,
 `activate`, `deactivate`, `unload`, `ready`, `apply`, `setoptions`,

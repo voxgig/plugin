@@ -122,7 +122,7 @@ fn s_opts(e: &Value) -> Result<Value, PluginError> {
     resolve_options(&e.get("in"))
 }
 fn s_drive(e: &Value) -> Result<Value, PluginError> {
-    drive(&e.get("cmd"))
+    drive(&e.get("in"))
 }
 
 #[test]
@@ -220,9 +220,9 @@ fn corpus_conformance() {
         for (group, set) in section(&spec, name) {
             for (i, entry) in set.iter().enumerate() {
                 run.entries += 1;
-                if entry.get("cmd").as_list().is_none() {
+                if entry.get("in").as_list().is_none() {
                     run.failures.push(format!(
-                        "{}/{}: driver entry without cmd",
+                        "{}/{}: driver entry without a command list in `in`",
                         name,
                         label(&group, i, entry)
                     ));

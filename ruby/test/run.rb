@@ -110,11 +110,11 @@ DRIVER_SECTIONS.each do |name|
   groups.keys.sort.each do |group|
     groups[group].each_with_index do |entry, i|
       RAN[:entries] += 1
-      unless entry['cmd'].is_a?(Array)
-        report(name, group, i, entry, 'driver entry without cmd')
+      unless entry['in'].is_a?(Array)
+        report(name, group, i, entry, 'driver entry without a command list in `in`')
         next
       end
-      why = Corpus.check(entry) { |e| Driver.drive(e['cmd']) }
+      why = Corpus.check(entry) { |e| Driver.drive(e['in']) }
       report(name, group, i, entry, why) if why
     end
   end

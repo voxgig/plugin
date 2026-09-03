@@ -16,21 +16,21 @@ const DRIVER_SECTIONS = [
 for (const name of DRIVER_SECTIONS) {
   const groups = section(name)
 
-  test(name + ': every entry carries cmd', () => {
+  test(name + ': every entry carries a command list in `in`', () => {
     const bad = []
     for (const g of Object.keys(groups)) {
       groups[g].forEach((e, i) => {
-        if (!Array.isArray(e.cmd)) bad.push(label(g, i, e))
+        if (!Array.isArray(e.in)) bad.push(label(g, i, e))
       })
     }
-    Assert.deepEqual(bad, [], 'driver entries without cmd: ' + bad.join(', '))
+    Assert.deepEqual(bad, [], 'driver entries without a command list in `in`: ' + bad.join(', '))
   })
 
   for (const g of Object.keys(groups)) {
     test(name + '/' + g, () => {
       const fails = []
       groups[g].forEach((e, i) => {
-        const why = check(e, (en) => drive(en.cmd))
+        const why = check(e, (en) => drive(en.in))
         if (why) fails.push(label(g, i, e) + ': ' + why)
       })
       Assert.deepEqual(fails, [], fails.join('\n'))

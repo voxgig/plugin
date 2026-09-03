@@ -34,6 +34,12 @@ PROBES = [
 # Where each port's DRIVER lives. Test code, unlike check_parity.py,
 # because the probes are the driver's and not the library's.
 PORTS = {
+    'c': ['c/test'],
+    'cpp': ['cpp/test'],
+    'ocaml': ['ocaml/test'],
+    'haskell': ['haskell/test'],
+    'zig': ['zig/test'],
+    'lean': ['lean/test'],
     'typescript': ['typescript/test'],
     'go': ['go/test'],
     'python': ['python/test'],

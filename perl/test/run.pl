@@ -139,11 +139,11 @@ for my $section (@DRIVER_SECTIONS) {
         for my $i (0 .. $#$set) {
             $RAN{entries}++;
             my $entry = $set->[$i];
-            if ('ARRAY' ne (ref($entry->{cmd}) // '')) {
-                report($section, $group, $i, $entry, 'driver entry without cmd');
+            if ('ARRAY' ne (ref($entry->{in}) // '')) {
+                report($section, $group, $i, $entry, 'driver entry without a command list in `in`');
                 next;
             }
-            my $why = Corpus::check($entry, sub { Driver::drive($_[0]->{cmd}) });
+            my $why = Corpus::check($entry, sub { Driver::drive($_[0]->{in}) });
             report($section, $group, $i, $entry, $why) if defined $why;
         }
     }

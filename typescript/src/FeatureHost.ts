@@ -43,7 +43,7 @@ import { Definition } from './Catalog'
 import { PointSpec } from './Host'
 
 /** sdkgen's declared hook vocabulary (`main.kit.feature.&.hook` in
- * `model/sdkgen.aontu`).
+ * `model/sdkgen.aon`).
  *
  * §17.2 says "13 hook points, named exactly as today". The model
  * declares ELEVEN; the three station's own feature adds — `PrePoint`,

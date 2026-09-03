@@ -113,7 +113,7 @@ object Run {
     )
 
     driver.foreach { name =>
-      runSection(spec, name, _ => Some((e: Value) => Driver.drive(e.at("cmd").items)))
+      runSection(spec, name, _ => Some((e: Value) => Driver.drive(e.at("in").items)))
     }
 
     // EVERY CORPUS SECTION IS RUN. The per-section dispatch already fails on a

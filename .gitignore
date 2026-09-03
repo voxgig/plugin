@@ -187,4 +187,18 @@ erl_crash.dump
 # typescript: struct-style split output (src -> dist, test -> dist-test)
 dist-test/
 typescript/.tsbuild/
+
+# tier-4 port build output
+c/build/
+cpp/build/
+ocaml/build/
+haskell/build/
+zig/build/
+lean/.lake/
+*.cmi
+*.cmx
+*.cmt
+*.cmti
+*.cma
+*.cmxa
 *.egg-info/

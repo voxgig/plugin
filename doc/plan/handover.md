@@ -326,14 +326,14 @@ before any feature can bind to one.
 §17.2 says the SDK "becomes a host by declaring its existing
 vocabulary: **13 `hook` points**, named exactly as today
 (`PostConstruct`, `PrePoint`, `PreRequest`, …)". sdkgen's
-`model/sdkgen.aontu` declares **eleven** under `main.kit.feature.&.hook`:
+`model/sdkgen.aon` declares **eleven** under `main.kit.feature.&.hook`:
 `PostConstruct`, `PostConstructEntity`, `SetData`, `GetData`,
 `GetMatch`, `PreTarget`, `PreSpec`, `PreRequest`, `PreResponse`,
 `PreResult`, `PostOperation`.
 
 Two of the three names §17.2 uses as examples are in that list. The
 third, `PrePoint`, is **not** — it is declared by sdkgen-station's own
-feature (`.sdk/model/feature/station.aontu`), along with `PreDone` and
+feature (`.sdk/model/feature/station.aon`), along with `PreDone` and
 `PreUnexpected`, because `hook: &:` admits any name a feature cares to
 declare.
 
@@ -788,7 +788,7 @@ The fixes are still right in all five ports: **an embedding host builds
 its pin map in code, in whatever order it likes**, and the corpus only
 ever sees the generator's normalised form. What is wrong is reading the
 green as coverage, which is why both entries now say so in
-`spec/plugin.aontu` and why the surviving mutations were investigated
+`spec/plugin.aon` and why the surviving mutations were investigated
 instead of being patched away.
 
 ### The bridge lost a failed feature
@@ -1147,6 +1147,161 @@ Recorded so the next port does not spend an afternoon on them:
 - **An empty `after: []` reading as a stated constraint changes
   nothing**, because `order_targets` yields no targets for it. The guard
   documents the intent; it does not change an answer.
+
+
+## 19. P6's six tier-4 ports: what a language actually costs
+
+P6 is complete: `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean`, and
+**twenty-three implementations now pass all 572 entries.** The durable
+finding is that the six **are not one port six times.** The tier-4 label
+("static-only", §10.3) describes the **loader**, not the language: it
+says nothing about whether the language has closures, exceptions or a
+garbage collector, and those three are what a port actually costs.
+
+| | closures | exceptions | GC | what the port had to build |
+|---|---|---|---|---|
+| `c` | no | no | no | arena; `setjmp`/`longjmp`; `volatile` discipline |
+| `cpp` | yes | yes | yes | nothing — `shared_ptr`, `throw`, `std::function` |
+| `ocaml` | yes | yes | yes | nothing, but a **mutable** Value (below) |
+| `haskell` | yes | yes | yes | nothing; everything raising is `IO` (below) |
+| `zig` | no | no | no | arena; error unions **with the payload beside** |
+| `lean` | yes | yes | yes | an **explicit instance api** (below) |
+
+Read the first two rows against each other:
+
+| | `c` | `cpp` |
+|---|---|---|
+| values | one arena, nothing freed | `shared_ptr`, destructors |
+| raises | `setjmp` / `longjmp` | `throw` / `catch` |
+| closures | function pointer + `void *ctx` | `std::function`, capturing |
+| locals across a try | **`volatile`, or undefined** | nothing |
+
+**In `c` the three decisions hold each other up, and that is the part
+worth carrying forward.** The arena is not a shortcut: `longjmp` past a
+frame leaks whatever that frame owned, and nothing here owns anything,
+so there is nothing to leak. Take the arena away and `longjmp` becomes
+unsafe; take `longjmp` away and an error-return discipline lets a missed
+check continue silently past a failure — the one thing the corpus cannot
+see and the one thing it exists to pin.
+
+**`volatile` on every local that straddles a try is a correctness
+requirement, not a warning to silence.** C guarantees only that
+`volatile` locals keep their value across a `longjmp`. `-Wclobbered`
+(on, through `-Werror`) found **seven** while the port was written, in
+`reconcile`, `cascade` and `drive` — every one a flag or an index set
+before a raise and read after it. A reader would have missed all seven.
+
+`cpp` needs none of that, and writing it as a syntax edit of `c` would
+have been the mistake. `std::function` is what makes a chain binding
+read like the canonical — it receives `next` as a callable and writes
+`next(arg)`, where `c` walks an explicit `Chain *` by index.
+
+### The two shortcuts `c` and `cpp` took, and the corpus refused
+
+- **`point/bail#null-declines`** — the `provider` probe must test its
+  `value` option for **presence**, not for non-null. An authored `null`
+  *is* a value, and in `bail` mode a null **declines** so the next
+  binding answers. Reading it as "no value given" and substituting the
+  ref made the probe answer where the contract says it stands aside.
+- **`resource/scope#difference`** and **`lifecycle/resource#unwind`** —
+  `acquire` must return a handle a plugin can hand back early, with the
+  scope keeping the entry so unwinding it twice is a no-op. Stubbing the
+  release count out left `open` high by exactly the number handed back.
+
+### The other four, and the two that refused the shape
+
+**`ocaml` — a MUTABLE value, which is not the obvious choice in ML, and
+the corpus forces it.** §9.4's `refill` empties an options map and
+refills it **in place**, precisely so a definition's callbacks — which
+closed over that map at `define` — read the new values. With an
+immutable map, `refill` is a rebinding the callbacks never see and
+`apply/idempotent` fails. The persistence ML would prefer is spent in
+`clone` instead. `defs.ml` exists because OCaml modules cannot be
+mutually recursive across compilation units.
+
+**`haskell` — everything that can raise is `IO`, and that is the whole
+port.** Haskell *can* `throw` from pure code; it must not here. An
+imprecise exception fires when the thunk is FORCED, and the corpus does
+not merely assert that a call raises — it asserts **what survived a
+raise mid-sequence**. A raise that happens whenever the consumer happens
+to look is a different semantics from one that happens at the call, and
+laziness would let a port pass the "does it raise" entries while getting
+every ordering entry wrong for reasons no reader could see. So the split
+is not taste: **a function is `IO` exactly when it can raise.** The
+mutability sits on the instance (`IORef`), not inside the Value — which
+is the opposite of `ocaml` and equally forced.
+
+**`zig` — errors are values without payloads.** No `throw` carrying an
+object, no `setjmp`; `error.Plugin` and an explicit `try` at every call.
+So the diagnostic **travels beside the error**: `fail` parks a
+`PluginError` and every handler calls `take()` as its FIRST act.
+`pending` holds one error, and a handler that calls something fallible
+before reading it gets the second error's payload with the first error's
+control flow. What it buys over `c`: an explicit `try` means the
+compiler will not let a fallible call be ignored, so the "missed check
+continues silently past a failure" mode `c`'s `longjmp` exists to
+prevent **cannot happen at all** — and there is no `volatile`
+discipline, because there is no `longjmp`.
+
+**`lean` — the kernel rejected the shape every other port uses.** A
+`Definition` holding `Inst → PluginM Unit` puts `Inst` in a negative
+position, and `Inst` holds the `Definition` back:
+
+    (kernel) arg #1 of '_nested.Option_2.some' has a non positive
+    occurrence of the datatypes being declared
+
+That is not a quirk to route around; it is the logic refusing a type
+whose inhabitants could encode a fixed point of `X → X`. So the instance
+api became an **explicit record of closures** — and **that is not a
+compromise**: §6 says a plugin never mutates the host, it declares
+bindings and captures resources through a small API. Lean made explicit
+what the other five leave implicit in a pointer.
+
+### What the corpus caught, across all six
+
+Beyond the two shortcuts above:
+
+- **The regex dialect, in `cpp`.** The corpus's `match` patterns are
+  JavaScript `/.../` literals. POSIX ERE leaves `\/` undefined — glibc
+  tolerates it, so `c` passes with `REG_EXTENDED`; libstdc++ does not.
+  Four entries failed on messages that plainly matched. `ocaml`, `zig`,
+  `haskell` and `lean` all use a **`regexlite`** instead — the
+  literal-with-anchors matcher `lua` already had, which *errors* on any
+  metacharacter it cannot evaluate.
+- **A bad number must be a reported error, not a crash**, first hit in
+  `ocaml` with `float_of_string`. §9.5's env values "parse as JSON,
+  falling back to string", and the fallback can only catch a *reported*
+  failure. Every later port used the option-returning parse.
+
+### And three it could NOT catch
+
+Each is a checker or a copy rather than a behaviour, and each is the
+kind of thing a corpus is structurally unable to see:
+
+1. **`check_probes.py` had no `c` row.** `make probes` reported `c`
+   green without opening a file in `c/test`. The probes existed — the
+   row was the gap. **Adding a port means three registrations**:
+   `LANGS`, `check_parity.py`, `check_probes.py`.
+2. **The `provider` probe carried dead code in three ports.** `c`
+   synthesized a capability record from `options.capability`, `version`
+   and `priority` and dropped it on the floor; `cpp` and `ocaml` copied
+   it. Writing it in Haskell, the natural reading was to **register**
+   that record — a real divergence. The canonical reads none of those
+   three keys and no corpus entry sets them. **Check the canonical, not
+   the nearest port.**
+3. **Lake builds only what a target's import graph reaches.** Fifteen
+   Lean modules sat "green" while every one had a syntax error — they
+   were never compiled, and a module that is not compiled reads exactly
+   like one that compiled cleanly. Both libraries are now
+   `@[default_target]`, `roots` names every module, `src/Plugin.lean`
+   imports the lot, and the Makefile fails if no binary appears.
+
+**Two ports passed 572/572 on the first run** — `zig` and `lean` — which
+is the fifth and sixth port's dividend rather than luck: every mistake
+had already been made and written down. Both were mutation-checked
+rather than trusted (breaking `tagly`'s empty-tag case fails 125 entries
+in each), because "passed first time" is exactly when a runner deserves
+to be doubted.
 
 
 ## 12. Open, and deliberately so

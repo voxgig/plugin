@@ -144,7 +144,7 @@ object Run {
 
         for (name in DRIVER) {
             runSection(spec, name) {
-                { e: Any? -> Driver.drive(Types.get(e, "cmd") as List<Any?>) }
+                { e: Any? -> Driver.drive(Types.get(e, "in") as List<Any?>) }
             }
         }
 

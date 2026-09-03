@@ -154,7 +154,7 @@ namespace Voxgig.Plugin.Test
 
             // ---- driver sections -------------------------------------
 
-            Func<object, object> drive = e => Driver.Drive(Types.Get(e, "cmd"));
+            Func<object, object> drive = e => Driver.Drive(Types.Get(e, "in"));
             foreach (var section in DRIVER_SECTIONS)
             {
                 sections++;
@@ -163,9 +163,9 @@ namespace Voxgig.Plugin.Test
                     for (var i = 0; i < g.Value.Count; i++)
                     {
                         entries++;
-                        if (null == Types.List(Types.Get(g.Value[i], "cmd")))
+                        if (null == Types.List(Types.Get(g.Value[i], "in")))
                         {
-                            Report(section, g.Key, i, g.Value[i], "driver entry without cmd");
+                            Report(section, g.Key, i, g.Value[i], "driver entry without a command list in `in`");
                             continue;
                         }
                         var why = Corpus.Check(g.Value[i], drive);

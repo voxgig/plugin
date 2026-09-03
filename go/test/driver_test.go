@@ -16,11 +16,11 @@ func TestDriverSections(t *testing.T) {
 			t.Fatalf("%s: %v", name, err)
 		}
 
-		t.Run(name+": every entry carries cmd", func(t *testing.T) {
+		t.Run(name+": every entry carries a command list in `in`", func(t *testing.T) {
 			for _, g := range Groups(groups) {
 				for i, e := range groups[g] {
 					if nil == e.Cmd {
-						t.Errorf("driver entry without cmd: %s", Label(g, i, e))
+						t.Errorf("driver entry without a command list in `in`: %s", Label(g, i, e))
 					}
 				}
 			}

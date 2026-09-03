@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-09-01**. The register in
+Live snapshot, **2026-09-03**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -13,11 +13,69 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**P5's fourteen tier-3 ports are complete.** Twelve landed in this
+**Nothing. P6 is complete — six of six — and no port work remains on
+the plan.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
+so **twenty-three implementations pass all 572 corpus entries** and
+`make check` runs every one of them.
+
+**The six tier-4 ports are deliberately not one port six times**, and
+that is the finding worth carrying: §10.3's "tier-4" describes the
+LOADER, not the language. It says nothing about whether a language has
+closures, exceptions or a garbage collector — and those three are what a
+port actually costs.
+
+| | closures | exceptions | GC | shape |
+|---|---|---|---|---|
+| `c` | no | no | no | arena + `setjmp`/`longjmp` + `volatile` |
+| `cpp` | yes | yes | yes | `shared_ptr`, `throw`, `std::function` |
+| `ocaml` | yes | yes | yes | like `cpp`; mutable Value, forced by `refill` |
+| `haskell` | yes | yes | yes | everything raising is `IO`; refs on the instance |
+| `zig` | no | no | no | arena + error unions; payload beside the error |
+| `lean` | yes | yes | yes | `ExceptT`; **an explicit instance api** |
+
+**Two languages refused the shape outright**, which is the part to read
+before adding any port:
+
+- **zig's errors carry no payload.** `types.fail` parks a `PluginError`
+  and returns `error.Plugin`; every handler calls `take()` as its FIRST
+  act, because `pending` holds one error and a handler that calls
+  something fallible before reading it gets the second error's payload
+  with the first error's control flow.
+- **Lean's kernel rejects the definition↔instance cycle** every other
+  port takes for granted — `non positive occurrence of the datatypes
+  being declared`. So the instance api became an explicit record of
+  closures, which is what §6 says a plugin may touch anyway. Lean made
+  explicit what the others leave implicit in a pointer.
+
+**Four things the corpus caught** across the six: `point/bail#null-declines`
+wants PRESENCE not non-null; `resource/scope#difference` wants an
+early-release handle; `cpp` inherited `c`'s POSIX-ERE dialect for the
+corpus `match` regexes, which are JavaScript literals (glibc tolerates
+`\/`, libstdc++ does not); and a bad number must be a REPORTED error,
+not a crash, or §9.5's parse-or-string fallback cannot catch it.
+
+**And three it could not**, each a checker or a copy rather than a
+behaviour:
+
+1. **`check_probes.py` had no `c` row**, so `make probes` reported `c`
+   green without opening a file in `c/test`.
+2. **The `provider` probe carried a dead capability record** in `c`,
+   `cpp` and `ocaml` — synthesized from three keys the canonical does
+   not read and no entry sets, then dropped. Writing it in Haskell the
+   natural reading was to REGISTER it, which would have been a real
+   divergence. *Check the canonical, not the nearest port.*
+3. **Lake builds only what a target's import graph reaches**, so
+   fifteen Lean modules sat "green" while every one had a syntax error
+   — they were never compiled. Both libraries are now
+   `@[default_target]`, `roots` names every module, and
+   `src/Plugin.lean` imports the lot.
+
+handover.md §19 has all of it.
+
+**P5's fourteen tier-3 ports are complete.** Twelve landed in an earlier
 session — `php`, `perl`, `rust`, `java`, `lua`, `csharp`, `elixir`,
 `clojure`, `dart`, `kotlin`, `swift`, `scala` — joining `javascript` and
-`ruby`. **Seventeen implementations now pass all 572 corpus entries**, and
-`make check` runs every one of them.
+`ruby`.
 
 They found **nothing further wrong with the canonical**, which is the
 result a settled contract should produce. What they found instead is
@@ -52,9 +110,9 @@ than a coverage one (dart's unstable sort above 32 elements), the two
 port-side bugs the corpus DID catch, and two non-mutations recorded so
 nobody re-derives them.
 
-**All three are done, so P6's tier-4 ports are next.** See §18 for what
-the sizing got wrong in both directions — and for why a gap's *name* can
-be narrower than the gap, which is what gap 2 turned out to be.
+**All three are done.** See §18 for what the sizing got wrong in both
+directions — and for why a gap's *name* can be narrower than the gap,
+which is what gap 2 turned out to be.
 
 Merged since this section last named a tip:
 
@@ -97,11 +155,18 @@ bands, vacuous satisfaction of an absent name, ties by declaration
 position rather than alphabet, and the innermost pin. That was
 deliberate, and it makes P3 a move rather than a rewrite.
 
-**P6's six tier-4 ports** — the corpus gaps are all closed (above): `c` and `cpp` first — gcc/g++ 13.3.0 are
-present — and `zig`, `haskell`, `ocaml`, `lean` after their toolchains
-are installed and verified. Porting a language nobody can execute ships
-an implementation nobody has run; say which are gated rather than
-shipping unverifiable work — the same call station's Stage 5 made.
+**P3.1 is the only track left with work in it.** Every port on the plan
+exists and passes; see above.
+
+**If a new port is ever added**, the toolchain notes are worth keeping:
+gcc/g++ 13.3.0 ship in the image; **ghc 9.4.7 and ocaml 4.14.1 come
+from apt**; **zig 0.13.0 from a ziglang.org tarball**; **lean 4.15.0
+from a pinned GitHub *release asset*** — release assets download fine
+through the proxy, while `api.github.com` answers 403, so a
+version-discovery call fails where the asset URL does not. Read the six
+tier-4 ports' own `AGENTS.md` files first: between them they say what a
+port has to decide, and each names the thing its language would not
+let it do.
 
 **Read [`handover.md`](handover.md) §13 first if you are porting.** All
 six defects the pair found were of two kinds — a rule the design states

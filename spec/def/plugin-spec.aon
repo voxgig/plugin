@@ -31,12 +31,16 @@
 # authority on spec semantics. When aontu gains `must` and `length` they
 # belong here, so that a malformed spec fails at build rather than at test.
 #
-# ONE FIELD IS PLUGIN'S OWN. Driver sections (§15.3) drive a host through
-# a command vocabulary rather than calling one function, so an entry may
-# carry `cmd` — the command list — beside the fields omni defines. It is
-# constrained to presence rather than type here for the same reason `in`
-# and `out` are: the driver contract in DOCS.md (§15.2) is its authority,
-# and duplicating that vocabulary in the shape would put it in two places.
+# NO FIELD IS PLUGIN'S OWN ANY MORE. Driver sections (§15.3) drive a host
+# through a command vocabulary rather than calling one function, and used
+# to carry that list in a `cmd` field omni does not define — which put the
+# corpus outside omni's format and outside its strict entry validation,
+# where an unrecognised key is an assertion that stopped asserting.
+#
+# The command list is now the entry's `in`, which is what it always was:
+# the single argument the driver subject is called with. The nine fields
+# below are omni's nine, and this corpus is now readable by omni's runner
+# in any of its twenty-four ports.
 
 
 # The corpus metadata block. `version` is what turns on strict entry
@@ -69,7 +73,6 @@ Entry: hide(close({
   in?: top
   args?: top
   ctx?: top
-  cmd?: top
   out?: top
   err?: boolean | string
   match?: top

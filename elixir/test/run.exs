@@ -70,7 +70,7 @@ defmodule Run do
     cap = fn e -> Capability.resolve_capability(Types.get(e, "in")["req"],
                                                 Types.get(e, "in")["candidates"]) end
     graph = fn e -> Graph.resolve_graph(Types.get(e, "in")) end
-    drive = fn e -> Driver.drive(Types.get(e, "cmd")) end
+    drive = fn e -> Driver.drive(Types.get(e, "in")) end
 
     [
       {"ref",

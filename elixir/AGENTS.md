@@ -5,6 +5,15 @@ not negotiable here: **TypeScript is canonical**, **the corpus is the
 contract**, **change canonical first then propagate**, and **never weaken
 the corpus to make this port pass**.
 
+**THIS PORT CLAIMS THREAD SAFETY** — one of two that do (`go` is the
+other), per [`../docs/ADR.md`](../docs/ADR.md) ADR-2. It gets it
+structurally rather than by locking: host state lives in an `Agent`, so
+the BEAM serialises every read and write. The care needed is that a
+definition's `activate` is never invoked from inside `Agent.update` —
+`host.ex` says why. §14's guarantee is a per-port property rather than a
+repo-wide one, so a claim here is a commitment this port keeps and not
+an inherited default.
+
 ## The rule that matters most here
 
 **A disagreement with the corpus is this port's bug — until you have

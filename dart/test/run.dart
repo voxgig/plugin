@@ -112,7 +112,7 @@ void main() {
   });
 
   for (final name in driverSections) {
-    runSection(spec, name, (_) => (e) => driver.drive(p.get(e, 'cmd') as List));
+    runSection(spec, name, (_) => (e) => driver.drive(p.get(e, 'in') as List));
   }
 
   // EVERY CORPUS SECTION IS RUN. The per-section dispatch already fails on a

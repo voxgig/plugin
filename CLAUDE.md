@@ -7,7 +7,7 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 
 - **TypeScript is canonical**; every other language is a port of it.
 - **The corpus is the contract** — `spec/plugin.json`, generated from
-  `spec/plugin.aontu`. A port that disagrees with it is the thing that's
+  `spec/plugin.aon`. A port that disagrees with it is the thing that's
   wrong. **Never hand-edit the JSON**, and never weaken the corpus to
   make a port pass.
 - **Change canonical first, then propagate** to every port, in one
@@ -18,11 +18,12 @@ Quick reminders (the full rationale is in `AGENTS.md`):
 - Build and check with `make spec`, `make spec-check`, `make parity`,
   `make check`.
 
-**Status: P5 tier-3 complete, fourteen of fourteen.** P0–P5's port
-work is done: the corpus is 572 entries across 19 sections, and
-**seventeen implementations pass every one of them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
+**Status: P6 COMPLETE — six of six.** The corpus is 572 entries across
+19 sections, and **twenty-three implementations pass every one of
+them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
-`dart/`, `kotlin/`, `swift/` and `scala/`.
+`dart/`, `kotlin/`, `swift/`, `scala/`, `c/`, `cpp/`, `ocaml/`,
+`haskell/`, `zig/` and `lean/`.
 `AGENTS.md` §6 says what to pick up; the live per-item state is
 [`doc/plan/status.md`](./doc/plan/status.md).
 

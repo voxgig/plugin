@@ -172,7 +172,7 @@ public final class Runner {
 
     // ---- driver sections --------------------------------------------
 
-    Function<Object, Object> drive = e -> Driver.drive(Types.get(e, "cmd"));
+    Function<Object, Object> drive = e -> Driver.drive(Types.get(e, "in"));
     for (String name2 : DRIVER_SECTIONS) {
       Map<String, List<Object>> groups = Corpus.section(name2);
       sections++;
@@ -180,8 +180,8 @@ public final class Runner {
         List<Object> set = g.getValue();
         for (int i = 0; i < set.size(); i++) {
           entries++;
-          if (null == Types.list(Types.get(set.get(i), "cmd"))) {
-            report(name2, g.getKey(), i, set.get(i), "driver entry without cmd");
+          if (null == Types.list(Types.get(set.get(i), "in"))) {
+            report(name2, g.getKey(), i, set.get(i), "driver entry without a command list in `in`");
             continue;
           }
           String why = Corpus.check(set.get(i), drive);
