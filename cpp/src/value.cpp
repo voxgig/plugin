@@ -435,15 +435,37 @@ struct Parser {
       }
     }
 
+    /* JSON's number grammar is STRICT, and §9.5 makes that observable:
+       env values "parse as JSON, falling back to string", so anything
+       this reader accepts loosely silently becomes a number where the
+       canonical keeps the authored string. `1e`, `1.`, `01`, `.5` and a
+       bare `-` are all errors to JSON.parse; only `-0` and `1e5` are
+       not.
+
+         number = [ '-' ] int [ frac ] [ exp ]
+         int    = '0' | digit1-9 *digit
+         frac   = '.' 1*digit
+         exp    = ('e'|'E') [ '+' | '-' ] 1*digit
+     */
+    auto digit = [this]() {
+      return i < text.size() && '0' <= text[i] && '9' >= text[i];
+    };
     size_t start = i;
     if (i < text.size() && '-' == text[i]) i++;
-    while (i < text.size() &&
-           (('0' <= text[i] && '9' >= text[i]) || '.' == text[i] ||
-            'e' == text[i] || 'E' == text[i] || '+' == text[i] ||
-            '-' == text[i])) {
+    if (!digit()) { err = "bad number"; return nullptr; }
+    if ('0' == text[i]) i++;
+    else while (digit()) i++;
+    if (i < text.size() && '.' == text[i]) {
       i++;
+      if (!digit()) { err = "bad number"; return nullptr; }
+      while (digit()) i++;
     }
-    if (start == i) { err = "unexpected character"; return nullptr; }
+    if (i < text.size() && ('e' == text[i] || 'E' == text[i])) {
+      i++;
+      if (i < text.size() && ('+' == text[i] || '-' == text[i])) i++;
+      if (!digit()) { err = "bad number"; return nullptr; }
+      while (digit()) i++;
+    }
     std::string piece = text.substr(start, i - start);
     char* end = nullptr;
     double n = std::strtod(piece.c_str(), &end);

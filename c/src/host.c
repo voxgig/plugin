@@ -199,7 +199,12 @@ Value *host_observable(Host *h, Value *result, bool hasresult) {
   return out;
 }
 
-Value *host_trace(Host *h) { return h->events; }
+/* A COPY, not the live list: the canonical is `trace: () => events.slice()`, and `observable` already copies the log. Returning the live list lets a caller append to or delete from the host's own event record — application observation code fabricating or erasing lifecycle history. */
+Value *host_trace(Host *h) {
+  Value *out = vlist();
+  for (size_t i = 0; i < vlen(h->events); i++) vpush(out, vat(h->events, i));
+  return out;
+}
 
 Value *inst_status(Inst *i) { return vstr(i->status); }
 double inst_seq(Inst *i) { return i->seq; }
@@ -295,7 +300,7 @@ static Value *unwind(Host *h, Inst *e) {
       PLUGIN_END(&f);
     }
     else {
-      vpush(errors, vstr(f.err->message));
+      vpush(errors, vstr(plugin_caught()->message));
     }
   }
   e->nscope = 0;
@@ -478,18 +483,18 @@ static void run(Host *h, Inst *e, const char *at) {
    * raised `store_unreachable` must not have it rewritten. Only a
    * code-less error is wrapped, which is the ordinary case for a
    * callback that let a library error escape. */
-  if (NULL != f.err->code && '\0' != f.err->code[0] &&
-      0 != strcmp(f.err->code, "plugin_bare")) {
-    fail(f.err->code, f.err->text, f.err->details);
+  if (NULL != plugin_caught()->code && '\0' != plugin_caught()->code[0] &&
+      0 != strcmp(plugin_caught()->code, "plugin_bare")) {
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
-  size_t tsz = strlen(e->ref) + strlen(at) + strlen(f.err->text) + 48;
+  size_t tsz = strlen(e->ref) + strlen(at) + strlen(plugin_caught()->text) + 48;
   char *text = (char *)arena_alloc(tsz);
-  snprintf(text, tsz, "%s raised in %s: %s", e->ref, at, f.err->text);
+  snprintf(text, tsz, "%s raised in %s: %s", e->ref, at, plugin_caught()->text);
   char *code = (char *)arena_alloc(strlen(at) + 24);
   snprintf(code, strlen(at) + 24, "plugin_%s_failed", at);
   Value *d = vmap();
   vset(d, "ref", vstr(e->ref));
-  vset(d, "cause", vstr(f.err->text));
+  vset(d, "cause", vstr(plugin_caught()->text));
   fail(code, text, d);
 }
 
@@ -1001,7 +1006,7 @@ Inst *host_load(Host *h, const char *ref, DeclareSpec *spec) {
   }
   else {
     e->status = "failed";
-    fail(f.err->code, f.err->text, f.err->details);
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
   e->status = "loaded";
 
@@ -1016,7 +1021,7 @@ Inst *host_load(Host *h, const char *ref, DeclareSpec *spec) {
   }
   else {
     e->status = "failed";
-    fail(f.err->code, f.err->text, f.err->details);
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
   return e;
 }
@@ -1107,7 +1112,7 @@ Inst *host_activate(Host *h, const char *ref) {
     /* Unwind whatever the partial activation captured, in reverse. */
     unwind(h, e);
     e->status = "failed";
-    fail(f.err->code, f.err->text, f.err->details);
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
 
   /* §11.4: THE SELECTION IS MADE HERE, once, and remembered. Every
@@ -1158,7 +1163,7 @@ Inst *host_deactivate(Host *h, const char *ref) {
   else {
     unwind(h, e);
     e->status = "failed";
-    fail(f.err->code, f.err->text, f.err->details);
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
   releasecheck(e, unwind(h, e));
   e->status = "loaded";
@@ -1187,7 +1192,7 @@ void host_unload(Host *h, const char *ref) {
          * about. */
         unwind(h, e);
         e->status = "failed";
-        fail(f.err->code, f.err->text, f.err->details);
+        fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
       }
       releasecheck(e, unwind(h, e));
     }
@@ -1202,7 +1207,7 @@ void host_unload(Host *h, const char *ref) {
       return;
     }
     removeinst(h, e);
-    fail(f.err->code, f.err->text, f.err->details);
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
   removeinst(h, e);
 }
@@ -1437,7 +1442,7 @@ void host_setoptions(Host *h, const char *ref, Value *patch) {
     }
     h->intransition = false;
     h->phase = NULL;
-    fail(f.err->code, f.err->text, f.err->details);
+    fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
   }
   /* Always correct and sometimes expensive; `reconfigure` exists to
    * make the common case cheap (§9.4). */
@@ -1465,8 +1470,22 @@ void host_close(Host *h) {
       if (swap) { const char *t = refs[i]; refs[i] = refs[j]; refs[j] = t; }
     }
   }
-  for (size_t i = 0; i < n; i++) {
-    if (NULL != findinst(h, refs[i])) host_unload(h, refs[i]);
+  /* A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
+canonical wraps the teardown in `try/finally`; here an unload that
+raises would skip the reset and leave the host permanently
+`coordinated`, so a caller that catches the error and carries on under
+`dependency: "hold"` gets ad-hoc deactivation with the holder check
+silently off. */
+  volatile size_t i = 0;
+  CatchFrame f;
+  if (0 == PLUGIN_TRY(&f)) {
+    for (; i < n; i++) {
+      if (NULL != findinst(h, refs[i])) host_unload(h, refs[i]);
+    }
+    PLUGIN_END(&f);
+    h->coordinated = false;
+    return;
   }
   h->coordinated = false;
+  fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
 }

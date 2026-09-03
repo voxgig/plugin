@@ -456,9 +456,19 @@ partial def hostClose (h : HostState) : PluginM Unit := do
   -- so a consumer declared after its provider goes down first.
   let refs := (Value.sortWith
     (fun a b => if a.1 != b.1 then a.1 > b.1 else Value.strLe b.2 a.2) keyed).map (·.2)
-  for r in refs do
-    if (← findInst h r).isSome then hostUnload h r
-  h.coordinated.set false
+  -- A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
+  -- canonical wraps the teardown in `try`/`finally`; an unload that
+  -- raises would skip the reset and leave the host permanently
+  -- `coordinated`, so a caller that catches the error and carries on
+  -- under `dependency: "hold"` gets ad-hoc deactivation with the holder
+  -- check silently off.
+  try
+    for r in refs do
+      if (← findInst h r).isSome then hostUnload h r
+    h.coordinated.set false
+  catch err =>
+    h.coordinated.set false
+    throw err
 
 end
 

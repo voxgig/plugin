@@ -582,17 +582,40 @@ static Value *parseval(Parser *p) {
   }
 
   if ('-' == c || ('0' <= c && '9' >= c)) {
+    /* JSON's number grammar is STRICT, and §9.5 makes that observable:
+     * env values "parse as JSON, falling back to string", so anything
+     * this reader accepts loosely silently becomes a number where the
+     * canonical keeps the authored string. `1e`, `1.`, `01`, `.5` and a
+     * bare `-` are all errors to JSON.parse; only `-0` and `1e5` are
+     * not.
+     *
+     *   number = [ '-' ] int [ frac ] [ exp ]
+     *   int    = '0' | digit1-9 *digit
+     *   frac   = '.' 1*digit
+     *   exp    = ('e'|'E') [ '+' | '-' ] 1*digit
+     */
     size_t start = p->i;
     if ('-' == p->s[p->i]) p->i++;
-    while (p->i < p->n && '0' <= p->s[p->i] && '9' >= p->s[p->i]) p->i++;
+    if (p->i >= p->n) { p->err = "bad number"; return NULL; }
+    if ('0' == p->s[p->i]) {
+      p->i++;
+    }
+    else if ('1' <= p->s[p->i] && '9' >= p->s[p->i]) {
+      while (p->i < p->n && '0' <= p->s[p->i] && '9' >= p->s[p->i]) p->i++;
+    }
+    else { p->err = "bad number"; return NULL; }
     if (p->i < p->n && '.' == p->s[p->i]) {
       p->i++;
+      size_t d = p->i;
       while (p->i < p->n && '0' <= p->s[p->i] && '9' >= p->s[p->i]) p->i++;
+      if (d == p->i) { p->err = "bad number"; return NULL; }
     }
     if (p->i < p->n && ('e' == p->s[p->i] || 'E' == p->s[p->i])) {
       p->i++;
       if (p->i < p->n && ('+' == p->s[p->i] || '-' == p->s[p->i])) p->i++;
+      size_t d = p->i;
       while (p->i < p->n && '0' <= p->s[p->i] && '9' >= p->s[p->i]) p->i++;
+      if (d == p->i) { p->err = "bad number"; return NULL; }
     }
     char *text = arena_strndup(p->s + start, p->i - start);
     return vnum(strtod(text, NULL));

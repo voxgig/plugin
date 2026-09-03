@@ -25,9 +25,15 @@ V resolveexport(const V& spec, const V& exported) {
   const std::string head = s.substr(0, cut);
   const std::string key = s.substr(cut + 1);
 
-  /* A fully qualified ref: exactly one answer or none. */
-  std::string want;
-  if (tryref(head, want)) {
+  /* A fully qualified ref: exactly one answer or none.
+   *
+   * VALIDATING, not tolerant. The canonical calls `canonref(head)`,
+   * which RAISES — so `retry$bad!/client` is `plugin_bad_tag` and
+   * `2fa/client` is `plugin_bad_name`. Reading it with `tryref` turned
+   * a configuration typo into an ordinary missing export, which is the
+   * error the caller most needs to see, silently swallowed. */
+  const std::string want = canonref(head);
+  {
     for (size_t i = 0; i < len(exported); i++) {
       V e = at(exported, i);
       if (asstr(get(e, "ref")) == want && asstr(get(e, "key")) == key) {

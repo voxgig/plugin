@@ -213,6 +213,74 @@ static void run_ref(Tally *t) {
   }
 }
 
+/* The sections driven by a direct function call. */
+static const char *PURE[] = {
+  "ref", "version", "capability", "resolve", "env", "config", "graph", NULL
+};
+
+/* The driver sections, in §15.3's order. Each entry is a command list
+ * against a fresh host. */
+static const char *DRIVER[] = {
+  "lifecycle", "order", "point", "export", "depend", "declare",
+  "state", "resource", "nest", "trace", "apply", "error", NULL
+};
+
+static bool listed(const char **names, const char *want) {
+  for (int i = 0; NULL != names[i]; i++) {
+    if (0 == strcmp(names[i], want)) return true;
+  }
+  return false;
+}
+
+/* EVERY CORPUS SECTION IS RUN (AGENTS.md §"the layout to copy").
+ *
+ * `run_section` already fails on a GROUP with no subject. This closes
+ * the level above: a whole SECTION the runner never mentions is a
+ * section silently not run, and it would pass a suite that claims all
+ * 572 entries. The `go`, `python` and `ruby` ports carry the same check
+ * in the same words; sixteen of the seventeen earlier ports have it,
+ * and this port shipped without it.
+ *
+ * It also refuses a corpus with no PLUGIN.version, because that block
+ * is what turns on strict entry validation in every runner and a corpus
+ * that lost it must not silently downgrade this port's checking. */
+static void coverage(Tally *t) {
+  Value *spec = corpus();
+  Value *primary = vget(spec, "primary");
+  Value *meta = vget(spec, "PLUGIN");
+
+  if (NULL == meta || 1 != vasnum(vget(meta, "version"))) {
+    t->failures++;
+    printf("coverage: corpus PLUGIN.version must be 1\n");
+  }
+
+  const char **names;
+  size_t n = vsortedkeys(primary, &names);
+  for (size_t i = 0; i < n; i++) {
+    if (listed(PURE, names[i]) || listed(DRIVER, names[i])) continue;
+    t->failures++;
+    printf("coverage: corpus section no test runs: %s\n", names[i]);
+  }
+
+  const char **lists[] = { PURE, DRIVER };
+  for (int l = 0; l < 2; l++) {
+    for (int i = 0; NULL != lists[l][i]; i++) {
+      if (vhas(primary, lists[l][i])) continue;
+      t->failures++;
+      printf("coverage: tests name a section the corpus does not have: %s\n",
+             lists[l][i]);
+    }
+  }
+
+  /* A floor, not a fixture: the corpus grows, and a run that suddenly
+   * covers a fraction of it is the failure worth catching. */
+  if (400 > t->entries) {
+    t->failures++;
+    printf("coverage: only %zu corpus entries ran; the corpus has far more\n",
+           t->entries);
+  }
+}
+
 int main(void) {
   Tally t = { 0, 0 };
 
@@ -224,15 +292,11 @@ int main(void) {
   run_section(&t, "config", config_subject);
   run_section(&t, "graph", graph_subject);
 
-  /* The driver sections, in §15.3's order. Each entry is a command list
-   * against a fresh host. */
-  static const char *DRIVER[] = {
-    "lifecycle", "order", "point", "export", "depend", "declare",
-    "state", "resource", "nest", "trace", "apply", "error", NULL
-  };
   for (int i = 0; NULL != DRIVER[i]; i++) {
     run_section(&t, DRIVER[i], driver_subject);
   }
+
+  coverage(&t);
 
   if (0 == t.entries) {
     printf("c: no corpus entries ran\n");

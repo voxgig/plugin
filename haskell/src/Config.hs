@@ -52,9 +52,15 @@ entriesOf src
       -- 0x61-0x7A.
       return (m, sort (vkeys m))
 
+-- | PRESENT WINS, EVEN WHEN THE VALUE IS NULL. The canonical is
+-- @src && undefined !== src[key]@, and in JavaScript a key holding
+-- @null@ passes that test — so a profile's @order: null@ clears a base
+-- ordering block and @active: null@ over a base @active: true@ is
+-- falsy, and barred. Testing for non-null instead treated an authored
+-- null as an absent key, which is §9.1's distinction inverted.
 pick :: Value -> String -> Value -> Value
 pick src key dflt
-  | isMap src && vhas src key && not (isNull (vget src key)) = vget src key
+  | isMap src && vhas src key = vget src key
   | otherwise = dflt
 
 normalizeConfig :: Value -> IO Value

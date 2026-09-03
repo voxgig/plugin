@@ -85,6 +85,53 @@ the probe catalog, the command vocabulary, and the canonical observable
 is why C2 shipped both together. -/
 def driverSubject (_ : String) : Option Subject := some (fun e => drive (e.get "cmd"))
 
+/-- The sections driven by a direct function call. -/
+def pureSections : List String :=
+  ["ref", "version", "capability", "resolve", "env", "config", "graph"]
+
+/-- The driver sections, in §15.3's order. Each entry is a command list
+against a fresh host. -/
+def driverSections : List String :=
+  ["lifecycle", "order", "point", "export", "depend", "declare",
+   "state", "resource", "nest", "trace", "apply", "error"]
+
+/-- EVERY CORPUS SECTION IS RUN (AGENTS.md §"the layout to copy").
+
+`runSection` already fails on a GROUP with no subject. This closes the
+level above: a whole SECTION the runner never mentions is a section
+silently not run, and it would pass a suite that claims all 572 entries.
+Sixteen of the seventeen earlier ports carry this check; this port
+shipped without it.
+
+It also refuses a corpus with no `PLUGIN.version`, because that block is
+what turns on strict entry validation in every runner and a corpus that
+lost it must not silently downgrade this port's checking. -/
+def coverage (cor : Value) (tally : IO.Ref Tally) : IO Unit := do
+  let primary := cor.get "primary"
+  let meta := cor.get "PLUGIN"
+  let run := pureSections ++ driverSections
+  let bad (msg : String) : IO Unit := do
+    tally.modify (fun t => { t with failures := t.failures + 1 })
+    IO.println ("coverage: " ++ msg)
+
+  if (meta.get "version").asNum != 1.0 then
+    bad "corpus PLUGIN.version must be 1"
+
+  for name in primary.sortedKeys do
+    if !run.contains name then
+      bad ("corpus section no test runs: " ++ name)
+
+  for name in run do
+    if !primary.has name then
+      bad ("tests name a section the corpus does not have: " ++ name)
+
+  -- A floor, not a fixture: the corpus grows, and a run that suddenly
+  -- covers a fraction of it is the failure worth catching.
+  let t ← tally.get
+  if t.entries < 400 then
+    bad ("only " ++ toString t.entries
+      ++ " corpus entries ran; the corpus has far more")
+
 def main : IO Unit := do
   let cor ← loadCorpus
   let tally ← IO.mkRef ({} : Tally)
@@ -97,11 +144,10 @@ def main : IO Unit := do
   runSection cor tally "config" configSubject
   runSection cor tally "graph" graphSubject
 
-  -- The driver sections, in §15.3's order. Each entry is a command list
-  -- against a fresh host.
-  for s in ["lifecycle", "order", "point", "export", "depend", "declare",
-            "state", "resource", "nest", "trace", "apply", "error"] do
+  for s in driverSections do
     runSection cor tally s driverSubject
+
+  coverage cor tally
 
   let t ← tally.get
   if t.entries == 0 then

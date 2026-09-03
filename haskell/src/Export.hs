@@ -27,10 +27,18 @@ resolveExport spec exported =
   where
     s = if isStr spec then asStr spec else ""
 
-    pick headS key
-      -- A fully qualified ref: exactly one answer or none.
-      | Just want <- tryRef headS
-      , (e : _) <- [x | x <- vitems exported, asStr (vget x "ref") == want, asStr (vget x "key") == key] =
+    pick headS key = canonRefS headS >>= go headS key
+
+    -- A fully qualified ref: exactly one answer or none.
+    --
+    -- VALIDATING, not tolerant. The canonical calls @canonRef head@,
+    -- which RAISES — so @retry$bad!\/client@ is @plugin_bad_tag@ and
+    -- @2fa\/client@ is @plugin_bad_name@. Reading it with 'tryRef'
+    -- turned a configuration typo into an ordinary missing export,
+    -- which is the error the caller most needs to see, silently
+    -- swallowed.
+    go headS key want
+      | (e : _) <- [x | x <- vitems exported, asStr (vget x "ref") == want, asStr (vget x "key") == key] =
           return (Just (vget e "value"))
       -- An alias: the NAME, not a ref. Look at every instance of it.
       | null byname = return Nothing

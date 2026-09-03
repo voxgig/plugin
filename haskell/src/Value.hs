@@ -276,25 +276,51 @@ hex4 s
   where
     h = take 4 s
 
+-- | JSON's number grammar is STRICT, and §9.5 makes that observable:
+-- env values "parse as JSON, falling back to string", so anything this
+-- reader accepts loosely silently becomes a number where the canonical
+-- keeps the authored string. @1e@, @1.@, @01@, @.5@ and a bare @-@ are
+-- all errors to @JSON.parse@; only @-0@ and @1e5@ are not.
+--
+-- >   number = [ '-' ] int [ frac ] [ exp ]
+-- >   int    = '0' | digit1-9 *digit
+-- >   frac   = '.' 1*digit
+-- >   exp    = ('e'|'E') [ '+' | '-' ] 1*digit
+--
+-- `reads`, not `read`: a reader that THROWS on a bad number rather than
+-- reporting one turns "this env value is a string" into a crash.
 pNumber :: String -> Either String (Value, String)
-pNumber s
-  | null tok = Left "unexpected character"
-  | otherwise = case reads (fixup tok) :: [(Double, String)] of
-      [(d, "")] -> Right (VNum d, rest)
-      -- `reads`, not `read`: a bare `-` or a truncated `1e` reaches
-      -- here from `Env`'s parse-or-string fallback (§9.5), and a reader
-      -- that THROWS on a bad number rather than reporting one turns
-      -- "this env value is a string" into a crash. The ocaml port had
-      -- exactly this bug.
-      _ -> Left "bad number"
+pNumber s0 = do
+  (tok, rest) <- scan s0
+  case reads (fixup tok) :: [(Double, String)] of
+    [(d, "")] -> Right (VNum d, rest)
+    _ -> Left "bad number"
   where
-    (tok, rest) = span (`elem` "-+.eE0123456789") s
-    -- Haskell's `reads` wants a digit before the point and after an
-    -- exponent sign; JSON writes `1e5` and `-1`, both legal.
-    fixup t =
-      let t1 = case t of ('.' : _) -> '0' : t; ('-' : '.' : r) -> "-0." ++ r; _ -> t
-          t2 = expand t1
-      in t2
+    isDig c = c >= '0' && c <= '9'
+    scan s = do
+      let (sign, s1) = case s of ('-' : r) -> ("-", r); _ -> ("", s)
+      (intPart, s2) <- case s1 of
+        ('0' : r) -> Right ("0", r)
+        (c : _) | isDig c -> Right (span isDig s1)
+        _ -> Left "bad number"
+      (fracPart, s3) <- case s2 of
+        ('.' : r) ->
+          let (ds, r') = span isDig r
+          in if null ds then Left "bad number" else Right ('.' : ds, r')
+        _ -> Right ("", s2)
+      (expPart, s4) <- case s3 of
+        (e : r) | e == 'e' || e == 'E' ->
+          let (sgn, r1) = case r of
+                ('+' : rr) -> ("+", rr)
+                ('-' : rr) -> ("-", rr)
+                _ -> ("", r)
+              (ds, r2) = span isDig r1
+          in if null ds then Left "bad number" else Right (e : sgn ++ ds, r2)
+        _ -> Right ("", s3)
+      Right (sign ++ intPart ++ fracPart ++ expPart, s4)
+    -- Haskell's `reads` wants a digit before the exponent's point;
+    -- JSON writes `1e5`, which is legal.
+    fixup = expand
     expand t = case break (`elem` "eE") t of
       (m, []) -> m
       (m, _ : ex) -> (if '.' `elem` m then m else m ++ ".0") ++ "e" ++ dropWhile (== '+') ex

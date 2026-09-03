@@ -4,6 +4,7 @@
  * count as well as the pass, because "all pass" over zero entries is
  * the failure doc/plan/handover.md §4 warns about. */
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -128,6 +129,67 @@ static Subject driversubject(const std::string&) {
   return [](const V& e) { return drive(get(e, "cmd")); };
 }
 
+/* The sections driven by a direct function call. */
+static const std::vector<std::string> PURE = {
+  "ref", "version", "capability", "resolve", "env", "config", "graph"
+};
+
+/* The driver sections, in §15.3's order. Each entry is a command list
+ * against a fresh host. */
+static const std::vector<std::string> DRIVER = {
+  "lifecycle", "order", "point", "export", "depend", "declare",
+  "state", "resource", "nest", "trace", "apply", "error"
+};
+
+/* EVERY CORPUS SECTION IS RUN (AGENTS.md §"the layout to copy").
+ *
+ * `corpusrunsection` already fails on a GROUP with no subject. This
+ * closes the level above: a whole SECTION the runner never mentions is
+ * a section silently not run, and it would pass a suite that claims all
+ * 572 entries. Sixteen of the seventeen earlier ports carry this check;
+ * this port shipped without it.
+ *
+ * It also refuses a corpus with no PLUGIN.version, because that block
+ * is what turns on strict entry validation in every runner and a corpus
+ * that lost it must not silently downgrade this port's checking. */
+static void coverage(Tally& t) {
+  const V& spec = corpus();
+  V primary = get(spec, "primary");
+  V meta = get(spec, "PLUGIN");
+
+  if (!ismap(meta) || 1 != asnum(get(meta, "version"))) {
+    t.failures++;
+    std::cout << "coverage: corpus PLUGIN.version must be 1\n";
+  }
+
+  auto listed = [](const std::vector<std::string>& ns, const std::string& w) {
+    return std::find(ns.begin(), ns.end(), w) != ns.end();
+  };
+
+  for (const std::string& name : sortedkeys(primary)) {
+    if (listed(PURE, name) || listed(DRIVER, name)) continue;
+    t.failures++;
+    std::cout << "coverage: corpus section no test runs: " << name << "\n";
+  }
+
+  for (const auto* list : { &PURE, &DRIVER }) {
+    for (const std::string& name : *list) {
+      if (has(primary, name)) continue;
+      t.failures++;
+      std::cout << "coverage: tests name a section the corpus does not have: "
+                << name << "\n";
+    }
+  }
+
+  /* A floor, not a fixture: the corpus grows, and a run that suddenly
+   * covers a fraction of it is the failure worth catching. */
+  if (400 > t.entries) {
+    t.failures++;
+    std::cout << "coverage: only " << t.entries
+              << " corpus entries ran; the corpus has far more\n";
+  }
+}
+
 int main() {
   Tally t;
 
@@ -139,15 +201,11 @@ int main() {
   corpusrunsection(t, "config", configsubject);
   corpusrunsection(t, "graph", graphsubject);
 
-  /* The driver sections, in §15.3's order. Each entry is a command list
-   * against a fresh host. */
-  static const char* const DRIVER[] = {
-    "lifecycle", "order", "point", "export", "depend", "declare",
-    "state", "resource", "nest", "trace", "apply", "error", nullptr
-  };
-  for (int i = 0; nullptr != DRIVER[i]; i++) {
-    corpusrunsection(t, DRIVER[i], driversubject);
+  for (const std::string& name : DRIVER) {
+    corpusrunsection(t, name, driversubject);
   }
+
+  coverage(t);
 
   if (0 == t.entries) {
     std::cout << "cpp: no corpus entries ran\n";

@@ -19,6 +19,7 @@ the old one is marked so.
 | # | Decision | Status |
 |---|---|---|
 | [1](#adr-1--static-loading-is-preferred-dynamic-only-when-cheap) | Static loading is preferred; dynamic only when cheap | Accepted |
+| [2](#adr-2--thread-safety-is-a-per-port-property-not-a-corpus-behaviour) | Thread safety is a per-port property, not a corpus behaviour | Accepted |
 
 
 ## ADR-1 — Static loading is preferred; dynamic only when cheap
@@ -137,3 +138,132 @@ have it, at that price, in its own resolver.
   bought with a process boundary rather than a classloader.
 - A tier-S language grows practical runtime loading. The table is a
   snapshot of what the toolchains do, not a claim about the languages.
+
+
+## ADR-2 — Thread safety is a per-port property, not a corpus behaviour
+
+**Status:** Accepted. Design §14; the corpus exclusion is §15.4.
+
+### Context
+
+§14 opens with a flat promise: *"All public host operations are safe to
+call from any thread. The registry and the resolved orders are
+internally synchronized; each port uses its idiom (a mutex in
+Go/Rust/Java, the GIL where that is genuinely sufficient, an actor in
+Elixir)."*
+
+That sentence is a contract-shaped statement, and this repository has
+exactly one mechanism for holding an implementation to a
+contract-shaped statement: the corpus. §15.4 puts thread safety
+explicitly **outside** it — "Real dynamic module loading (§10.2),
+thread-safety under contention, and anything involving a clock" are
+named as per-port integration tests — for the good reason that a
+deterministic JSON corpus cannot express a race.
+
+So the promise is made repo-wide and checked nowhere. Counting what the
+code actually does, across all 23 ports:
+
+- **`go`** synchronizes properly. A non-reentrant `sync.Mutex` is taken
+  once at the public door and never below it; `TryLock` is what turns a
+  transition attempted from inside a lifecycle callback into
+  `plugin_reentrant` without ever blocking.
+- **`elixir`** gets it structurally: host state lives in an `Agent`, so
+  the BEAM serializes every read and write, and the port is careful that
+  `activate` is never invoked from inside `Agent.update`.
+- **The other 21 ports have no synchronization at all.** Not the
+  compiled ones, not the tier-3 ones. Six of them (`typescript`,
+  `javascript`, `python`, `ruby`, `php`, `perl`) are on runtimes where
+  that ranges from *fine* to *fine today*; the rest —
+  `rust`, `java`, `csharp`, `kotlin`, `scala`, `swift`, `dart`,
+  `clojure`, `go`'s compiled peers `c`, `cpp`, `zig`, and the functional
+  four — would data-race under the concurrency §14 promises.
+
+The forcing question is what to do about a promise 21 implementations
+do not keep and nothing detects.
+
+### Decision
+
+**§14's guarantee is a per-port property. It is claimed only by the
+ports that implement it, and no port may be assumed thread-safe merely
+because §14 says so.**
+
+Concretely:
+
+1. The library's baseline contract is **single-threaded**. A host that
+   drives one `Host` from several threads must either use a port that
+   claims thread safety, or serialize the calls itself.
+2. A port claims thread safety in its own `AGENTS.md`, and claiming it
+   means the whole public transition is the locked unit (§5.2's
+   sequencing), not each field access. Today only `go` and `elixir`
+   claim it.
+3. **Reentrancy is not thread safety and is NOT per-port.**
+   `plugin_reentrant` — a transition attempted from inside a lifecycle
+   callback — is a corpus behaviour, every port implements it, and it is
+   what `intransition` is for. A mutex is not required to get it right,
+   which is exactly why the two are separated here.
+4. §15.4 stands: thread safety under contention stays out of the
+   corpus. A port that adds synchronization owns an integration test for
+   it, in its own suite, named as such.
+
+### Why the alternative lost
+
+The obvious alternative is to close the gap: add the language's mutex to
+each of the 21 ports and keep §14 as written.
+
+It lost on **verification, not effort**. The lock is easy; a lock that
+is *correct* is a different claim, and this repo would have no way to
+tell the two apart. `go`'s implementation is the evidence — getting it
+right meant a non-reentrant lock taken exactly once at the door, unlocked
+bodies underneath because the public transitions call each other, and
+`TryLock` to keep `plugin_reentrant` non-blocking. Three design
+decisions, none of them visible to a single corpus entry.
+
+Bolting `pthread_mutex_t` onto `c` and `std.Thread.Mutex` onto `zig`
+would have produced 572 identical passes either way, and the repo would
+then be asserting thread safety in 23 ports on the strength of one
+reviewed implementation and twenty-two unreviewed ones. **A promise
+nothing checks is worse than an honest limit**, and it is worse in the
+specific way this library cares about: it is the kind of claim a host
+builds on and finds out about in production.
+
+The narrower alternative — quietly leave §14 as aspirational — lost
+because that is the state that produced this record. The gap was found
+by review, not by the repo, after twenty-three ports had shipped.
+
+### Consequences
+
+**Good.**
+
+- What the code does and what the documents say agree, and the
+  disagreement that existed is written down rather than carried.
+- A host reads one line per port and knows what it is getting.
+- Ports stay comparable. A `c` port with a mutex and a `zig` port with
+  one would still not be *the same* under contention, and the corpus
+  could not tell; leaving both out keeps the 23 implementations
+  behaviourally identical everywhere the corpus can see, which is the
+  property the whole repository is built on.
+
+**Bad, and accepted.**
+
+- §14 as written is now the *aspiration* and this record is the *state*.
+  Two places to read instead of one, until §14 is rewritten.
+- A host on `rust` or `java` — languages whose users reasonably expect
+  a library to be thread-safe, and which §14 names by name as taking a
+  mutex — gets a single-threaded library. That is the sharpest edge
+  here, and it is the reason this record exists rather than a comment.
+- "Serialize the calls yourself" is real work pushed onto the host,
+  and the library gives no help with it.
+
+### Revisit if
+
+- A host drives a `Host` concurrently in a port that does not claim
+  thread safety. That is the signal to implement it *there*, to `go`'s
+  shape, with the integration test point 4 requires — not everywhere at
+  once.
+- Someone builds a way to test it. A deterministic scheduler, a race
+  detector in CI (`-race`, TSan, `cargo miri`) over a concurrent
+  integration suite, or a model checker would move thread safety from
+  "claimed" to "checked", and the calculation changes the moment it can
+  be verified rather than asserted.
+- §14 is rewritten to state the per-port position directly. Then this
+  record is superseded rather than merely descriptive.

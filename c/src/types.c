@@ -8,11 +8,19 @@
 
 static CatchFrame *current = NULL;
 
+/* The error the most recent raise parked here. FILE SCOPE ON PURPOSE —
+ * see types.h for why it cannot live in the frame. */
+static PluginError *pending = NULL;
+
 int plugin_try(CatchFrame *f) {
   f->prev = current;
-  f->err = NULL;
   current = f;
+  pending = NULL;
   return 0;
+}
+
+PluginError *plugin_caught(void) {
+  return pending;
 }
 
 void plugin_end(CatchFrame *f) {
@@ -90,7 +98,7 @@ void fail(const char *code, const char *text, Value *details) {
 
   CatchFrame *f = current;
   current = f->prev;
-  f->err = e;
+  pending = e;
   longjmp(f->jmp, 1);
 }
 

@@ -50,8 +50,14 @@ private def entriesOf (src : Value) : PluginM (Value × List String) := do
   -- '@' is 0x40, uppercase 0x41-0x5A, lowercase 0x61-0x7A.
   return (m, m.sortedKeys)
 
+/-- PRESENT WINS, EVEN WHEN THE VALUE IS NULL. The canonical is
+`src && undefined !== src[key]`, and in JavaScript a key holding `null`
+passes that test — so a profile's `order: null` clears a base ordering
+block and `active: null` over a base `active: true` is falsy, and
+barred. Testing for non-null instead treated an authored null as an
+absent key, which is §9.1's distinction inverted. -/
 private def pick (src : Value) (key : String) (dflt : Value) : Value :=
-  if src.isMap && src.has key && !(src.get key).isNull then src.get key else dflt
+  if src.isMap && src.has key then src.get key else dflt
 
 def normalizeConfig (input : Value) : PluginM Value := do
   let doc := let d := input.get "doc"; if d.isMap then d else Value.vmap

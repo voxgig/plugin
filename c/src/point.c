@@ -80,8 +80,8 @@ Value *point_emit(Bound **bindings, size_t n, const char *mode, Value *arg,
     }
     else if (NULL != errors) {
       Value *e = vmap();
-      vset(e, "code", vstr(f.err->code));
-      vset(e, "message", vstr(f.err->message));
+      vset(e, "code", vstr(plugin_caught()->code));
+      vset(e, "message", vstr(plugin_caught()->message));
       vpush(*errors, e);
     }
   }

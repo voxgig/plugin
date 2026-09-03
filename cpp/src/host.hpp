@@ -176,7 +176,8 @@ class Host {
   V list() const;
   InstPtr instance(const std::string& ref) const;
   V observable(const V& result, bool hasresult) const;
-  V trace() const { return events_; }
+  /* A COPY, not the live list: the canonical is `trace: () => events.slice()`, and `observable` already copies the log. Returning the live list lets a caller append to or delete from the host's own event record — application observation code fabricating or erasing lifecycle history. */
+  V trace() const;
   V order(const std::string& point) const;
   V positionof(const std::string& ref, const std::string& point) const;
 

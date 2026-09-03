@@ -26,12 +26,16 @@ def resolveExport (spec exported : Value) : PluginM (Option Value) := do
   let key := String.mk ((cs.dropWhile (· != '/')).drop 1)
 
   -- A fully qualified ref: exactly one answer or none.
-  match tryRef head with
-  | some want =>
-    match (exported.items).find? (fun e =>
-      (e.get "ref").asStr == want && (e.get "key").asStr == key) with
-    | some e => return some (e.get "value")
-    | none => pure ()
+  --
+  -- VALIDATING, not tolerant. The canonical calls `canonRef head`,
+  -- which RAISES — so `retry$bad!/client` is `plugin_bad_tag` and
+  -- `2fa/client` is `plugin_bad_name`. Reading it with `tryRef` turned
+  -- a configuration typo into an ordinary missing export, which is the
+  -- error the caller most needs to see, silently swallowed.
+  let want ← canonRefS head
+  match (exported.items).find? (fun e =>
+    (e.get "ref").asStr == want && (e.get "key").asStr == key) with
+  | some e => return some (e.get "value")
   | none => pure ()
 
   -- An alias: the NAME, not a ref. Look at every instance of it.

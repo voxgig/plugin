@@ -2079,6 +2079,17 @@ decides where they go.
 
 ## 14. Concurrency and async
 
+> **This section is the aspiration; the state is
+> [`docs/ADR.md`](../ADR.md) ADR-2.** Thread safety is a **per-port
+> property**, claimed in a port's own `AGENTS.md`, and only `go` and
+> `elixir` claim it today. §15.4 keeps thread-safety-under-contention
+> out of the corpus deliberately, so nothing here is checked the way the
+> rest of this document is — read the first bullet as what a port that
+> claims it must deliver, not as what every port does.
+>
+> Reentrancy is the exception and is not per-port: `plugin_reentrant` is
+> a corpus behaviour that every port implements.
+
 - All public host operations are safe to call from any thread. The
   registry and the resolved orders are internally synchronized; each
   port uses its idiom (a mutex in Go/Rust/Java, the GIL where that is

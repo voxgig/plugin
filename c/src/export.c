@@ -30,9 +30,15 @@ Value *resolveexport(Value *spec, Value *exported) {
   const char *head = arena_strndup(s, (size_t)(cut - s));
   const char *key = cut + 1;
 
-  /* A fully qualified ref: exactly one answer or none. */
-  const char *want = tryref(head);
-  if (NULL != want) {
+  /* A fully qualified ref: exactly one answer or none.
+   *
+   * VALIDATING, not tolerant. The canonical calls `canonref(head)`,
+   * which RAISES — so `retry$bad!/client` is `plugin_bad_tag` and
+   * `2fa/client` is `plugin_bad_name`. Reading it with `tryref` turned
+   * a configuration typo into an ordinary missing export, which is the
+   * error the caller most needs to see, silently swallowed. */
+  const char *want = canonref(vstr(head));
+  {
     for (size_t i = 0; i < vlen(exported); i++) {
       Value *e = vat(exported, i);
       if (0 == strcmp(vasstr(vget(e, "ref")), want) &&

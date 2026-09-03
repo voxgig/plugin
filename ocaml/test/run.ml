@@ -86,6 +86,58 @@ let graphsubject = function
    enough, which is why C2 shipped both together. *)
 let driversubject _ = Some (fun e -> Driver.drive (V.get e "cmd"))
 
+(* The sections driven by a direct function call. *)
+let pure =
+  [ "ref"; "version"; "capability"; "resolve"; "env"; "config"; "graph" ]
+
+(* The driver sections, in §15.3's order. Each entry is a command list
+   against a fresh host. *)
+let driver =
+  [ "lifecycle"; "order"; "point"; "export"; "depend"; "declare";
+    "state"; "resource"; "nest"; "trace"; "apply"; "error" ]
+
+(* EVERY CORPUS SECTION IS RUN (AGENTS.md §"the layout to copy").
+
+   `runsection` already fails on a GROUP with no subject. This closes the
+   level above: a whole SECTION the runner never mentions is a section
+   silently not run, and it would pass a suite that claims all 572
+   entries. Sixteen of the seventeen earlier ports carry this check; this
+   port shipped without it.
+
+   It also refuses a corpus with no PLUGIN.version, because that block is
+   what turns on strict entry validation in every runner and a corpus
+   that lost it must not silently downgrade this port's checking. *)
+let coverage (t : Corpus.tally) =
+  let spec = Corpus.corpus () in
+  let primary = V.get spec "primary" in
+  let meta = V.get spec "PLUGIN" in
+  let fail msg =
+    t.Corpus.failures <- t.Corpus.failures + 1;
+    print_endline ("coverage: " ^ msg)
+  in
+
+  if 1.0 <> V.as_num (V.get meta "version") then
+    fail "corpus PLUGIN.version must be 1";
+
+  List.iter
+    (fun name ->
+      if not (List.mem name pure || List.mem name driver) then
+        fail ("corpus section no test runs: " ^ name))
+    (V.sortedkeys primary);
+
+  List.iter
+    (fun name ->
+      if not (V.has primary name) then
+        fail ("tests name a section the corpus does not have: " ^ name))
+    (pure @ driver);
+
+  (* A floor, not a fixture: the corpus grows, and a run that suddenly
+     covers a fraction of it is the failure worth catching. *)
+  if 400 > t.Corpus.entries then
+    fail
+      (Printf.sprintf "only %d corpus entries ran; the corpus has far more"
+         t.Corpus.entries)
+
 let () =
   let t = { Corpus.entries = 0; failures = 0 } in
 
@@ -97,12 +149,9 @@ let () =
   Corpus.runsection t "config" configsubject;
   Corpus.runsection t "graph" graphsubject;
 
-  (* The driver sections, in §15.3's order. Each entry is a command
-     list against a fresh host. *)
-  List.iter
-    (fun s -> Corpus.runsection t s driversubject)
-    [ "lifecycle"; "order"; "point"; "export"; "depend"; "declare";
-      "state"; "resource"; "nest"; "trace"; "apply"; "error" ];
+  List.iter (fun s -> Corpus.runsection t s driversubject) driver;
+
+  coverage t;
 
   if 0 = t.Corpus.entries then begin
     print_endline "ocaml: no corpus entries ran";

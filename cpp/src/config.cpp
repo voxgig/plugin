@@ -70,10 +70,14 @@ static Entries entriesof(const V& src) {
   return out;
 }
 
+/* PRESENT WINS, EVEN WHEN THE VALUE IS NULL. The canonical is
+ * `src && undefined !== src[key]`, and in JavaScript a key holding
+ * `null` passes that test — so a profile's `order: null` clears a base
+ * ordering block and `active: null` over a base `active: true` is
+ * falsy, and barred. Testing for non-null instead treated an authored
+ * null as an absent key, which is §9.1's distinction inverted. */
 static V pick(const V& src, const std::string& key, const V& dflt) {
-  if (ismap(src) && has(src, key) && !isnull(get(src, key))) {
-    return get(src, key);
-  }
+  if (ismap(src) && has(src, key)) return get(src, key);
   return dflt;
 }
 

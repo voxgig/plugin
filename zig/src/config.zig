@@ -62,8 +62,14 @@ fn entriesof(src: ?*v.Value) t.Err!Entries {
     return out;
 }
 
+/// PRESENT WINS, EVEN WHEN THE VALUE IS NULL. The canonical is
+/// `src && undefined !== src[key]`, and in JavaScript a key holding
+/// `null` passes that test — so a profile's `order: null` clears a base
+/// ordering block and `active: null` over a base `active: true` is
+/// falsy, and barred. Testing for non-null instead treated an authored
+/// null as an absent key, which is §9.1's distinction inverted.
 fn pick(src: ?*v.Value, key: []const u8, dflt: ?*v.Value) ?*v.Value {
-    if (v.isMap(src) and v.has(src, key) and !v.isNull(v.get(src, key))) return v.get(src, key);
+    if (v.isMap(src) and v.has(src, key)) return v.get(src, key);
     return dflt;
 }
 

@@ -966,8 +966,15 @@ let close h =
            if a.pos <> b.pos then compare b.pos a.pos else compare b.iref a.iref)
          h.instances)
   in
-  List.iter (fun r -> if None <> find h r then unload h r) refs;
-  h.coordinated <- false
+  (* A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
+canonical wraps the teardown in [try/finally[; here an unload that
+raises would skip the reset and leave the host permanently
+[coordinated[, so a caller that catches the error and carries on under
+[dependency: "hold"[ gets ad-hoc deactivation with the holder check
+silently off. *)
+  (match List.iter (fun r -> if None <> find h r then unload h r) refs with
+   | () -> h.coordinated <- false
+   | exception err -> h.coordinated <- false; raise err)
 
 (* AN INSTANCE MAY ITSELF BE A HOST (§6.5), and THE OUTER ONE OWNS THE
    INNER ONE'S LIFETIME. Registering the teardown in the instance scope

@@ -24,9 +24,16 @@ let resolveexport spec exported =
     let head = String.sub s 0 cut in
     let key = String.sub s (cut + 1) (String.length s - cut - 1) in
 
-    (* A fully qualified ref: exactly one answer or none. *)
+    (* A fully qualified ref: exactly one answer or none.
+
+       VALIDATING, not tolerant. The canonical calls [canonref head],
+       which RAISES -- so [retry$bad!/client] is [plugin_bad_tag] and
+       [2fa/client] is [plugin_bad_name]. Reading it with [tryref]
+       turned a configuration typo into an ordinary missing export,
+       which is the error the caller most needs to see, silently
+       swallowed. *)
     let byref =
-      match Ref.tryref head with
+      match Some (Ref.canonrefs head) with
       | None -> None
       | Some want ->
         List.fold_left

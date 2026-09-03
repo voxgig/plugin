@@ -39,13 +39,23 @@ static double posof(Value *b) {
 /* Band first (lower runs first), then `pos` — the position the DOCUMENT
  * visibly states, not the order instances happened to load and not the
  * incarnation `seq`. */
+typedef struct Ready { Value *binding; size_t seq; } Ready;
+
+/* THE RANK IS TOTAL, and the third key is why. Band and pos can both
+ * tie — `declare` defaults `pos` to the registry size, so an unload
+ * followed by a fresh declare reuses a surviving instance's — and
+ * `qsort` is not stable, so on a libc that reorders equal elements the
+ * topological order would differ from every other port's. The
+ * DECLARATION SEQUENCE (the index `host_order` fed them in) breaks the
+ * last tie, which is what the stable-sort ports get for free. */
 static int rank(const void *pa, const void *pb) {
-  Value *a = *(Value *const *)pa;
-  Value *b = *(Value *const *)pb;
-  double ab = bandof(a), bb = bandof(b);
+  const Ready *x = (const Ready *)pa;
+  const Ready *y = (const Ready *)pb;
+  double ab = bandof(x->binding), bb = bandof(y->binding);
   if (ab != bb) return ab < bb ? -1 : 1;
-  double ap = posof(a), bp = posof(b);
+  double ap = posof(x->binding), bp = posof(y->binding);
   if (ap != bp) return ap < bp ? -1 : 1;
+  if (x->seq != y->seq) return x->seq < y->seq ? -1 : 1;
   return 0;
 }
 
@@ -214,17 +224,25 @@ Value *resolveorder(Value *bindings, Value *pin) {
     }
   }
 
-  Value **ready = (Value **)arena_alloc(sizeof(Value *) * (n + 1));
+  /* `seq` is the index the binding arrived at, and it never repeats:
+   * a binding enters `ready` exactly once, either up front or when its
+   * last edge clears. */
+  Ready *ready = (Ready *)arena_alloc(sizeof(Ready) * (n + 1));
   size_t rn = 0;
+  size_t seq = 0;
   for (size_t i = 0; i < n; i++) {
     Value *b = vat(bindings, i);
-    if (0 == vasnum(vget(indeg, vasstr(vget(b, "ref"))))) ready[rn++] = b;
+    if (0 == vasnum(vget(indeg, vasstr(vget(b, "ref"))))) {
+      ready[rn].binding = b;
+      ready[rn].seq = seq++;
+      rn++;
+    }
   }
 
   Value *out = vlist();
   while (0 < rn) {
-    if (1 < rn) qsort(ready, rn, sizeof(Value *), rank);
-    Value *next = ready[0];
+    if (1 < rn) qsort(ready, rn, sizeof(Ready), rank);
+    Value *next = ready[0].binding;
     for (size_t i = 1; i < rn; i++) ready[i - 1] = ready[i];
     rn--;
 
@@ -235,7 +253,11 @@ Value *resolveorder(Value *bindings, Value *pin) {
       const char *to = vasstr(vat(tos, j));
       double d = vasnum(vget(indeg, to)) - 1;
       vset(indeg, to, vnum(d));
-      if (0 == d) ready[rn++] = vget(byref, to);
+      if (0 == d) {
+        ready[rn].binding = vget(byref, to);
+        ready[rn].seq = seq++;
+        rn++;
+      }
     }
   }
 

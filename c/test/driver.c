@@ -620,7 +620,7 @@ Value *drive(Value *cmds) {
        * is the only way to observe a `failed` instance — §5.2's whole
        * claim is that it stays registered and inspectable. */
       if (!vtruthy(vget(cmd, "catch"))) {
-        fail(f.err->code, f.err->text, f.err->details);
+        fail(plugin_caught()->code, plugin_caught()->text, plugin_caught()->details);
       }
     }
   }

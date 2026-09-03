@@ -24,8 +24,15 @@ BIN = .lake/build/bin/run
 test: build
 	@$(BIN)
 
+# `lake build | grep -v info:` MUST NOT BE THE WHOLE GATE. A pipeline
+# exits with the status of its LAST command, so grep's 0 hid lake's
+# failure and the stale binary from the previous build then ran the
+# corpus and printed a pass. Redirect, then test lake's own status.
 build:
-	@$(LAKE) build 2>&1 | grep -v '^info:' || true
+	@$(LAKE) build > .lake-build.log 2>&1; status=$$?; \
+	  grep -v '^info:' .lake-build.log; \
+	  rm -f .lake-build.log; \
+	  test $$status -eq 0 || (echo "lean: build failed" && exit 1)
 	@test -x $(BIN) || (echo "lean: build produced no binary" && exit 1)
 	@echo "lean: $$(ls src/Plugin/*.lean test/*.lean | wc -l) modules compile"
 

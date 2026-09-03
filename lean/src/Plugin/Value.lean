@@ -254,6 +254,38 @@ private def hexVal (c : Char) : Option Nat :=
 
 private def skipWs (cs : List Char) : List Char := cs.dropWhile isWs
 
+/-- The JSON number grammar, exactly. See `parseValue`'s number branch
+for why loose acceptance is observable. -/
+private def jsonNumber (s : String) : Bool :=
+  let cs0 := s.toList
+  let cs1 := if cs0.head? == some '-' then cs0.drop 1 else cs0
+  match cs1 with
+  | [] => false
+  | c :: _ =>
+    if !isDigit c then false
+    else
+      -- NO LEADING ZEROS: `0` consumes exactly one digit, so `01` leaves
+      -- a `1` that no later branch can absorb and the token is rejected.
+      let cs2 := if c == '0' then cs1.drop 1 else cs1.dropWhile isDigit
+      let fracOk : Option (List Char) :=
+        match cs2 with
+        | '.' :: r =>
+          let ds := r.takeWhile isDigit
+          if ds.isEmpty then none else some (r.dropWhile isDigit)
+        | _ => some cs2
+      match fracOk with
+      | none => false
+      | some cs3 =>
+        match cs3 with
+        | e :: r =>
+          if e == 'e' || e == 'E' then
+            let r1 := if r.head? == some '+' || r.head? == some '-' then r.drop 1 else r
+            let ds := r1.takeWhile isDigit
+            !ds.isEmpty && (r1.dropWhile isDigit).isEmpty
+          else false
+        | [] => true
+
+
 /-- LEAN HAS NO `String.toFloat?`, so the JSON reader parses the number
 grammar itself: sign, integer part, fraction, exponent, and nothing
 left over. Answers `none` rather than dying, which is what §9.5's
@@ -365,8 +397,20 @@ private partial def parseValue (cs0 : List Char) : Except String (Value × List 
   | '{' :: rest => parseObject (skipWs rest) []
   | c :: _ =>
     if isNumChar c then
+      -- JSON's number grammar is STRICT, and §9.5 makes that
+      -- observable: env values "parse as JSON, falling back to string",
+      -- so anything this reader accepts loosely silently becomes a
+      -- number where the canonical keeps the authored string. `1e`,
+      -- `1.`, `01`, `.5` and a bare `-` are all errors to JSON.parse;
+      -- only `-0` and `1e5` are not.
+      --
+      --   number = [ '-' ] int [ frac ] [ exp ]
+      --   int    = '0' | digit1-9 *digit
+      --   frac   = '.' 1*digit
+      --   exp    = ('e'|'E') [ '+' | '-' ] 1*digit
       let tok := String.mk (cs.takeWhile isNumChar)
       let rest := cs.dropWhile isNumChar
+      if !jsonNumber tok then .error "bad number" else
       -- A REPORTED failure, not a crash: a bare `-` or a truncated `1e`
       -- reaches here from `Env`'s parse-or-string fallback (§9.5), and a
       -- reader that dies on a bad number rather than reporting one turns

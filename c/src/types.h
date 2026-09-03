@@ -39,19 +39,41 @@ typedef struct {
 typedef struct CatchFrame {
   jmp_buf jmp;
   struct CatchFrame *prev;
-  PluginError *err;
 } CatchFrame;
 
-/* Use as:
+/* THE ERROR IS NOT IN THE FRAME, and that is the whole point of this
+ * declaration. The obvious design parks it in a `PluginError *err`
+ * member, but the frame is an automatic local of the function that
+ * called `setjmp`, and C11 7.13.2.1p3 says an automatic local of that
+ * function which is not `volatile` and was CHANGED between the `setjmp`
+ * and the `longjmp` has an INDETERMINATE value once `setjmp` returns
+ * the second time. `fail` changes it, through a pointer, from another
+ * translation unit. Taking the frame's address makes it work on every
+ * compiler anyone will use, and it is still undefined: the standard
+ * says nothing about the address being taken, only about the
+ * modification, so a future optimiser is entitled to cache the member
+ * in a register across the jump and hand the handler a stale pointer.
+ *
+ * A file-scope pending error has no such rule attached — it is static
+ * storage, not automatic — so `fail` parks the error there and the
+ * handler reads it back with `plugin_caught`. The `zig` port arrived at
+ * the same shape from the opposite direction: its error values carry no
+ * payload at all, so a module-global pending is the only place a
+ * `PluginError` can live. `plugin_try` clears it on push, so a handler
+ * can never read an error left over from an earlier frame.
+ *
+ * Use as:
  *
  *   CatchFrame f;
  *   if (0 == PLUGIN_TRY(&f)) { ... body ... PLUGIN_END(&f); }
- *   else { PluginError *e = f.err; ... }
+ *   else { PluginError *e = plugin_caught(); ... }
  *
- * The body MUST reach PLUGIN_END on every non-raising path.
+ * The body MUST reach PLUGIN_END on every non-raising path, and the
+ * handler MUST read `plugin_caught` before installing another frame.
  */
 int plugin_try(CatchFrame *f);
 void plugin_end(CatchFrame *f);
+PluginError *plugin_caught(void);
 
 #define PLUGIN_TRY(f) (plugin_try(f), setjmp((f)->jmp))
 #define PLUGIN_END(f) plugin_end(f)

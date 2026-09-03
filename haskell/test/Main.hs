@@ -10,7 +10,7 @@ import Capability (resolveCapability)
 import Config (normalizeConfig, resolveOptions)
 import Corpus
 import Data.IORef
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, sort)
 import Driver (drive)
 import Env (applyEnv)
 import Graph (resolveGraph)
@@ -92,6 +92,57 @@ graphSubject g
 driverSubject :: String -> Maybe Subject
 driverSubject _ = Just (\e -> drive (vget e "cmd"))
 
+-- | The sections driven by a direct function call.
+pureSections :: [String]
+pureSections =
+  ["ref", "version", "capability", "resolve", "env", "config", "graph"]
+
+-- | The driver sections, in §15.3's order. Each entry is a command list
+-- against a fresh host.
+driverSections :: [String]
+driverSections =
+  [ "lifecycle", "order", "point", "export", "depend", "declare"
+  , "state", "resource", "nest", "trace", "apply", "error" ]
+
+-- | EVERY CORPUS SECTION IS RUN (AGENTS.md §"the layout to copy").
+--
+-- 'runSection' already fails on a GROUP with no subject. This closes the
+-- level above: a whole SECTION the runner never mentions is a section
+-- silently not run, and it would pass a suite that claims all 572
+-- entries. Sixteen of the seventeen earlier ports carry this check; this
+-- port shipped without it.
+--
+-- It also refuses a corpus with no @PLUGIN.version@, because that block
+-- is what turns on strict entry validation in every runner and a corpus
+-- that lost it must not silently downgrade this port's checking.
+coverage :: Value -> IORef Tally -> IO ()
+coverage cor tally = do
+  let primary = vget cor "primary"
+      meta = vget cor "PLUGIN"
+      run = pureSections ++ driverSections
+      bad msg = do
+        modifyIORef' tally (\t -> t {tFailures = tFailures t + 1})
+        putStrLn ("coverage: " ++ msg)
+
+  if asNum (vget meta "version") /= 1
+    then bad "corpus PLUGIN.version must be 1"
+    else return ()
+
+  mapM_
+    (\name -> bad ("corpus section no test runs: " ++ name))
+    [n | n <- sort (vkeys primary), n `notElem` run]
+
+  mapM_
+    (\name -> bad ("tests name a section the corpus does not have: " ++ name))
+    [n | n <- run, not (vhas primary n)]
+
+  -- A floor, not a fixture: the corpus grows, and a run that suddenly
+  -- covers a fraction of it is the failure worth catching.
+  t <- readIORef tally
+  if tEntries t < 400
+    then bad ("only " ++ show (tEntries t) ++ " corpus entries ran; the corpus has far more")
+    else return ()
+
 main :: IO ()
 main = do
   cor <- loadCorpus
@@ -105,12 +156,9 @@ main = do
   runSection cor tally "config" configSubject
   runSection cor tally "graph" graphSubject
 
-  -- The driver sections, in §15.3's order. Each entry is a command list
-  -- against a fresh host.
-  mapM_
-    (\s -> runSection cor tally s driverSubject)
-    [ "lifecycle", "order", "point", "export", "depend", "declare"
-    , "state", "resource", "nest", "trace", "apply", "error" ]
+  mapM_ (\s -> runSection cor tally s driverSubject) driverSections
+
+  coverage cor tally
 
   t <- readIORef tally
   if tEntries t == 0

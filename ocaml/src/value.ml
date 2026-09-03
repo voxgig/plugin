@@ -339,17 +339,34 @@ let parse text =
         out
       end
     | Some _ ->
+      (* JSON's number grammar is STRICT, and 9.5 makes that observable:
+         env values parse as JSON falling back to string, so anything
+         this reader accepts loosely silently becomes a number where the
+         canonical keeps the authored string. [1e], [1.], [01], [.5] and
+         a bare [-] are all errors to JSON.parse; only [-0] and [1e5]
+         are not.
+
+           number = [ '-' ] int [ frac ] [ exp ]
+           int    = '0' | digit1-9 *digit
+           frac   = '.' 1*digit
+           exp    = ('e'|'E') [ '+' | '-' ] 1*digit *)
       let start = !i in
+      let digit () = !i < n && '0' <= text.[!i] && text.[!i] <= '9' in
       if Some '-' = peek () then incr i;
-      while
-        !i < n
-        &&
-        let c = text.[!i] in
-        ('0' <= c && c <= '9')
-        || '.' = c || 'e' = c || 'E' = c || '+' = c || '-' = c
-      do
-        incr i
-      done;
+      if not (digit ()) then fail "bad number";
+      if '0' = text.[!i] then incr i
+      else while digit () do incr i done;
+      if !i < n && '.' = text.[!i] then begin
+        incr i;
+        if not (digit ()) then fail "bad number";
+        while digit () do incr i done
+      end;
+      if !i < n && ('e' = text.[!i] || 'E' = text.[!i]) then begin
+        incr i;
+        if !i < n && ('+' = text.[!i] || '-' = text.[!i]) then incr i;
+        if not (digit ()) then fail "bad number";
+        while digit () do incr i done
+      end;
       if start = !i then fail "unexpected character";
       (* `float_of_string_opt`, not `float_of_string`: a bare `-` or a
          truncated `1e` reaches here from `env`'s parse-or-string

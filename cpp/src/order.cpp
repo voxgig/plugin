@@ -39,10 +39,24 @@ static double posof(const V& b) {
 /* Band first (lower runs first), then `pos` — the position the DOCUMENT
  * visibly states, not the order instances happened to load and not the
  * incarnation `seq`. */
-static bool ranks(const V& a, const V& b) {
-  double ab = bandof(a), bb = bandof(b);
+struct Ready {
+  V binding;
+  size_t seq;
+};
+
+/* THE RANK IS TOTAL, and the third key is why. Band and pos can both
+   tie — `declare` defaults `pos` to the registry size, so an unload
+   followed by a fresh declare reuses a surviving instance's — and
+   `std::sort` is not stable, so the topological order would differ from
+   every other port's. The DECLARATION SEQUENCE (the index `order` fed
+   them in) breaks the last tie, which is what the stable-sort ports get
+   for free. */
+static bool ranks(const Ready& x, const Ready& y) {
+  double ab = bandof(x.binding), bb = bandof(y.binding);
   if (ab != bb) return ab < bb;
-  return posof(a) < posof(b);
+  double ap = posof(x.binding), bp = posof(y.binding);
+  if (ap != bp) return ap < bp;
+  return x.seq < y.seq;
 }
 
 /* Was a constraint actually declared? An ABSENT one and an EMPTY LIST
@@ -184,16 +198,20 @@ V resolveorder(const V& bindings, const V& pin) {
     }
   }
 
-  std::vector<V> ready;
+  /* `seq` is the index the binding arrived at, and it never repeats: a
+     binding enters `ready` exactly once, either up front or when its
+     last edge clears. */
+  std::vector<Ready> ready;
+  size_t seq = 0;
   for (size_t i = 0; i < n; i++) {
     V b = at(bindings, i);
-    if (0 == asnum(get(indeg, asstr(get(b, "ref"))))) ready.push_back(b);
+    if (0 == asnum(get(indeg, asstr(get(b, "ref"))))) ready.push_back({b, seq++});
   }
 
   std::vector<std::string> out;
   while (!ready.empty()) {
     std::sort(ready.begin(), ready.end(), ranks);
-    V next = ready.front();
+    V next = ready.front().binding;
     ready.erase(ready.begin());
 
     const std::string nref = asstr(get(next, "ref"));
@@ -203,7 +221,7 @@ V resolveorder(const V& bindings, const V& pin) {
       const std::string to = asstr(at(tos, j));
       double d = asnum(get(indeg, to)) - 1;
       set(indeg, to, vnum(d));
-      if (0 == d) ready.push_back(get(byref, to));
+      if (0 == d) ready.push_back({get(byref, to), seq++});
     }
   }
 

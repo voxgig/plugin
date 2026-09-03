@@ -186,7 +186,7 @@ const char *corpus_check(Value *entry, Subject subject, void *ctx) {
     PLUGIN_END(&frame);
   }
   else {
-    raised = frame.err;
+    raised = plugin_caught();
   }
 
   if (haserr) {

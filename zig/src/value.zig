@@ -385,6 +385,10 @@ const Parser = struct {
     i: usize = 0,
     err: []const u8 = "",
 
+    fn digit(p: *Parser) bool {
+        return p.i < p.text.len and p.text[p.i] >= '0' and p.text[p.i] <= '9';
+    }
+
     fn skip(p: *Parser) void {
         while (p.i < p.text.len) {
             const c = p.text[p.i];
@@ -569,12 +573,40 @@ const Parser = struct {
             }
         }
 
+        // JSON's number grammar is STRICT, and §9.5 makes that
+        // observable: env values "parse as JSON, falling back to
+        // string", so anything this reader accepts loosely silently
+        // becomes a number where the canonical keeps the authored
+        // string. `1e`, `1.`, `01`, `.5` and a bare `-` are all errors
+        // to JSON.parse; only `-0` and `1e5` are not.
+        //
+        //   number = [ '-' ] int [ frac ] [ exp ]
+        //   int    = '0' | digit1-9 *digit
+        //   frac   = '.' 1*digit
+        //   exp    = ('e'|'E') [ '+' | '-' ] 1*digit
         const start = p.i;
         if (p.i < p.text.len and p.text[p.i] == '-') p.i += 1;
-        while (p.i < p.text.len) {
-            const d = p.text[p.i];
-            if ((d >= '0' and d <= '9') or d == '.' or d == 'e' or d == 'E' or
-                d == '+' or d == '-') p.i += 1 else break;
+        if (!p.digit()) {
+            p.err = "bad number";
+            return null;
+        }
+        if (p.text[p.i] == '0') p.i += 1 else while (p.digit()) p.i += 1;
+        if (p.i < p.text.len and p.text[p.i] == '.') {
+            p.i += 1;
+            if (!p.digit()) {
+                p.err = "bad number";
+                return null;
+            }
+            while (p.digit()) p.i += 1;
+        }
+        if (p.i < p.text.len and (p.text[p.i] == 'e' or p.text[p.i] == 'E')) {
+            p.i += 1;
+            if (p.i < p.text.len and (p.text[p.i] == '+' or p.text[p.i] == '-')) p.i += 1;
+            if (!p.digit()) {
+                p.err = "bad number";
+                return null;
+            }
+            while (p.digit()) p.i += 1;
         }
         if (start == p.i) {
             p.err = "unexpected character";

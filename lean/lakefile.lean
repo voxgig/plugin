@@ -16,10 +16,17 @@ package plugin
 lean_lib Plugin where
   srcDir := "src"
 
+-- `Run` IS THE EXE'S ROOT AND MUST NOT ALSO BE A LIB ROOT. Both targets
+-- are default targets, so listing it twice had lake compiling the same
+-- module to the same `.olean` from two jobs at once: a race that failed
+-- the build roughly one run in three with a bare "Some required builds
+-- logged failures: - Run", and passed on the retry because the artifact
+-- was then already there. The exe covers `Run`; the lib covers the two
+-- modules `Run` imports, so nothing goes uncompiled either way.
 @[default_target]
 lean_lib Test where
   srcDir := "test"
-  roots := #[`Corpus, `Driver, `Run]
+  roots := #[`Corpus, `Driver]
 
 @[default_target]
 lean_exe run where

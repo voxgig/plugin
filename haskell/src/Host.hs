@@ -19,7 +19,7 @@ module Host where
 import Capability (resolveCapability)
 import Catalog
 import Config (normalizeConfig, resolveOptions)
-import Control.Exception (SomeException, catch, throwIO, try)
+import Control.Exception (SomeException, catch, finally, throwIO, try)
 import Control.Monad (foldM, forM, forM_, unless, when)
 import Data.IORef
 import Data.List (sort, sortBy)
@@ -1008,16 +1008,22 @@ hostClose h = do
   -- A bulk teardown removing the holders too, so @hold@ is suspended
   -- for exactly those holders (§11.3) — while the consumers-first
   -- cascade still runs, which is the half that matters.
+  -- A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
+  -- canonical wraps the teardown in @try@/@finally@; an unload that
+  -- raises would skip the reset and leave the host permanently
+  -- @coordinated@, so a caller that catches the error and carries on
+  -- under @dependency: "hold"@ gets ad-hoc deactivation with the holder
+  -- check silently off.
   writeIORef (hCoordinated h) True
   xs <- readIORef (hInstances h)
   keyed <- mapM (\e -> do p <- readIORef (iPos e); return (p, iRef e)) xs
   -- Reverse load order: highest @pos@ first, ref-descending for a tie,
   -- so a consumer declared after its provider goes down first.
   let refs = map snd (sortBy (\a b -> compare b a) keyed)
-  forM_ refs $ \r -> do
-    me <- findInst h r
-    when (not (isNothing me)) $ hostUnload h r
-  writeIORef (hCoordinated h) False
+  let teardown = forM_ refs $ \r -> do
+        me <- findInst h r
+        when (not (isNothing me)) $ hostUnload h r
+  teardown `finally` writeIORef (hCoordinated h) False
 
 -- | AN INSTANCE MAY ITSELF BE A HOST (§6.5), and THE OUTER ONE OWNS THE
 -- INNER ONE'S LIFETIME. Registering the teardown in the instance scope

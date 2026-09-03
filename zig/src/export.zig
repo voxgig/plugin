@@ -27,13 +27,19 @@ pub fn resolveexport(spec: ?*v.Value, exported: ?*v.Value) t.Err!?*v.Value {
     const key = s[cut + 1 ..];
 
     // A fully qualified ref: exactly one answer or none.
-    if (ref.tryref(head)) |want| {
-        for (v.items(exported)) |e| {
-            if (std.mem.eql(u8, v.asStr(v.get(e, "ref")), want) and
-                std.mem.eql(u8, v.asStr(v.get(e, "key")), key))
-            {
-                return v.get(e, "value");
-            }
+    //
+    // VALIDATING, not tolerant. The canonical calls `canonref(head)`,
+    // which RAISES — so `retry$bad!/client` is `plugin_bad_tag` and
+    // `2fa/client` is `plugin_bad_name`. Reading it with `tryref`
+    // turned a configuration typo into an ordinary missing export,
+    // which is the error the caller most needs to see, silently
+    // swallowed.
+    const want = try ref.canonrefs(head);
+    for (v.items(exported)) |e| {
+        if (std.mem.eql(u8, v.asStr(v.get(e, "ref")), want) and
+            std.mem.eql(u8, v.asStr(v.get(e, "key")), key))
+        {
+            return v.get(e, "value");
         }
     }
 

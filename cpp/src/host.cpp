@@ -636,6 +636,12 @@ V Host::provider(const std::string& point, const V& arg) {
   return bindings[static_cast<size_t>(winner)].hook(arg);
 }
 
+V Host::trace() const {
+  V out = vlist();
+  for (size_t i = 0; i < len(events_); i++) push(out, at(events_, i));
+  return out;
+}
+
 V Host::shadowed(const std::string& point) const {
   if (!has(points_, point)) return vlist();
   V spec = get(points_, point);
@@ -1158,7 +1164,21 @@ void Host::close() {
   /* A bulk teardown removing the holders too, so `hold` is suspended
    * for exactly those holders (§11.3) — while the consumers-first
    * cascade still runs, which is the half that matters. */
-  coordinated_ = true;
+  /* A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
+canonical wraps the teardown in `try/finally`; here an unload that
+raises would skip the reset and leave the host permanently
+`coordinated`, so a caller that catches the error and carries on under
+`dependency: "hold"` gets ad-hoc deactivation with the holder check
+silently off.
+
+     RAII rather than a try/catch: the flag is cleared by a destructor,
+     so it is cleared on the throwing path without the path being
+     written down twice. */
+  struct Coordinating {
+    bool* flag;
+    explicit Coordinating(bool* f) : flag(f) { *flag = true; }
+    ~Coordinating() { *flag = false; }
+  } coordinating(&coordinated_);
   std::vector<std::string> refs;
   for (const auto& e : instances_) refs.push_back(e->ref_);
   /* Reverse load order. */
@@ -1172,7 +1192,6 @@ void Host::close() {
   for (const auto& r : refs) {
     if (find(r)) unload(r);
   }
-  coordinated_ = false;
 }
 
 }  // namespace plugin

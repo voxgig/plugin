@@ -82,10 +82,14 @@ static Entries entriesof(Value *src) {
   return out;
 }
 
+/* PRESENT WINS, EVEN WHEN THE VALUE IS NULL. The canonical is
+ * `src && undefined !== src[key]`, and in JavaScript a key holding
+ * `null` passes that test — so a profile's `order: null` clears a base
+ * ordering block and `active: null` over a base `active: true` is
+ * falsy, and barred. Testing for non-null instead treated an authored
+ * null as an absent key, which is §9.1's distinction inverted. */
 static Value *pick(Value *src, const char *key, Value *dflt) {
-  if (vismap(src) && vhas(src, key) && !visnull(vget(src, key))) {
-    return vget(src, key);
-  }
+  if (vismap(src) && vhas(src, key)) return vget(src, key);
   return dflt;
 }
 

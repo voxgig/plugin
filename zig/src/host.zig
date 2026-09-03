@@ -112,8 +112,11 @@ pub fn observable(h: *Host, result: ?*v.Value, hasresult: bool) *v.Value {
     return out;
 }
 
+/// A COPY, not the live list: the canonical is `trace: () => events.slice()`, and `observable` already copies the log. Returning the live list lets a caller append to or delete from the host's own event record — application observation code fabricating or erasing lifecycle history.
 pub fn trace(h: *Host) *v.Value {
-    return h.events;
+    const out = v.vlist();
+    for (v.items(h.events)) |x| v.push(out, x);
+    return out;
 }
 
 pub fn instname(e: *Inst) []const u8 {
@@ -1060,14 +1063,23 @@ pub fn close(h: *Host) t.Err!void {
     // A bulk teardown removing the holders too, so `hold` is suspended
     // for exactly those holders (§11.3) — while the consumers-first
     // cascade still runs, which is the half that matters.
+    // A COORDINATED FLAG THAT SURVIVES A RAISE IS A DISABLED GUARD. The
+    // canonical wraps the teardown in try/finally; an unload that raises
+    // would skip the reset and leave the host permanently `coordinated`,
+    // so a caller that catches the error and carries on under
+    // `dependency: "hold"` gets ad-hoc deactivation with the holder
+    // check silently off.
+    //
+    // `defer` rather than a catch: the flag is cleared on every exit
+    // from this function, so the raising path is not written twice.
     h.coordinated = true;
+    defer h.coordinated = false;
     const refs = v.arena().alloc([]const u8, h.instances.items.len) catch @panic("oom");
     for (h.instances.items, 0..) |e, i| refs[i] = e.ref;
     std.mem.sort([]const u8, refs, DropCtx{ .h = h }, lessDrop);
     for (refs) |r| {
         if (find(h, r) != null) try unload(h, r);
     }
-    h.coordinated = false;
 }
 
 /// The scope entry carries the inner host as its context — zig's

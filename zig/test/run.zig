@@ -147,6 +147,75 @@ fn driverSubject(group: []const u8) ?corpus.Subject {
     return subDrive;
 }
 
+/// The sections driven by a direct function call.
+const PURE = [_][]const u8{
+    "ref", "version", "capability", "resolve", "env", "config", "graph",
+};
+
+/// The driver sections, in §15.3's order. Each entry is a command list
+/// against a fresh host.
+const DRIVER = [_][]const u8{
+    "lifecycle", "order",    "point", "export", "depend", "declare",
+    "state",     "resource", "nest",  "trace",  "apply",  "error",
+};
+
+fn listed(names: []const []const u8, want: []const u8) bool {
+    for (names) |n| {
+        if (std.mem.eql(u8, n, want)) return true;
+    }
+    return false;
+}
+
+/// EVERY CORPUS SECTION IS RUN (AGENTS.md §"the layout to copy").
+///
+/// `runSection` already fails on a GROUP with no subject. This closes
+/// the level above: a whole SECTION the runner never mentions is a
+/// section silently not run, and it would pass a suite that claims all
+/// 572 entries. Sixteen of the seventeen earlier ports carry this check;
+/// this port shipped without it.
+///
+/// It also refuses a corpus with no PLUGIN.version, because that block
+/// is what turns on strict entry validation in every runner and a corpus
+/// that lost it must not silently downgrade this port's checking.
+fn coverage(tally: *corpus.Tally) !void {
+    const out = std.io.getStdOut().writer();
+    const spec = corpus.corpus();
+    const primary = v.get(spec, "primary");
+    const meta = v.get(spec, "PLUGIN");
+
+    if (v.asNum(v.get(meta, "version")) != 1) {
+        tally.failures += 1;
+        try out.print("coverage: corpus PLUGIN.version must be 1\n", .{});
+    }
+
+    for (v.sortedKeys(primary)) |name| {
+        if (listed(&PURE, name) or listed(&DRIVER, name)) continue;
+        tally.failures += 1;
+        try out.print("coverage: corpus section no test runs: {s}\n", .{name});
+    }
+
+    for ([_][]const []const u8{ &PURE, &DRIVER }) |list| {
+        for (list) |name| {
+            if (v.has(primary, name)) continue;
+            tally.failures += 1;
+            try out.print(
+                "coverage: tests name a section the corpus does not have: {s}\n",
+                .{name},
+            );
+        }
+    }
+
+    // A floor, not a fixture: the corpus grows, and a run that suddenly
+    // covers a fraction of it is the failure worth catching.
+    if (tally.entries < 400) {
+        tally.failures += 1;
+        try out.print(
+            "coverage: only {d} corpus entries ran; the corpus has far more\n",
+            .{tally.entries},
+        );
+    }
+}
+
 pub fn main() !void {
     var tally = corpus.Tally{};
 
@@ -158,13 +227,9 @@ pub fn main() !void {
     corpus.runSection(&tally, "config", configSubject);
     corpus.runSection(&tally, "graph", graphSubject);
 
-    // The driver sections, in §15.3's order. Each entry is a command
-    // list against a fresh host.
-    const DRIVER = [_][]const u8{
-        "lifecycle", "order",    "point", "export", "depend", "declare",
-        "state",     "resource", "nest",  "trace",  "apply",  "error",
-    };
     for (DRIVER) |s| corpus.runSection(&tally, s, driverSubject);
+
+    try coverage(&tally);
 
     const out = std.io.getStdOut().writer();
     if (tally.entries == 0) {
