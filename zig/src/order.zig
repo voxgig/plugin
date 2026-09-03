@@ -54,7 +54,7 @@ fn declared(spec: ?*v.Value) bool {
 /// Matching is by REF, or by NAME across all of that definition's
 /// instances (§7) — which is the whole reason the two spellings exist.
 fn targets(spec: ?*v.Value, nodes: ?*v.Value) [][]const u8 {
-    var hit = std.ArrayList([]const u8).init(v.arena());
+    var hit = v.List([]const u8).init(v.arena());
     const specs: []*v.Value = if (v.isList(spec)) v.items(spec) else blk: {
         const one = v.arena().alloc(*v.Value, 1) catch @panic("oom");
         one[0] = spec orelse v.vnull();
@@ -95,7 +95,7 @@ fn targets(spec: ?*v.Value, nodes: ?*v.Value) [][]const u8 {
 fn applypin(order: *v.Value, edges: *v.Value, pin: ?*v.Value) t.Err!*v.Value {
     if (!v.isMap(pin)) return order;
 
-    var out = std.ArrayList([]const u8).init(v.arena());
+    var out = v.List([]const u8).init(v.arena());
     for (v.items(order)) |x| out.append(v.asStr(x)) catch @panic("oom");
 
     // SORTED, not insertion order. A pin map is data — it can arrive
@@ -179,12 +179,12 @@ pub fn resolveorder(bindings: ?*v.Value, pin: ?*v.Value) t.Err!*v.Value {
         }
     }
 
-    var ready = std.ArrayList(*v.Value).init(v.arena());
+    var ready = v.List(*v.Value).init(v.arena());
     for (v.items(bindings)) |b| {
         if (v.asNum(v.get(indeg, v.asStr(v.get(b, "ref")))) == 0) ready.append(b) catch @panic("oom");
     }
 
-    var out = std.ArrayList([]const u8).init(v.arena());
+    var out = v.List([]const u8).init(v.arena());
     while (ready.items.len > 0) {
         std.mem.sort(*v.Value, ready.items, {}, lessRank);
         const next = ready.orderedRemove(0);
@@ -200,7 +200,7 @@ pub fn resolveorder(bindings: ?*v.Value, pin: ?*v.Value) t.Err!*v.Value {
 
     if (out.items.len != n) {
         const stuck = v.vlist();
-        var text = std.ArrayList(u8).init(v.arena());
+        var text = v.List(u8).init(v.arena());
         text.appendSlice("before/after constraints cycle: ") catch @panic("oom");
         for (v.items(bindings)) |b| {
             const r = v.asStr(v.get(b, "ref"));

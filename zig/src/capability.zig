@@ -123,7 +123,7 @@ fn lessRank(_: void, a: RankKey, b: RankKey) bool {
 /// LOWEST `priority` (default 0), then declaration position `pos`
 /// ascending. `candidates` is a list of {ref, pos, provides}.
 pub fn resolvecapability(req: ?*v.Value, candidates: ?*v.Value) *v.Value {
-    var hits = std.ArrayList(RankKey).init(v.arena());
+    var hits = v.List(RankKey).init(v.arena());
     for (v.items(candidates)) |c| {
         if (capmatches(req, v.get(c, "provides"))) hits.append(rankKey(c)) catch @panic("oom");
     }

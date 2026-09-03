@@ -71,9 +71,42 @@ The reason to write it here is symmetry — `c`, `cpp`, `ocaml` and
 `haskell` all carry the same reader, and a port whose value type is its
 own is a port whose ordering rules are visible in one place.
 
+## Two toolchains, one source
+
+This port's own CI builds it on **zig 0.13**, and its first consumer —
+[voxgig/sekreto](https://github.com/voxgig/sekreto), whose zig port is
+on **0.16** — compiles it as a named module. One `zig build-exe` cannot
+mix toolchains, and the two standard libraries disagree in exactly
+three places: the managed list (`std.ArrayList` became unmanaged in
+0.15 and the managed one moved to `std.array_list.Managed`), file I/O
+(`std.fs` gave way to `std.Io`, which `main` is handed), and the
+environment (`std.posix.getenv` is gone; `main` is handed that too).
+
+`value.modern` is the one switch — a comptime test of
+`builtin.zig_version` — and every difference is a comptime branch on
+it, so the untaken branch is never analysed against a standard library
+that lacks it. `value.List(T)` is the list; `test/corpus.zig` parks the
+I/O and environment `main` was handed; `test/run.zig` picks the `main`
+signature and writes stdout through one helper. **Add a fourth
+difference the same way**, behind `modern`, and never a second switch.
+Both toolchains must stay green: 572/572 on each is the bar.
+
+## The consumer root: `src/plugin.zig`
+
+Zig confines a module's imports to its root's directory, and refuses a
+file that lands in two modules — so a host cannot reach `host.zig`,
+`value.zig` and `types.zig` through three roots in one directory.
+`src/plugin.zig` is the one root a consumer names
+(`-Mplugin=<checkout>/zig/src/plugin.zig`), re-exporting what a host
+needs; the test driver in `test/` keeps importing the files directly,
+because it lives beside them. Everything a host might reach goes
+through that file, so a new module a host should see is one line
+there.
+
 ## Build
 
 `make build` has no warning switch because zig makes unused variables
 and unreachable code **compile errors** — stricter than `-Werror`, and
 not optional. No `build.zig.zon`, no package fetch, nothing outside the
-standard library.
+standard library. `make build ZIG=<other zig>` builds with the other
+toolchain.

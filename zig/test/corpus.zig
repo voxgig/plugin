@@ -18,8 +18,33 @@ const t = @import("../src/types.zig");
 
 var loaded: ?*v.Value = null;
 
+/// Modern zig HANDS `main` its I/O and its environment rather than
+/// letting a library reach for them; `main` parks them here before the
+/// first corpus read. On the legacy toolchain there is nothing to park.
+pub var io: if (v.modern) ?std.Io else void = if (v.modern) null else {};
+pub var env: if (v.modern) ?*const std.process.Environ.Map else void = if (v.modern) null else {};
+
 fn specpath() []const u8 {
-    return std.posix.getenv("PLUGIN_SPEC") orelse "../spec/plugin.json";
+    const given = if (v.modern) env.?.get("PLUGIN_SPEC") else std.posix.getenv("PLUGIN_SPEC");
+    return given orelse "../spec/plugin.json";
+}
+
+fn readspec(path: []const u8) []const u8 {
+    if (v.modern) {
+        return std.Io.Dir.cwd().readFileAlloc(io.?, path, v.arena(), .unlimited) catch {
+            std.debug.print("zig: cannot read {s}\n", .{path});
+            std.process.exit(2);
+        };
+    }
+    const f = std.fs.cwd().openFile(path, .{}) catch {
+        std.debug.print("zig: cannot open {s}\n", .{path});
+        std.process.exit(2);
+    };
+    defer f.close();
+    return f.readToEndAlloc(v.arena(), 1 << 28) catch {
+        std.debug.print("zig: cannot read {s}\n", .{path});
+        std.process.exit(2);
+    };
 }
 
 /// The whole corpus, parsed once. Exits loudly if the JSON is missing or
@@ -28,15 +53,7 @@ fn specpath() []const u8 {
 pub fn corpus() *v.Value {
     if (loaded) |c| return c;
     const path = specpath();
-    const f = std.fs.cwd().openFile(path, .{}) catch {
-        std.debug.print("zig: cannot open {s}\n", .{path});
-        std.process.exit(2);
-    };
-    defer f.close();
-    const text = f.readToEndAlloc(v.arena(), 1 << 28) catch {
-        std.debug.print("zig: cannot read {s}\n", .{path});
-        std.process.exit(2);
-    };
+    const text = readspec(path);
     var err: []const u8 = "";
     const parsed = v.parse(text, &err) orelse {
         std.debug.print("zig: {s} is not valid JSON: {s}\n", .{ path, err });
@@ -111,7 +128,7 @@ pub fn equal(a: ?*v.Value, b: ?*v.Value) bool {
 ///
 /// Same shape as `lua/test/corpus.lua`'s `regexlite`, deliberately.
 pub fn regexlite(pattern: []const u8, text: []const u8) bool {
-    var lit = std.ArrayList(u8).init(v.arena());
+    var lit = v.List(u8).init(v.arena());
     var anchorstart = false;
     var anchorend = false;
     var i: usize = 0;

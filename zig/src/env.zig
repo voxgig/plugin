@@ -23,7 +23,7 @@ const ref = @import("ref.zig");
 const PREFIX = "VOXGIG_PLUGIN_";
 
 pub fn encoderef(r: []const u8) []const u8 {
-    var out = std.ArrayList(u8).init(v.arena());
+    var out = v.List(u8).init(v.arena());
     for (r) |c| {
         if (c == '$') {
             out.appendSlice("__") catch @panic("oom");

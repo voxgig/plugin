@@ -15,6 +15,24 @@
 //! it.
 
 const std = @import("std");
+const builtin = @import("builtin");
+
+/// TWO TOOLCHAINS, ONE SOURCE. This port's own CI builds it on zig 0.13,
+/// and its first consumer (voxgig/sekreto) builds it on zig 0.16, and
+/// the two standard libraries disagree in exactly three places: the
+/// managed list, file I/O, and the environment. `modern` is the one
+/// switch, and every difference is a comptime branch on it, so the
+/// untaken branch is never analysed against a standard library that
+/// lacks it.
+pub const modern = builtin.zig_version.major > 0 or builtin.zig_version.minor >= 15;
+
+/// The list whose allocator travels with it. Zig 0.15 made
+/// `std.ArrayList` unmanaged and moved the managed one to
+/// `std.array_list.Managed`; the API is the same on both sides of the
+/// move, so this alias is the whole of the difference.
+pub fn List(comptime T: type) type {
+    return if (modern) std.array_list.Managed(T) else std.ArrayList(T);
+}
 
 pub const Kind = enum { nul, boolean, num, str, list, map };
 
@@ -29,13 +47,13 @@ pub const Value = struct {
     num: f64 = 0,
     str: []const u8 = "",
     /// A list preserves order because it IS the order.
-    items: std.ArrayList(*Value) = undefined,
+    items: List(*Value) = undefined,
     /// A MAP PRESERVES INSERTION ORDER AND SORTS ON DEMAND. §4 rule 4
     /// makes order observable in several places (`keys` is sorted, `pos`
     /// is the sorted-ref index), so both orders have to be available and
     /// the code has to say which it means at each use. An ArrayList of
     /// entries rather than a hash map: these maps hold a handful of keys.
-    entries: std.ArrayList(Entry) = undefined,
+    entries: List(Entry) = undefined,
 };
 
 // --- the arena --------------------------------------------------------
@@ -108,14 +126,14 @@ pub fn vstr(s: []const u8) *Value {
 pub fn vlist() *Value {
     const v = make();
     v.kind = .list;
-    v.items = std.ArrayList(*Value).init(arena());
+    v.items = List(*Value).init(arena());
     return v;
 }
 
 pub fn vmap() *Value {
     const v = make();
     v.kind = .map;
-    v.entries = std.ArrayList(Entry).init(arena());
+    v.entries = List(Entry).init(arena());
     return v;
 }
 
@@ -317,7 +335,7 @@ pub fn numStr(n: f64) []const u8 {
     return print("{d}", .{n});
 }
 
-fn escape(s: []const u8, buf: *std.ArrayList(u8)) void {
+fn escape(s: []const u8, buf: *List(u8)) void {
     buf.append('"') catch @panic("oom");
     for (s) |c| {
         switch (c) {
@@ -340,7 +358,7 @@ fn escape(s: []const u8, buf: *std.ArrayList(u8)) void {
     buf.append('"') catch @panic("oom");
 }
 
-fn render(v: ?*const Value, buf: *std.ArrayList(u8)) void {
+fn render(v: ?*const Value, buf: *List(u8)) void {
     if (isNull(v)) {
         buf.appendSlice("null") catch @panic("oom");
         return;
@@ -373,7 +391,7 @@ fn render(v: ?*const Value, buf: *std.ArrayList(u8)) void {
 }
 
 pub fn json(v: ?*const Value) []const u8 {
-    var buf = std.ArrayList(u8).init(arena());
+    var buf = List(u8).init(arena());
     render(v, &buf);
     return buf.items;
 }
@@ -415,7 +433,7 @@ const Parser = struct {
         return acc;
     }
 
-    fn string(p: *Parser, buf: *std.ArrayList(u8)) bool {
+    fn string(p: *Parser, buf: *List(u8)) bool {
         if (p.i >= p.text.len or p.text[p.i] != '"') {
             p.err = "expected a string";
             return false;
@@ -511,7 +529,7 @@ const Parser = struct {
             return vbool(false);
         }
         if (c == '"') {
-            var buf = std.ArrayList(u8).init(arena());
+            var buf = List(u8).init(arena());
             if (!p.string(&buf)) return null;
             return vstr(buf.items);
         }
@@ -549,7 +567,7 @@ const Parser = struct {
             }
             while (true) {
                 p.skip();
-                var kbuf = std.ArrayList(u8).init(arena());
+                var kbuf = List(u8).init(arena());
                 if (!p.string(&kbuf)) return null;
                 p.skip();
                 if (p.i >= p.text.len or p.text[p.i] != ':') {

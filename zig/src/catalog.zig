@@ -30,7 +30,7 @@ pub const Definition = struct {
 };
 
 pub const Catalog = struct {
-    defs: std.ArrayList(*Definition),
+    defs: v.List(*Definition),
 
     pub fn add(c: *Catalog, def: *Definition) t.Err!void {
         if (!ref.checkname(v.vstr(def.name))) {
@@ -73,7 +73,7 @@ pub const Catalog = struct {
 
 pub fn makecatalog() *Catalog {
     const c = v.arena().create(Catalog) catch @panic("oom");
-    c.* = .{ .defs = std.ArrayList(*Definition).init(v.arena()) };
+    c.* = .{ .defs = v.List(*Definition).init(v.arena()) };
     return c;
 }
 

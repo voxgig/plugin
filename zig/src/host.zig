@@ -50,7 +50,7 @@ pub fn makehost(o: HostOptions) *Host {
         .points = if (v.isMap(o.points)) o.points.? else v.vmap(),
         .bases = o.bases,
         .dependency = if (o.dependency.len == 0) "restart" else o.dependency,
-        .instances = std.ArrayList(*Inst).init(v.arena()),
+        .instances = v.List(*Inst).init(v.arena()),
         .log = v.vlist(),
         .events = v.vlist(),
     };
@@ -211,7 +211,7 @@ pub var release_error: ?[]const u8 = null;
 fn releasecheck(e: *Inst, errors: *v.Value) t.Err!void {
     if (v.len(errors) == 0) return;
     e.status = "failed";
-    var why = std.ArrayList(u8).init(v.arena());
+    var why = v.List(u8).init(v.arena());
     for (v.items(errors), 0..) |x, i| {
         if (i > 0) why.appendSlice("; ") catch @panic("oom");
         why.appendSlice(v.asStr(x)) catch @panic("oom");
@@ -426,7 +426,7 @@ fn chosen(h: *Host, e: *Inst, req: ?*v.Value, remember: bool) ?[]const u8 {
 /// capability (§11.1): the selected one going away restarts a `static`
 /// consumer even though a survivor is available.
 fn boundproviders(h: *Host, e: *Inst) [][]const u8 {
-    var out = std.ArrayList([]const u8).init(v.arena());
+    var out = v.List([]const u8).init(v.arena());
     for (v.items(dep.requirements(e.options))) |r| {
         if (!dep.restartsonloss(r)) continue;
         const p = chosen(h, e, r, false) orelse continue;
@@ -443,7 +443,7 @@ fn boundproviders(h: *Host, e: *Inst) [][]const u8 {
 }
 
 fn consumersof(h: *Host, r: []const u8) [][]const u8 {
-    var out = std.ArrayList([]const u8).init(v.arena());
+    var out = v.List([]const u8).init(v.arena());
     for (sortedrefs(h)) |c| {
         if (std.mem.eql(u8, c, r)) continue;
         const ci = find(h, c) orelse continue;
@@ -466,7 +466,7 @@ fn consumersof(h: *Host, r: []const u8) [][]const u8 {
 /// `gatesactivation`, not `restartsonloss`. The two sets differ in both
 /// directions and each difference was a real bug.
 fn holdersof(h: *Host, r: []const u8) [][]const u8 {
-    var out = std.ArrayList([]const u8).init(v.arena());
+    var out = v.List([]const u8).init(v.arena());
     for (sortedrefs(h)) |c| {
         if (std.mem.eql(u8, c, r)) continue;
         const ci = find(h, c) orelse continue;
@@ -534,7 +534,7 @@ pub fn order(h: *Host, pt: []const u8) t.Err!*v.Value {
     // followed by a fresh declare reuses a surviving instance's — and
     // past that the canonical was falling through to map order. `seq` is
     // that order, made explicit. Found by review of the go port.
-    var live = std.ArrayList(*Inst).init(v.arena());
+    var live = v.List(*Inst).init(v.arena());
     for (h.instances.items) |e| {
         if (std.mem.eql(u8, e.status, "live")) live.append(e) catch @panic("oom");
     }
@@ -584,7 +584,7 @@ pub fn position(e: *Inst, pt: []const u8) t.Err!*v.Value {
 /// discovers only when something deactivates in production.
 fn boundon(h: *Host, pt: []const u8) t.Err![]point.Bound {
     const ranked = try order(h, pt);
-    var out = std.ArrayList(point.Bound).init(v.arena());
+    var out = v.List(point.Bound).init(v.arena());
     for (v.items(ranked)) |rv| {
         const e = find(h, v.asStr(rv)) orelse continue;
         // The band is the INSTANCE's ordering block (§7), stamped by the
@@ -757,8 +757,8 @@ pub fn declare(h: *Host, r0: []const u8, spec: DeclareSpec) t.Err!*Inst {
         .order = spec.order,
         .selected = v.vmap(),
         .unmet = v.vlist(),
-        .scope = std.ArrayList(*ScopeEntry).init(v.arena()),
-        .bindings = std.ArrayList(point.Bound).init(v.arena()),
+        .scope = v.List(*ScopeEntry).init(v.arena()),
+        .bindings = v.List(point.Bound).init(v.arena()),
         .exports = v.vmap(),
         .provides = v.vlist(),
         .owner = h,
@@ -1156,7 +1156,7 @@ pub fn apply(h: *Host, doc: ?*v.Value, profile: ?*v.Value) t.Err!void {
 
     // --- phase 1: deactivations and unloads, in REVERSE load order ---
     const instancespec = v.get(norm, "instance");
-    var drop = std.ArrayList([]const u8).init(v.arena());
+    var drop = v.List([]const u8).init(v.arena());
     for (h.instances.items) |e| {
         if (std.mem.eql(u8, e.status, "declared")) continue;
         if (!wantlive(v.get(instancespec, e.ref))) drop.append(e.ref) catch @panic("oom");

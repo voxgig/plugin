@@ -144,11 +144,11 @@ pub fn dependencycycle(nodes: ?*v.Value) ?*v.Value {
     const edges = v.vmap();
     for (v.items(nodes)) |n| {
         const nref = v.asStr(v.get(n, "ref"));
-        var out = std.ArrayList([]const u8).init(v.arena());
+        var out = v.List([]const u8).init(v.arena());
         for (v.items(v.get(n, "requires"))) |r| {
             if (!restartcausing(r)) continue;
             const rname = if (v.isStr(v.get(r, "name"))) v.asStr(v.get(r, "name")) else "";
-            var from = std.ArrayList([]const u8).init(v.arena());
+            var from = v.List([]const u8).init(v.arena());
             for (v.items(v.get(bycap, rname))) |x| from.append(v.asStr(x)) catch @panic("oom");
             // A node satisfies its own name AS A REF (§11.1),
             // canonically — exactly what `providersof` does at runtime,
@@ -184,8 +184,8 @@ pub fn dependencycycle(nodes: ?*v.Value) ?*v.Value {
     for (v.sortedKeys(edges)) |start| {
         if (v.asNum(v.get(colour, start)) != WHITE) continue;
 
-        var path = std.ArrayList([]const u8).init(v.arena());
-        var stack = std.ArrayList(Frame).init(v.arena());
+        var path = v.List([]const u8).init(v.arena());
+        var stack = v.List(Frame).init(v.arena());
         stack.append(.{ .ref = start, .i = 0 }) catch @panic("oom");
         v.set(colour, start, v.vnum(GREY));
         path.append(start) catch @panic("oom");
@@ -231,7 +231,7 @@ pub fn dependencycycle(nodes: ?*v.Value) ?*v.Value {
 /// detector stays pure and corpus-testable.
 pub fn checkcycle(nodes: ?*v.Value) t.Err!void {
     const cycle = dependencycycle(nodes) orelse return;
-    var text = std.ArrayList(u8).init(v.arena());
+    var text = v.List(u8).init(v.arena());
     text.appendSlice("requirements cycle: ") catch @panic("oom");
     for (v.items(cycle), 0..) |x, i| {
         if (i > 0) text.appendSlice(" -> ") catch @panic("oom");

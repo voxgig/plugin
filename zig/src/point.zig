@@ -145,7 +145,7 @@ pub fn pointprovider(bindings: []Bound, exclusive: bool) t.Err!ProviderResult {
         // bindings arrived in.
         std.mem.sort([]const u8, refs, {}, lessStr);
         const list = v.vlist();
-        var names = std.ArrayList(u8).init(v.arena());
+        var names = v.List(u8).init(v.arena());
         for (refs, 0..) |r, i| {
             if (i > 0) names.appendSlice(", ") catch @panic("oom");
             names.appendSlice(r) catch @panic("oom");

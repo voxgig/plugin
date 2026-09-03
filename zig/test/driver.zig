@@ -323,7 +323,7 @@ pub fn hostopts(cmd: ?*v.Value) host.HostOptions {
 
     // Every chain point gets the identity base: the host owns it and a
     // plugin cannot replace it (§6.2).
-    var bases = std.ArrayList(host.BaseFn).init(v.arena());
+    var bases = v.List(host.BaseFn).init(v.arena());
     for (v.keys(points)) |k| {
         const kind = v.get(v.get(points, k), "kind");
         if (v.isStr(kind) and std.mem.eql(u8, v.asStr(kind), "chain")) {

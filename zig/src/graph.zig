@@ -114,7 +114,7 @@ fn firstunmet(node: *v.Value, byref: *v.Value, resolved: *v.Value) ?*v.Value {
             }
             if (live) continue;
 
-            var chain = std.ArrayList([]const u8).init(v.arena());
+            var chain = v.List([]const u8).init(v.arena());
             for (v.items(ok)) |c| chain.append(v.asStr(v.get(c, "ref"))) catch @panic("oom");
             const w = why1("blocked");
             v.set(w, "chain", sortedStrings(chain.items));
@@ -124,7 +124,7 @@ fn firstunmet(node: *v.Value, byref: *v.Value, resolved: *v.Value) ?*v.Value {
         // Providers exist and none matched. Say which test failed.
         const range = v.get(req, "range");
         if (!v.isNull(range)) {
-            var found = std.ArrayList([]const u8).init(v.arena());
+            var found = v.List([]const u8).init(v.arena());
             for (v.items(all)) |c| {
                 const ver = v.get(v.get(c, "provides"), "version");
                 if (v.isNull(ver)) {
