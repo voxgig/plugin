@@ -62,6 +62,10 @@ jobs:
       # the publish falls back to looking for a token that does not exist.
       id-token: write
 
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+
     defaults:
       run:
         working-directory: typescript
@@ -175,19 +179,32 @@ jobs:
             sleep 20
           done
 
+      # The name this release is tagged with, resolved ONCE from the
+      # manifest in the commit that was just built and tested. Both the
+      # guard below and the `tag` job read it, so a dispatch release and a
+      # tag push cannot disagree about what the tag should be called.
+      - name: Resolve the release tag
+        id: resolve
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=typescript-v$version" >> "$GITHUB_OUTPUT"
+
       # On a tag, the tag and the manifest must agree. They drift the moment
       # someone tags before bumping, and the failure mode without this check
       # is a published version nobody can find by tag.
       - name: tag matches package.json
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          MANIFEST: ${{ steps.resolve.outputs.version }}
         run: |
           tagged="${GITHUB_REF_NAME#typescript-v}"
-          manifest="$(node -p 'require("./package.json").version')"
-          if [ "$tagged" != "$manifest" ]; then
-            echo "tag $GITHUB_REF_NAME says $tagged, package.json says $manifest" >&2
+          if [ "$tagged" != "$MANIFEST" ]; then
+            echo "tag $GITHUB_REF_NAME says $tagged, package.json says $MANIFEST" >&2
             exit 1
           fi
-          echo "publishing $manifest"
+          echo "publishing $MANIFEST"
 
       - name: pack (dry run)
         if: inputs.dryrun
@@ -219,3 +236,56 @@ jobs:
           plugin, workflow publish.yml. Do NOT add an npm token to this repo."
             exit 1
           fi
+
+  # THE TAG A DISPATCH RELEASE NEVER GOT. On a `typescript-v*` push the tag
+  # is what triggered the run and already exists; on a `workflow_dispatch`
+  # nothing creates it — so the version reaches npm and is unfindable by tag
+  # in git. This has already happened twice: tags exist for 0.1.0, 0.1.1 and
+  # 0.1.2, while 0.1.3 and 0.1.4 are both on npm with no tag at all.
+  #
+  # Mirrors omni's release.yml `tag` job. Its `needs.publish.result ==
+  # 'skipped'` allowance is deliberately NOT copied: omni skips its publish
+  # job when the version is already on npm, whereas here publish is one job
+  # that either ran or did not, and a skipped one means nothing shipped.
+  tag:
+    name: tag
+    needs: [publish]
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+          && !inputs.dryrun
+          && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag the release
+        env:
+          TAG: ${{ needs.publish.outputs.tag }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(git rev-parse HEAD)"
+
+          # EXISTENCE IS NOT ENOUGH. `--verify` only asks whether the name
+          # resolves; a tag created between the publish and this checkout
+          # could point anywhere. Treating that as idempotent would leave a
+          # green run with a package built from THIS commit and a release
+          # tag on a different one.
+          AT="$(git rev-parse -q --verify "refs/tags/$TAG^{commit}" 2>/dev/null || true)"
+          if [ -n "$AT" ]; then
+            if [ "$AT" != "$HEAD_SHA" ]; then
+              echo "::error::$TAG exists on $AT, not this commit ($HEAD_SHA)"
+              exit 1
+            fi
+            echo "$TAG already points here - nothing to do" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+          echo "pushed $TAG" >> "$GITHUB_STEP_SUMMARY"
