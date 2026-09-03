@@ -110,7 +110,7 @@ func entryof(m map[string]any) Entry {
 		e.Args = l
 	}
 	e.Ctx = m["ctx"]
-	if l, ok := m["cmd"].([]any); ok {
+	if l, ok := m["in"].([]any); ok {
 		e.Cmd = l
 	}
 	e.Out = m["out"]

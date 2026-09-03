@@ -80,11 +80,11 @@ let graphsubject = function
 
 (* --- the twelve DRIVER sections ------------------------------------- *)
 
-(* Every entry carries `cmd`, and a port needs DOCS.md §4 to run them —
+(* Every entry carries `in`, and a port needs DOCS.md §4 to run them —
    the probe catalog, the command vocabulary, and the canonical
    observable {status, open, log, result}. Corpus files alone are not
    enough, which is why C2 shipped both together. *)
-let driversubject _ = Some (fun e -> Driver.drive (V.get e "cmd"))
+let driversubject _ = Some (fun e -> Driver.drive (V.get e "in"))
 
 (* The sections driven by a direct function call. *)
 let pure =

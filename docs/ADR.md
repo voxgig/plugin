@@ -20,6 +20,7 @@ the old one is marked so.
 |---|---|---|
 | [1](#adr-1--static-loading-is-preferred-dynamic-only-when-cheap) | Static loading is preferred; dynamic only when cheap | Accepted |
 | [2](#adr-2--thread-safety-is-a-per-port-property-not-a-corpus-behaviour) | Thread safety is a per-port property, not a corpus behaviour | Accepted |
+| [3](#adr-3--the-corpus-is-in-omnis-format-the-runners-are-not-omni-yet) | The corpus is in omni's format; the runners are not omni yet | Accepted |
 
 
 ## ADR-1 — Static loading is preferred; dynamic only when cheap
@@ -267,3 +268,133 @@ by review, not by the repo, after twenty-three ports had shipped.
   be verified rather than asserted.
 - §14 is rewritten to state the per-port position directly. Then this
   record is superseded rather than merely descriptive.
+
+
+## ADR-3 — The corpus is in omni's format; the runners are not omni yet
+
+**Status:** Accepted. Design §15; the format is
+[voxgig/omni](https://github.com/voxgig/omni)'s `DOCS.md`.
+
+### Context
+
+Design §15 says, in these words, that `spec/plugin.json` "compiles from
+`spec/plugin.aontu`, and **every port runs it through
+[voxgig/omni](https://github.com/voxgig/omni)**".
+
+No port did. All twenty-three shipped a **hand-written corpus runner** —
+the same algorithm re-implemented twenty-three times, each with its own
+`deepequal`, its own `__EXISTS__`/`__UNDEF__`/`__NULL__` handling, its
+own `/regex/` matcher. Five of them (`lua`, `rust`, `zig`, `ocaml`,
+`haskell`) had to invent a `regexlite` because their standard library
+has no regex engine — which omni already ships, in those exact five
+languages.
+
+The cost is not duplication for its own sake. It is that **a runner
+defect is twenty-three separate defects**, and this repository has
+already paid for that: six ports shipped without the section-coverage
+assertion `AGENTS.md` requires, because there is no one runner to put it
+in. The corpus catches a port that disagrees about *behaviour*; nothing
+catches a port that disagrees about *how to read the corpus*.
+
+Against that, the corpus was not actually in omni's format. Three things
+kept it out:
+
+1. **`cmd`.** The twelve driver sections carried the command list in a
+   field omni does not define — and omni's version-1 validation rejects
+   an unrecognised entry field, because an unrecognised field is almost
+   always an assertion that stopped asserting.
+2. **`err` as a code.** 119 entries wrote `err: 'plugin_not_loaded'`.
+   omni matches an `err` string as a **case-insensitive substring of the
+   message**, and its error base carried only `{name, message}` — so the
+   assertion plugin actually makes, *the raised error's `code` equals
+   this exactly*, could not be expressed at all.
+3. **No `OMNI` block**, so omni would have run the corpus in its lenient
+   version-0 mode with strict entry validation off.
+
+### Decision
+
+**Move the corpus to omni's format now; move the runners later, and keep
+the format claim checked in the meantime.**
+
+Concretely, and all of it landed:
+
+1. **`cmd` is now `in`** — which is what it always was: the single
+   argument the driver subject is called with. The corpus uses omni's
+   nine entry fields and no others, and `spec/def/plugin-spec.aontu` now
+   says so rather than carving out a field of plugin's own.
+2. **`err: '<code>'` is now `err: true` with
+   `match: {err: {code: '<code>'}}`** — an exact assertion on a
+   structured field instead of a substring of prose. This works in every
+   existing port unchanged, because each already builds
+   `{code, message, name}` as its match base.
+3. **`OMNI: version: 1`** sits beside `PLUGIN: version: 1`. Two markers
+   on purpose: `PLUGIN.version` gates plugin's own runners,
+   `OMNI.version` gates omni's strict validation, and neither should
+   stand in for the other.
+4. **omni gained `Provider.errify`**
+   ([voxgig/omni#58](https://github.com/voxgig/omni/pull/58)), because
+   point 2 is unreachable without it — omni's default error base has no
+   `code`, and seven of its ports report a failure as a message string
+   with nothing else to offer. plugin was the forcing case; the hook is
+   general.
+5. **`make omni-check`** loads the committed corpus with omni's own
+   runner and drives the `javascript` port through all nineteen
+   sections. It is the check that keeps §15's claim honest.
+
+### Why the runners did not move too
+
+Because it is a different change, and a much larger one: twenty-three
+test layers rewritten at once, in twenty-three languages, against a
+corpus that is currently green in all of them. Doing it in the same
+change set as the format move would mean a failure could be either the
+format or the migration, with no way to tell which.
+
+There is also a real question the migration has to answer first, and it
+is a prime-directive question: **§16 permits exactly one dependency, and
+omni would be a second.** The honest reading is that omni is a *test*
+dependency rather than a runtime one — nothing it provides is reachable
+from `src/` — and that prime directive 6 is about what a **consumer**
+inherits. But that is a decision to take deliberately, per port, with
+the vendoring shape settled (omni ships as source in most of its
+twenty-four ports, not as a package), not as a side effect of a corpus
+change.
+
+### Consequences
+
+**Good.**
+
+- The corpus is genuinely portable: **572 entries across 19 sections run
+  green under omni's runner today**, which `make omni-check` proves on
+  demand rather than asserting.
+- The error assertions got *stronger*, not weaker. `err: 'plugin_x'` was
+  compared by code in plugin's own runners but would have been a message
+  substring anywhere else; `match: {err: {code: 'plugin_x'}}` is exact
+  and says what it means.
+- A corpus change that drifts out of omni's format now fails a named
+  check, instead of being discovered whenever the migration is attempted.
+
+**Bad, and accepted.**
+
+- §15's claim is still ahead of the code, and this record is the only
+  thing saying so. Twenty-three hand-written runners remain, with the
+  duplication and the per-port drift risk they carry.
+- The check covers one port. `make omni-check` proves the CORPUS is
+  omni-readable; it says nothing about the other twenty-two runners.
+- `null: false` is now load-bearing and easy to lose. plugin's corpus is
+  written in literal nulls — `point/bail#null-declines` asserts that an
+  authored null IS a value — so omni must run it with null-normalisation
+  off. That is a documented omni flag, not a workaround, but a migration
+  that forgets it fails in one entry and looks like a behaviour bug.
+
+### Revisit if
+
+- A port's runner and another port's disagree about how to read an
+  entry. That is the defect this ADR is deferring, and its first
+  appearance is the signal to stop deferring.
+- The dependency question is settled. Once §16's reading is agreed for
+  test dependencies, the migration can start — canonical first, then
+  propagate, exactly as every other change here.
+- omni gains what the migration still needs. Section-coverage assertion
+  and the probe-catalog contract are plugin's own additions today; if
+  omni grows an equivalent, the per-port test layer shrinks to almost
+  nothing.

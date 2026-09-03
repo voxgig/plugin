@@ -2119,6 +2119,14 @@ it through [voxgig/omni](https://github.com/voxgig/omni). Same discipline
 as struct, sekreto and station: the corpus is the contract; a port that
 disagrees with it is wrong.
 
+> **The corpus is in omni's format; the runners are not omni yet.** The
+> entry fields, the `set` groups and the sentinels here are omni's, and
+> `make omni-check` proves the committed corpus runs green under omni's
+> own runner — 572 entries, 19 sections. But every port still ships a
+> hand-written runner for it. [`docs/ADR.md`](../ADR.md) ADR-3 records
+> what moved, what did not, and the dependency question the migration has
+> to answer first.
+
 ### 15.1 The problem, and the shape of the answer
 
 omni entries are one call: arguments in, result out. A plugin system is

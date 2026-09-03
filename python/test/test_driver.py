@@ -19,9 +19,9 @@ class DriverTest(unittest.TestCase):
             groups = section(name)
             for group in sorted(groups):
                 for i, entry in enumerate(groups[group]):
-                    if not isinstance(entry.get('cmd'), list):
+                    if not isinstance(entry.get('in'), list):
                         bad.append(name + '/' + label(group, i, entry))
-        self.assertEqual([], bad, 'driver entries without cmd: ' + str(bad))
+        self.assertEqual([], bad, 'driver entries without a command list in `in`: ' + str(bad))
 
     def test_driver_sections(self):
         fails = []
@@ -29,7 +29,7 @@ class DriverTest(unittest.TestCase):
             groups = section(name)
             for group in sorted(groups):
                 for i, entry in enumerate(groups[group]):
-                    why = check(entry, lambda e: drive(e['cmd']))
+                    why = check(entry, lambda e: drive(e['in']))
                     if why:
                         fails.append(name + '/' + label(group, i, entry) +
                                      ': ' + why)

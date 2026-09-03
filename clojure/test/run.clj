@@ -31,7 +31,7 @@
         capability #(cap/resolve-capability (t/get (in-of %) "req")
                                             (t/get (in-of %) "candidates"))
         gr #(graph/resolve-graph (in-of %))
-        drive #(driver/drive (t/get % "cmd"))]
+        drive #(driver/drive (t/get % "in"))]
     (concat
      [["ref" {"parse" #(p/parse-ref (in-of %))
               "parsebad" #(p/parse-ref (in-of %))

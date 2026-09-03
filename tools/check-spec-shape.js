@@ -64,6 +64,9 @@ function checkspec(specfile) {
       // the smallest thing in the file and the one whose loss is quietest,
       // since every runner reads it to decide whether to validate strictly.
       'PLUGIN: $.Meta\n' +
+      // omni's own format marker, checked the same way and for the same
+      // reason: it gates omni's strict entry validation.
+      'OMNI: $.Meta\n' +
       // Every section under `primary`, and every group within it.
       'primary: &: { &: $.Group }\n'
     )

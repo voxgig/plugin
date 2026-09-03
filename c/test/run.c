@@ -166,13 +166,13 @@ static Subject graph_subject(const char *group) {
 
 /* --- the twelve DRIVER sections ------------------------------------- */
 
-/* Every entry carries `cmd`, and a port needs DOCS.md §4 to run them —
+/* Every entry carries `in`, and a port needs DOCS.md §4 to run them —
  * the probe catalog, the command vocabulary, and the canonical
  * observable {status, open, log, result}. Corpus files alone are not
  * enough, which is why C2 shipped both together. */
 static Value *sub_drive(Value *e, void *ctx) {
   (void)ctx;
-  return drive(vget(e, "cmd"));
+  return drive(vget(e, "in"));
 }
 
 static Subject driver_subject(const char *group) {

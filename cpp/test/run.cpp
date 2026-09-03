@@ -121,12 +121,12 @@ static Subject graphsubject(const std::string& group) {
 
 /* --- the twelve DRIVER sections ------------------------------------- */
 
-/* Every entry carries `cmd`, and a port needs DOCS.md §4 to run them —
+/* Every entry carries `in`, and a port needs DOCS.md §4 to run them —
  * the probe catalog, the command vocabulary, and the canonical
  * observable {status, open, log, result}. Corpus files alone are not
  * enough, which is why C2 shipped both together. */
 static Subject driversubject(const std::string&) {
-  return [](const V& e) { return drive(get(e, "cmd")); };
+  return [](const V& e) { return drive(get(e, "in")); };
 }
 
 /* The sections driven by a direct function call. */

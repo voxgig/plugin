@@ -189,12 +189,12 @@ foreach (DRIVER_SECTIONS as $section) {
     foreach ($names as $group) {
         foreach ($groups[$group] as $i => $entry) {
             $RAN['entries']++;
-            if (!is_array($entry['cmd'] ?? null)) {
-                report($section, $group, $i, $entry, 'driver entry without cmd');
+            if (!is_array($entry['in'] ?? null)) {
+                report($section, $group, $i, $entry, 'driver entry without a command list in `in`');
                 continue;
             }
             $why = Corpus::check($entry, static function (array $e) {
-                return Driver::drive($e['cmd']);
+                return Driver::drive($e['in']);
             });
             if (null !== $why) {
                 report($section, $group, $i, $entry, $why);

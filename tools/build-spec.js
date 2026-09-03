@@ -113,7 +113,12 @@ function buildOne(entry) {
 // `*: $.Root` are a parse error, a path cycle, and a parse error). So it
 // is checked here, against the artifact, exactly as absence of the marker
 // is.
-const ROOTKEYS = ['PLUGIN', 'primary']
+// `OMNI` joins them because this corpus is in omni's spec format and
+// declares omni's format version beside plugin's own. The two markers are
+// separate on purpose: `PLUGIN.version` gates plugin's runners, `OMNI.version`
+// gates omni's strict entry validation, and neither should silently stand in
+// for the other.
+const ROOTKEYS = ['OMNI', 'PLUGIN', 'primary']
 
 function requireroot(json) {
   const data = JSON.parse(Fs.readFileSync(json, 'utf8'))

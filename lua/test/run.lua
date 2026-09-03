@@ -116,14 +116,14 @@ local DRIVER_SECTIONS = {
   'declare', 'state', 'resource', 'nest', 'trace', 'apply', 'error',
 }
 
-local drive = function(e) return Driver.drive(T.getv(e, 'cmd')) end
+local drive = function(e) return Driver.drive(T.getv(e, 'in')) end
 for _, name2 in ipairs(DRIVER_SECTIONS) do
   RAN.sections = RAN.sections + 1
   for _, g in ipairs(Corpus.section(name2)) do
     for i = 1, #g.set do
       RAN.entries = RAN.entries + 1
-      if not T.islist(T.getv(g.set[i], 'cmd')) then
-        report(name2, g.group, i, g.set[i], 'driver entry without cmd')
+      if not T.islist(T.getv(g.set[i], 'in')) then
+        report(name2, g.group, i, g.set[i], 'driver entry without a command list in `in`')
       else
         local why = Corpus.check(g.set[i], drive)
         if nil ~= why then report(name2, g.group, i, g.set[i], why) end

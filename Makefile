@@ -34,7 +34,7 @@
 # P4 is complete; P5 is under way. P6 the rest.
 LANGS = typescript go python javascript ruby php perl rust java lua csharp elixir clojure dart kotlin swift scala c cpp ocaml haskell zig lean
 
-.PHONY: all test build inspect clean parity probes check spec spec-check
+.PHONY: all test build inspect clean parity probes check spec spec-check omni-check
 
 all: test
 
@@ -106,5 +106,14 @@ parity:
 # behaviour is what the corpus is for.
 probes:
 	@python3 tools/check_probes.py
+
+# Prove the corpus still runs under voxgig/omni's own runner (ADR-3).
+#
+# NOT part of `check`, and deliberately: it needs voxgig/omni checked out
+# beside this repo and skips when it is not, so folding it in would put a
+# check that silently passes into the gate. Run it when the corpus format
+# changes. Point it elsewhere with `make omni-check OMNI=/path/to/omni`.
+omni-check:
+	@node tools/omni-check.js
 
 check: spec-check parity probes test

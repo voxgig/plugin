@@ -90,7 +90,7 @@ graphSubject g
 -- observable @{status, open, log, result}@. Corpus files alone are not
 -- enough, which is why C2 shipped both together.
 driverSubject :: String -> Maybe Subject
-driverSubject _ = Just (\e -> drive (vget e "cmd"))
+driverSubject _ = Just (\e -> drive (vget e "in"))
 
 -- | The sections driven by a direct function call.
 pureSections :: [String]

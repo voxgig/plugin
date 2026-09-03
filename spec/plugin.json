@@ -1,4 +1,7 @@
 {
+  "OMNI": {
+    "version": 1
+  },
   "PLUGIN": {
     "version": 1
   },
@@ -7,7 +10,9 @@
       "change": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "apply/change#add",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -28,8 +33,6 @@
                 }
               }
             ],
-            "doc": true,
-            "id": "apply/change#add",
             "match": {
               "out": {
                 "status": {
@@ -40,7 +43,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -80,7 +83,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "apply/change#toggle-off",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -102,7 +106,6 @@
                 }
               }
             ],
-            "id": "apply/change#toggle-off",
             "match": {
               "out": {
                 "open": 0,
@@ -113,7 +116,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -147,7 +150,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -178,7 +181,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "apply/change#toggle-back",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -209,7 +213,6 @@
                 }
               }
             ],
-            "id": "apply/change#toggle-back",
             "match": {
               "out": {
                 "open": 1,
@@ -224,7 +227,9 @@
       "gone": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "apply/gone#dropped",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -245,8 +250,6 @@
                 }
               }
             ],
-            "doc": true,
-            "id": "apply/gone#dropped",
             "match": {
               "out": {
                 "status": {
@@ -256,7 +259,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -290,7 +293,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -322,7 +325,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "apply/gone#declared-untouched",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -342,7 +346,6 @@
                 }
               }
             ],
-            "id": "apply/gone#declared-untouched",
             "match": {
               "out": {
                 "log": [],
@@ -357,7 +360,9 @@
       "idempotent": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "apply/idempotent#twice",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -377,8 +382,6 @@
                 }
               }
             ],
-            "doc": true,
-            "id": "apply/idempotent#twice",
             "out": {
               "log": [
                 "probe$a:define",
@@ -392,7 +395,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -423,28 +426,28 @@
             }
           },
           {
-            "cmd": [
-              {
-                "do": "apply",
-                "doc": {
-                  "instance": {
-                    "probe$a": {
-                      "options": {
-                        "wrap": "W"
-                      }
-                    }
-                  },
-                  "plugin": 1
-                }
-              },
-              {
-                "arg": "x",
-                "do": "chain",
-                "point": "c"
-              }
-            ],
             "doc": true,
             "id": "apply/idempotent#options-first-time",
+            "in": [
+              {
+                "do": "apply",
+                "doc": {
+                  "instance": {
+                    "probe$a": {
+                      "options": {
+                        "wrap": "W"
+                      }
+                    }
+                  },
+                  "plugin": 1
+                }
+              },
+              {
+                "arg": "x",
+                "do": "chain",
+                "point": "c"
+              }
+            ],
             "match": {
               "out": {
                 "result": "Wx"
@@ -452,7 +455,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -492,7 +495,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "apply/idempotent#options-changed",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -525,7 +529,6 @@
                 "point": "c"
               }
             ],
-            "id": "apply/idempotent#options-changed",
             "match": {
               "out": {
                 "result": "Zx"
@@ -537,7 +540,9 @@
       "phases": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "apply/phases#declare-all-then-activate",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -553,8 +558,6 @@
                 }
               }
             ],
-            "doc": true,
-            "id": "apply/phases#declare-all-then-activate",
             "match": {
               "out": {
                 "log": [
@@ -567,7 +570,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "apply/phases#reverse-teardown",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -594,7 +598,6 @@
                 }
               }
             ],
-            "id": "apply/phases#reverse-teardown",
             "match": {
               "out": {
                 "log": [
@@ -617,7 +620,9 @@
       "profile": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "apply/profile#bar-survives",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -642,8 +647,6 @@
                 "profile": "prod"
               }
             ],
-            "doc": true,
-            "id": "apply/profile#bar-survives",
             "match": {
               "out": {
                 "status": {
@@ -2462,7 +2465,7 @@
         "set": [
           {
             "doc": true,
-            "err": "plugin_ref_reserved",
+            "err": true,
             "id": "config/normreserved#doc",
             "in": {
               "doc": {
@@ -2474,10 +2477,15 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
-            "err": "plugin_ref_reserved",
+            "err": true,
             "in": {
               "doc": {
                 "instance": {
@@ -2488,10 +2496,15 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
-            "err": "plugin_ref_reserved",
+            "err": true,
             "in": {
               "doc": {
                 "default": {
@@ -2502,10 +2515,15 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
-            "err": "plugin_ref_reserved",
+            "err": true,
             "in": {
               "doc": {
                 "plugin": 1,
@@ -2521,6 +2539,11 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
@@ -3713,7 +3736,7 @@
         "set": [
           {
             "doc": true,
-            "err": "plugin_shape_invalid",
+            "err": true,
             "id": "config/optmergebad#zero",
             "in": {
               "ref": "r",
@@ -3724,10 +3747,15 @@
                   }
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3737,10 +3765,15 @@
                   }
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3750,10 +3783,15 @@
                   }
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3763,10 +3801,15 @@
                   }
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3776,10 +3819,15 @@
                   }
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3787,10 +3835,15 @@
                   "$MERGE": "merge"
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3798,10 +3851,15 @@
                   "$MERGE": "REPLACE"
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
@@ -3809,16 +3867,26 @@
                   "$MERGE": true
                 }
               }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
             }
           },
           {
-            "err": "plugin_shape_invalid",
+            "err": true,
             "in": {
               "ref": "r",
               "shape": {
                 "m": {
                   "$MERGE": {}
                 }
+              }
+            },
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
               }
             }
           },
@@ -3990,15 +4058,15 @@
       "autotag": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "declare/autotag#first",
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe",
                 "tag": "?"
               }
             ],
-            "doc": true,
-            "id": "declare/autotag#first",
             "match": {
               "out": {
                 "result": "probe$1"
@@ -4006,7 +4074,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe",
@@ -4025,7 +4093,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "declare/autotag#fills-gap",
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe$1"
@@ -4040,7 +4109,6 @@
                 "tag": "?"
               }
             ],
-            "id": "declare/autotag#fills-gap",
             "match": {
               "out": {
                 "result": "probe$2"
@@ -4048,7 +4116,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe$1"
@@ -4070,7 +4138,9 @@
       "clear": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "declare/clear#empty-options",
+            "in": [
               {
                 "do": "declare",
                 "options": {
@@ -4093,8 +4163,6 @@
                 "point": "c"
               }
             ],
-            "doc": true,
-            "id": "declare/clear#empty-options",
             "match": {
               "out": {
                 "result": ":x"
@@ -4102,7 +4170,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "declare",
                 "options": {
@@ -4135,7 +4203,9 @@
       "free": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "declare/free#nothing-runs",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4151,8 +4221,6 @@
                 }
               }
             ],
-            "doc": true,
-            "id": "declare/free#nothing-runs",
             "out": {
               "log": [],
               "open": 0,
@@ -4164,7 +4232,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4184,7 +4252,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "declare/free#barred",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4197,7 +4266,6 @@
                 }
               }
             ],
-            "id": "declare/free#barred",
             "match": {
               "out": {
                 "log": [],
@@ -4208,7 +4276,10 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "declare/free#barred-stays-barred",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4225,12 +4296,15 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_inactive",
-            "id": "declare/free#barred-stays-barred"
+            "match": {
+              "err": {
+                "code": "plugin_inactive"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4247,10 +4321,14 @@
                 "ref": "probe$a"
               }
             ],
-            "err": "plugin_inactive"
+            "match": {
+              "err": {
+                "code": "plugin_inactive"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4285,18 +4363,23 @@
       "lookup": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "declare/lookup#malformed",
+            "in": [
               {
                 "do": "seq",
                 "ref": "bad name"
               }
             ],
-            "doc": true,
-            "err": "plugin_bad_name",
-            "id": "declare/lookup#malformed"
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "seq",
                 "ref": "probe$nope"
@@ -4313,7 +4396,10 @@
       "register": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "declare/register#probe-differs-from-name",
+            "in": [
               {
                 "do": "define",
                 "name": "adapter",
@@ -4328,12 +4414,15 @@
                 "ref": "adapter$a"
               }
             ],
-            "doc": true,
-            "err": "probe_boom",
-            "id": "declare/register#probe-differs-from-name"
+            "match": {
+              "err": {
+                "code": "probe_boom"
+              }
+            }
           },
           {
-            "cmd": [
+            "id": "declare/register#backed-by-probe",
+            "in": [
               {
                 "do": "define",
                 "name": "adapter",
@@ -4349,7 +4438,6 @@
                 "point": "c"
               }
             ],
-            "id": "declare/register#backed-by-probe",
             "match": {
               "out": {
                 "result": ":x",
@@ -4360,7 +4448,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "adapter",
@@ -4387,7 +4475,9 @@
       "seq": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "declare/seq#advances",
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe$a"
@@ -4401,8 +4491,6 @@
                 "ref": "probe$b"
               }
             ],
-            "doc": true,
-            "id": "declare/seq#advances",
             "match": {
               "out": {
                 "result": 1
@@ -4410,7 +4498,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe$a"
@@ -4427,7 +4515,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "declare/seq#fresh-on-reload",
+            "in": [
               {
                 "do": "declare",
                 "ref": "probe$a"
@@ -4449,7 +4538,6 @@
                 "ref": "probe$a"
               }
             ],
-            "id": "declare/seq#fresh-on-reload",
             "match": {
               "out": {
                 "result": 2
@@ -4457,7 +4545,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "declare/seq#pos-stable",
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4506,7 +4595,6 @@
                 "ref": "probe$a"
               }
             ],
-            "id": "declare/seq#pos-stable",
             "match": {
               "out": {
                 "result": 0
@@ -4518,7 +4606,10 @@
       "shape": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "declare/shape#at-registration",
+            "in": [
               {
                 "do": "define",
                 "name": "probe",
@@ -4531,12 +4622,15 @@
                 }
               }
             ],
-            "doc": true,
-            "err": "plugin_shape_invalid",
-            "id": "declare/shape#at-registration"
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "define",
                 "name": "probe",
@@ -4547,10 +4641,16 @@
                 }
               }
             ],
-            "err": "plugin_shape_invalid"
+            "match": {
+              "err": {
+                "code": "plugin_shape_invalid"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "declare/shape#rejected-not-registered",
+            "in": [
               {
                 "catch": true,
                 "do": "define",
@@ -4568,11 +4668,16 @@
                 "ref": "shaped$a"
               }
             ],
-            "err": "plugin_unknown_definition",
-            "id": "declare/shape#rejected-not-registered"
+            "match": {
+              "err": {
+                "code": "plugin_unknown_definition"
+              }
+            }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "declare/shape#reaches-resolution",
+            "in": [
               {
                 "do": "define",
                 "name": "probe",
@@ -4595,8 +4700,6 @@
                 "point": "c"
               }
             ],
-            "doc": true,
-            "id": "declare/shape#reaches-resolution",
             "match": {
               "out": {
                 "result": "Sx"
@@ -4604,7 +4707,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4627,7 +4730,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "declare/shape#directive-at-apply",
+            "in": [
               {
                 "do": "define",
                 "name": "probe",
@@ -4670,7 +4774,6 @@
                 "name": "a"
               }
             ],
-            "id": "declare/shape#directive-at-apply",
             "match": {
               "out": {
                 "result": [
@@ -4680,7 +4783,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "apply",
                 "doc": {
@@ -4727,7 +4830,9 @@
       "arrive": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/arrive#auto",
+            "in": [
               {
                 "definition": "dep",
                 "do": "load",
@@ -4755,8 +4860,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/arrive#auto",
             "match": {
               "out": {
                 "status": {
@@ -4767,7 +4870,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/arrive#chain",
+            "in": [
               {
                 "definition": "dep",
                 "do": "load",
@@ -4814,7 +4918,6 @@
                 "ref": "dep$a"
               }
             ],
-            "id": "depend/arrive#chain",
             "match": {
               "out": {
                 "status": {
@@ -4830,7 +4933,9 @@
       "byref": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/byref#satisfies",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -4847,8 +4952,6 @@
                 "ref": "dep$c"
               }
             ],
-            "doc": true,
-            "id": "depend/byref#satisfies",
             "match": {
               "out": {
                 "status": {
@@ -4859,7 +4962,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/byref#canonical-comparison",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -4876,7 +4980,6 @@
                 "ref": "dep$c"
               }
             ],
-            "id": "depend/byref#canonical-comparison",
             "match": {
               "out": {
                 "status": {
@@ -4887,7 +4990,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "declare",
@@ -4914,7 +5017,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "load",
@@ -4941,7 +5044,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/byref#lost",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -4962,7 +5066,6 @@
                 "ref": "dep$p"
               }
             ],
-            "id": "depend/byref#lost",
             "match": {
               "out": {
                 "status": {
@@ -4973,7 +5076,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/byref#lost-dynamic",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -4995,7 +5099,6 @@
                 "ref": "dep$p"
               }
             ],
-            "id": "depend/byref#lost-dynamic",
             "match": {
               "out": {
                 "status": {
@@ -5006,7 +5109,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/byref#lost-optional",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5030,7 +5134,6 @@
                 "ref": "dep$p"
               }
             ],
-            "id": "depend/byref#lost-optional",
             "match": {
               "out": {
                 "status": {
@@ -5041,7 +5144,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/byref#capability-not-a-ref",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5065,8 +5170,6 @@
                 "ref": "dep$c"
               }
             ],
-            "doc": true,
-            "id": "depend/byref#capability-not-a-ref",
             "match": {
               "out": {
                 "status": {
@@ -5077,7 +5180,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5111,7 +5214,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5136,7 +5239,9 @@
       "cascade": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/cascade#consumer-first",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5164,8 +5269,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/cascade#consumer-first",
             "match": {
               "out": {
                 "log": [
@@ -5180,7 +5283,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/cascade#deepest-first",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5223,8 +5328,6 @@
                 "ref": "dep$a"
               }
             ],
-            "doc": true,
-            "id": "depend/cascade#deepest-first",
             "match": {
               "out": {
                 "log": [
@@ -5242,7 +5345,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/cascade#close-inherits",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5269,8 +5374,6 @@
                 "do": "close"
               }
             ],
-            "doc": true,
-            "id": "depend/cascade#close-inherits",
             "match": {
               "out": {
                 "log": [
@@ -5291,7 +5394,9 @@
       "cascadefail": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/cascadefail#consumer",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5319,8 +5424,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/cascadefail#consumer",
             "match": {
               "out": {
                 "status": {
@@ -5331,7 +5434,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5380,7 +5483,10 @@
       "cycle": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "depend/cycle#mutual-mandatory",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5412,12 +5518,16 @@
                 "ref": "dep$b"
               }
             ],
-            "doc": true,
-            "err": "plugin_dependency_cycle",
-            "id": "depend/cycle#mutual-mandatory"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "depend/cycle#three-node",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5464,11 +5574,16 @@
                 "ref": "dep$c"
               }
             ],
-            "err": "plugin_dependency_cycle",
-            "id": "depend/cycle#three-node"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "depend/cycle#through-refs",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5490,11 +5605,17 @@
                 "ref": "dep$b"
               }
             ],
-            "err": "plugin_dependency_cycle",
-            "id": "depend/cycle#through-refs"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "depend/cycle#through-refs-noncanonical",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5516,12 +5637,17 @@
                 "ref": "other"
               }
             ],
-            "doc": true,
-            "err": "plugin_dependency_cycle",
-            "id": "depend/cycle#through-refs-noncanonical"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "depend/cycle#static-optional-still-cycles",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5559,53 +5685,55 @@
                 "ref": "dep$b"
               }
             ],
-            "doc": true,
-            "err": "plugin_dependency_cycle",
-            "id": "depend/cycle#static-optional-still-cycles"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_cycle"
+              }
+            }
           },
           {
-            "cmd": [
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "provides": [
-                    {
-                      "name": "x"
-                    }
-                  ],
-                  "requires": [
-                    {
-                      "name": "y",
-                      "optional": true,
-                      "policy": "dynamic"
-                    }
-                  ]
-                },
-                "ref": "dep$a"
-              },
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "provides": [
-                    {
-                      "name": "y"
-                    }
-                  ],
-                  "requires": [
-                    {
-                      "name": "x",
-                      "optional": true,
-                      "policy": "dynamic"
-                    }
-                  ]
-                },
-                "ref": "dep$b"
-              }
-            ],
             "doc": true,
             "id": "depend/cycle#dynamic-optional-is-permitted",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "x"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "y",
+                      "optional": true,
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$a"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "y"
+                    }
+                  ],
+                  "requires": [
+                    {
+                      "name": "x",
+                      "optional": true,
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$b"
+              }
+            ],
             "match": {
               "out": {
                 "status": {
@@ -5616,7 +5744,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "depend/cycle#mandatory-dynamic-still-cycles",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5654,11 +5784,16 @@
                 "ref": "dep$b"
               }
             ],
-            "err": "plugin_dependency_cycle",
-            "id": "depend/cycle#mandatory-dynamic-still-cycles"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/cycle#chain-is-not-a-cycle",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5697,8 +5832,6 @@
                 "ref": "dep$c"
               }
             ],
-            "doc": true,
-            "id": "depend/cycle#chain-is-not-a-cycle",
             "match": {
               "out": {
                 "status": {
@@ -5714,7 +5847,10 @@
       "hold": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "depend/hold#ad-hoc-deactivate-is-refused",
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -5746,46 +5882,48 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "err": "plugin_dependency_held",
-            "id": "depend/hold#ad-hoc-deactivate-is-refused"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_held"
+              }
+            }
           },
           {
-            "cmd": [
-              {
-                "dependency": "hold",
-                "do": "host"
-              },
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "provides": [
-                    {
-                      "name": "clock"
-                    }
-                  ]
-                },
-                "ref": "dep$p"
-              },
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "requires": [
-                    "clock"
-                  ]
-                },
-                "ref": "dep$c"
-              },
-              {
-                "do": "deactivate",
-                "ref": "dep$p"
-              }
-            ],
             "doc": true,
             "err": true,
             "id": "depend/hold#names-the-holders",
+            "in": [
+              {
+                "dependency": "hold",
+                "do": "host"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$p"
+              }
+            ],
             "match": {
               "err": {
                 "message": "/holders=\\[\"dep\\$c\"\\]/"
@@ -5793,7 +5931,10 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "depend/hold#mandatory-dynamic-holds",
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -5826,12 +5967,16 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "err": "plugin_dependency_held",
-            "id": "depend/hold#mandatory-dynamic-holds"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_held"
+              }
+            }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/hold#optional-does-not-hold",
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -5866,8 +6011,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/hold#optional-does-not-hold",
             "match": {
               "out": {
                 "status": {
@@ -5878,7 +6021,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/hold#unheld-deactivates-normally",
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -5900,7 +6044,6 @@
                 "ref": "dep$p"
               }
             ],
-            "id": "depend/hold#unheld-deactivates-normally",
             "match": {
               "out": {
                 "status": {
@@ -5910,7 +6053,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/hold#close-is-coordinated",
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -5941,8 +6086,6 @@
                 "do": "close"
               }
             ],
-            "doc": true,
-            "id": "depend/hold#close-is-coordinated",
             "match": {
               "out": {
                 "log": [
@@ -5959,7 +6102,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/hold#restart-is-the-default",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -5987,8 +6132,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/hold#restart-is-the-default",
             "match": {
               "out": {
                 "status": {
@@ -6003,7 +6146,9 @@
       "lost": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/lost#back-to-pending",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6031,8 +6176,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/lost#back-to-pending",
             "match": {
               "out": {
                 "status": {
@@ -6043,7 +6186,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/lost#recursive",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6086,7 +6230,6 @@
                 "ref": "dep$a"
               }
             ],
-            "id": "depend/lost#recursive",
             "match": {
               "out": {
                 "status": {
@@ -6097,7 +6240,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/lost#recovers",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6144,7 +6288,6 @@
                 "ref": "dep$a"
               }
             ],
-            "id": "depend/lost#recovers",
             "match": {
               "out": {
                 "status": {
@@ -6156,7 +6299,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/lost#dynamic-stays",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6185,7 +6329,6 @@
                 "ref": "dep$p"
               }
             ],
-            "id": "depend/lost#dynamic-stays",
             "match": {
               "out": {
                 "status": {
@@ -6195,7 +6338,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6239,7 +6382,9 @@
       "pending": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/pending#unmet",
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -6254,8 +6399,6 @@
                 "ref": "dep$a"
               }
             ],
-            "doc": true,
-            "id": "depend/pending#unmet",
             "match": {
               "out": {
                 "status": {
@@ -6265,7 +6408,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "depend/pending#capability",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6293,7 +6437,6 @@
                 "ref": "dep$c"
               }
             ],
-            "id": "depend/pending#capability",
             "match": {
               "out": {
                 "status": {
@@ -6303,7 +6446,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -6334,7 +6477,9 @@
       "policy": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/policy#per-requirement-dynamic",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6365,8 +6510,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/policy#per-requirement-dynamic",
             "match": {
               "out": {
                 "status": {
@@ -6376,54 +6519,54 @@
             }
           },
           {
-            "cmd": [
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "provides": [
-                    {
-                      "name": "store"
-                    }
-                  ]
-                },
-                "ref": "dep$s"
-              },
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "provides": [
-                    {
-                      "name": "metrics"
-                    }
-                  ]
-                },
-                "ref": "dep$m"
-              },
-              {
-                "definition": "dep",
-                "do": "ready",
-                "options": {
-                  "requires": [
-                    {
-                      "name": "store"
-                    },
-                    {
-                      "name": "metrics",
-                      "policy": "dynamic"
-                    }
-                  ]
-                },
-                "ref": "dep$c"
-              },
-              {
-                "do": "deactivate",
-                "ref": "dep$m"
-              }
-            ],
             "doc": true,
             "id": "depend/policy#mixed-keeps-live-on-dynamic-loss",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "store"
+                    }
+                  ]
+                },
+                "ref": "dep$s"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "metrics"
+                    }
+                  ]
+                },
+                "ref": "dep$m"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "requires": [
+                    {
+                      "name": "store"
+                    },
+                    {
+                      "name": "metrics",
+                      "policy": "dynamic"
+                    }
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "deactivate",
+                "ref": "dep$m"
+              }
+            ],
             "match": {
               "out": {
                 "status": {
@@ -6433,7 +6576,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/policy#mixed-restarts-on-static-loss",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6479,8 +6624,6 @@
                 "ref": "dep$s"
               }
             ],
-            "doc": true,
-            "id": "depend/policy#mixed-restarts-on-static-loss",
             "match": {
               "out": {
                 "status": {
@@ -6490,7 +6633,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/policy#dynamic-still-gates-first-activation",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6505,8 +6650,6 @@
                 "ref": "dep$c"
               }
             ],
-            "doc": true,
-            "id": "depend/policy#dynamic-still-gates-first-activation",
             "match": {
               "out": {
                 "status": {
@@ -6516,7 +6659,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/policy#optional-static-restarts",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6547,8 +6692,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/policy#optional-static-restarts",
             "match": {
               "out": {
                 "log": [
@@ -6567,7 +6710,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/policy#optional-dynamic-is-untouched",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6599,8 +6744,6 @@
                 "ref": "dep$p"
               }
             ],
-            "doc": true,
-            "id": "depend/policy#optional-dynamic-is-untouched",
             "match": {
               "out": {
                 "log": [
@@ -6618,7 +6761,9 @@
       "select": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/select#rank",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6650,8 +6795,6 @@
                 "name": "s"
               }
             ],
-            "doc": true,
-            "id": "depend/select#rank",
             "match": {
               "out": {
                 "result": [
@@ -6662,7 +6805,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6711,7 +6854,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/select#reluctant",
+            "in": [
               {
                 "definition": "dep",
                 "do": "ready",
@@ -6756,8 +6901,6 @@
                 "ref": "dep$lo"
               }
             ],
-            "doc": true,
-            "id": "depend/select#reluctant",
             "match": {
               "out": {
                 "log": [
@@ -6775,7 +6918,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "depend/select#reluctant-holds",
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -6824,8 +6969,6 @@
                 "ref": "dep$hi"
               }
             ],
-            "doc": true,
-            "id": "depend/select#reluctant-holds",
             "match": {
               "out": {
                 "status": {
@@ -6837,7 +6980,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "dependency": "hold",
                 "do": "host"
@@ -6894,7 +7038,11 @@
                 "ref": "dep$hi"
               }
             ],
-            "err": "plugin_dependency_held"
+            "match": {
+              "err": {
+                "code": "plugin_dependency_held"
+              }
+            }
           }
         ]
       }
@@ -6904,7 +7052,7 @@
         "set": [
           {
             "doc": true,
-            "err": "plugin_env_ambiguous",
+            "err": true,
             "id": "env/ambiguous#tag-vs-underscore",
             "in": {
               "env": {},
@@ -6912,26 +7060,41 @@
                 "retry$fast",
                 "retry__fast"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_env_ambiguous"
+              }
             }
           },
           {
-            "err": "plugin_env_ambiguous",
+            "err": true,
             "in": {
               "env": {},
               "refs": [
                 "retry$fast",
                 "Retry$fast"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_env_ambiguous"
+              }
             }
           },
           {
-            "err": "plugin_env_ambiguous",
+            "err": true,
             "in": {
               "env": {},
               "refs": [
                 "retry$fast",
                 "retry$Fast"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_env_ambiguous"
+              }
             }
           },
           {
@@ -7121,7 +7284,7 @@
         "set": [
           {
             "doc": true,
-            "err": "plugin_ref_reserved",
+            "err": true,
             "id": "env/reserved#inactive",
             "in": {
               "env": {
@@ -7133,10 +7296,15 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
-            "err": "plugin_ref_reserved",
+            "err": true,
             "in": {
               "env": {
                 "VOXGIG_PLUGIN_ACTIVE": "station"
@@ -7147,10 +7315,15 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
-            "err": "plugin_ref_reserved",
+            "err": true,
             "in": {
               "env": {
                 "VOXGIG_PLUGIN_INACTIVE": "station$eu"
@@ -7161,10 +7334,15 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
-            "err": "plugin_ref_reserved",
+            "err": true,
             "in": {
               "env": {
                 "VOXGIG_PLUGIN_STATION_X": "1"
@@ -7175,6 +7353,11 @@
               "reserved": [
                 "station"
               ]
+            },
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
             }
           },
           {
@@ -7499,27 +7682,38 @@
       "codes": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "error/codes#not-loaded",
+            "in": [
               {
                 "do": "activate",
                 "ref": "nope$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_not_loaded",
-            "id": "error/codes#not-loaded"
+            "match": {
+              "err": {
+                "code": "plugin_not_loaded"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "load",
                 "ref": "nosuch$a"
               }
             ],
-            "err": "plugin_unknown_definition"
+            "match": {
+              "err": {
+                "code": "plugin_unknown_definition"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "load",
                 "ref": "probe$a"
@@ -7530,28 +7724,43 @@
                 "ref": "probe$a"
               }
             ],
-            "err": "plugin_ref_duplicate"
+            "match": {
+              "err": {
+                "code": "plugin_ref_duplicate"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "emit",
                 "point": "nope"
               }
             ],
-            "err": "plugin_point_unknown"
+            "match": {
+              "err": {
+                "code": "plugin_point_unknown"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "chain",
                 "point": "p"
               }
             ],
-            "err": "plugin_point_kind"
+            "match": {
+              "err": {
+                "code": "plugin_point_kind"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "ready",
                 "order": {
@@ -7564,10 +7773,15 @@
                 "point": "p"
               }
             ],
-            "err": "plugin_order_cycle"
+            "match": {
+              "err": {
+                "code": "plugin_order_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -7585,10 +7799,15 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "plugin_bad_state"
+            "match": {
+              "err": {
+                "code": "plugin_bad_state"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -7601,10 +7820,15 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "plugin_reentrant"
+            "match": {
+              "err": {
+                "code": "plugin_reentrant"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -7618,10 +7842,15 @@
                 "key": "probe/client"
               }
             ],
-            "err": "plugin_export_ambiguous"
+            "match": {
+              "err": {
+                "code": "plugin_export_ambiguous"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -7652,10 +7881,15 @@
                 "point": "v"
               }
             ],
-            "err": "plugin_point_exclusive"
+            "match": {
+              "err": {
+                "code": "plugin_point_exclusive"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "host",
                 "reserved": [
@@ -7667,10 +7901,15 @@
                 "ref": "station$a"
               }
             ],
-            "err": "plugin_ref_reserved"
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
+            }
           },
           {
-            "cmd": [
+            "id": "error/codes#reserved-host-path",
+            "in": [
               {
                 "do": "host",
                 "reserved": [
@@ -7682,7 +7921,6 @@
                 "ref": "probe$a"
               }
             ],
-            "id": "error/codes#reserved-host-path",
             "match": {
               "out": {
                 "result": "probe$a",
@@ -7693,7 +7931,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "host",
                 "reserved": [
@@ -7705,22 +7944,26 @@
                 "ref": "probe$a"
               }
             ],
-            "err": "plugin_ref_reserved"
+            "match": {
+              "err": {
+                "code": "plugin_ref_reserved"
+              }
+            }
           }
         ]
       },
       "format": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "error/format#prefix",
+            "in": [
               {
                 "do": "activate",
                 "ref": "nope$a"
               }
             ],
-            "doc": true,
-            "err": true,
-            "id": "error/format#prefix",
             "match": {
               "err": {
                 "message": "/^plugin\\/plugin_not_loaded: /"
@@ -7728,13 +7971,13 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "activate",
                 "ref": "nope$a"
               }
             ],
-            "err": true,
             "match": {
               "err": {
                 "message": "/\\[ref=\"nope\\$a\"\\]/"
@@ -7742,14 +7985,14 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "error/format#json-values",
+            "in": [
               {
                 "do": "emit",
                 "point": "nope"
               }
             ],
-            "err": true,
-            "id": "error/format#json-values",
             "match": {
               "err": {
                 "message": "/\\[point=\"nope\"\\]/"
@@ -7757,7 +8000,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "error/format#list-field",
+            "in": [
               {
                 "do": "ready",
                 "order": {
@@ -7777,8 +8022,6 @@
                 "point": "p"
               }
             ],
-            "err": true,
-            "id": "error/format#list-field",
             "match": {
               "err": {
                 "message": "/cycle=\\[/"
@@ -7792,7 +8035,9 @@
       "alias": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "export/alias#untagged-wins",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe"
@@ -7806,8 +8051,6 @@
                 "key": "probe/client"
               }
             ],
-            "doc": true,
-            "id": "export/alias#untagged-wins",
             "match": {
               "out": {
                 "result": "probe"
@@ -7815,7 +8058,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -7832,7 +8075,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "export/alias#ambiguous",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -7846,11 +8091,15 @@
                 "key": "probe/client"
               }
             ],
-            "err": "plugin_export_ambiguous",
-            "id": "export/alias#ambiguous"
+            "match": {
+              "err": {
+                "code": "plugin_export_ambiguous"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -7864,7 +8113,6 @@
                 "key": "probe/client"
               }
             ],
-            "err": true,
             "match": {
               "err": {
                 "message": "/probe\\$a/"
@@ -7876,7 +8124,9 @@
       "key": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "export/key#qualified",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -7886,8 +8136,6 @@
                 "key": "probe$a/client"
               }
             ],
-            "doc": true,
-            "id": "export/key#qualified",
             "match": {
               "out": {
                 "result": "probe$a"
@@ -7895,7 +8143,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -7912,7 +8160,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "export/key#loaded-visible",
+            "in": [
               {
                 "do": "load",
                 "ref": "probe$a"
@@ -7922,7 +8171,6 @@
                 "key": "probe$a/client"
               }
             ],
-            "id": "export/key#loaded-visible",
             "match": {
               "out": {
                 "result": "probe$a"
@@ -8459,7 +8707,9 @@
       "back": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/back#deactivate",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -8473,8 +8723,6 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/back#deactivate",
             "out": {
               "log": [
                 "probe$a:define",
@@ -8489,7 +8737,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -8516,7 +8764,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -8546,7 +8794,10 @@
       "bindscope": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "lifecycle/bindscope#activate",
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -8559,12 +8810,15 @@
                 "ref": "greedy$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_bind_scope",
-            "id": "lifecycle/bindscope#activate"
+            "match": {
+              "err": {
+                "code": "plugin_bind_scope"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -8577,10 +8831,14 @@
                 "ref": "greedy$a"
               }
             ],
-            "err": "plugin_bind_scope"
+            "match": {
+              "err": {
+                "code": "plugin_bind_scope"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -8608,7 +8866,9 @@
       "fail": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/fail#activate",
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8628,8 +8888,6 @@
                 "ref": "noisy$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/fail#activate",
             "match": {
               "out": {
                 "status": {
@@ -8639,7 +8897,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8658,10 +8917,14 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "probe_boom"
+            "match": {
+              "err": {
+                "code": "probe_boom"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8692,7 +8955,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8715,10 +8979,14 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "plugin_bad_state"
+            "match": {
+              "err": {
+                "code": "plugin_bad_state"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8748,7 +9016,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8778,7 +9046,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -8808,7 +9076,9 @@
       "faildown": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/faildown#deactivate",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -8822,8 +9092,6 @@
                 "ref": "noisy$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/faildown#deactivate",
             "match": {
               "out": {
                 "open": 0,
@@ -8834,7 +9102,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -8848,10 +9117,15 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "probe_boom"
+            "match": {
+              "err": {
+                "code": "probe_boom"
+              }
+            }
           },
           {
-            "cmd": [
+            "id": "lifecycle/faildown#unload",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -8865,7 +9139,6 @@
                 "ref": "noisy$a"
               }
             ],
-            "id": "lifecycle/faildown#unload",
             "match": {
               "out": {
                 "open": 0,
@@ -8876,7 +9149,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -8902,7 +9175,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "lifecycle/faildown#close-drops",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -8919,7 +9193,6 @@
                 "do": "list"
               }
             ],
-            "id": "lifecycle/faildown#close-drops",
             "match": {
               "out": {
                 "open": 0,
@@ -8932,7 +9205,10 @@
       "failedexit": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "lifecycle/failedexit#deactivate",
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -8950,12 +9226,14 @@
                 "ref": "noisy$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_bad_state",
-            "id": "lifecycle/failedexit#deactivate"
+            "match": {
+              "err": {
+                "code": "plugin_bad_state"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -8990,7 +9268,9 @@
       "forward": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/forward#full",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9004,8 +9284,6 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/forward#full",
             "out": {
               "log": [
                 "probe$a:define",
@@ -9019,7 +9297,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9041,7 +9319,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9065,7 +9343,9 @@
       "idem": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/idem#activate",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9083,8 +9363,6 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/idem#activate",
             "out": {
               "log": [
                 "probe$a:define",
@@ -9098,7 +9376,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9124,7 +9402,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9154,46 +9432,67 @@
       "illegal": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "lifecycle/illegal#activate-absent",
+            "in": [
               {
                 "do": "activate",
                 "ref": "nope$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_not_loaded",
-            "id": "lifecycle/illegal#activate-absent"
+            "match": {
+              "err": {
+                "code": "plugin_not_loaded"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "deactivate",
                 "ref": "nope$a"
               }
             ],
-            "err": "plugin_not_loaded"
+            "match": {
+              "err": {
+                "code": "plugin_not_loaded"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "unload",
                 "ref": "nope$a"
               }
             ],
-            "err": "plugin_not_loaded"
+            "match": {
+              "err": {
+                "code": "plugin_not_loaded"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "options",
                 "patch": {},
                 "ref": "nope$a"
               }
             ],
-            "err": "plugin_not_loaded"
+            "match": {
+              "err": {
+                "code": "plugin_not_loaded"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9212,23 +9511,34 @@
                 "ref": "probe$a"
               }
             ],
-            "err": "plugin_ref_duplicate"
+            "match": {
+              "err": {
+                "code": "plugin_ref_duplicate"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "load",
                 "ref": "nosuch$a"
               }
             ],
-            "err": "plugin_unknown_definition"
+            "match": {
+              "err": {
+                "code": "plugin_unknown_definition"
+              }
+            }
           }
         ]
       },
       "introspect": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/introspect#free",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9248,8 +9558,6 @@
                 "do": "list"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/introspect#free",
             "out": {
               "log": [],
               "open": 0,
@@ -9262,7 +9570,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9297,7 +9605,9 @@
       "pending": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/pending#unmet",
+            "in": [
               {
                 "do": "define",
                 "name": "dep"
@@ -9316,8 +9626,6 @@
                 "ref": "dep$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/pending#unmet",
             "out": {
               "log": [
                 "dep$a:define"
@@ -9330,7 +9638,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "dep"
@@ -9365,7 +9673,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "dep"
@@ -9398,7 +9706,10 @@
       "reentrant": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "lifecycle/reentrant#activate",
+            "in": [
               {
                 "do": "define",
                 "name": "noisy",
@@ -9416,16 +9727,20 @@
                 "ref": "noisy$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_reentrant",
-            "id": "lifecycle/reentrant#activate"
+            "match": {
+              "err": {
+                "code": "plugin_reentrant"
+              }
+            }
           }
         ]
       },
       "resource": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/resource#unwind",
+            "in": [
               {
                 "do": "define",
                 "name": "greedy",
@@ -9444,8 +9759,6 @@
                 "ref": "greedy$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/resource#unwind",
             "match": {
               "out": {
                 "open": 2
@@ -9453,7 +9766,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "greedy",
@@ -9483,7 +9796,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9523,7 +9836,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9562,7 +9875,9 @@
       "slow": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "lifecycle/slow#is-a-probe",
+            "in": [
               {
                 "do": "ready",
                 "ref": "slow$a"
@@ -9576,8 +9891,6 @@
                 "ref": "slow$a"
               }
             ],
-            "doc": true,
-            "id": "lifecycle/slow#is-a-probe",
             "out": {
               "log": [
                 "slow$a:define",
@@ -9591,7 +9904,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "slow$a"
@@ -9611,7 +9924,10 @@
       "wrap": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "lifecycle/wrap#bare-activate",
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -9625,12 +9941,15 @@
                 "ref": "noisy$a"
               }
             ],
-            "doc": true,
-            "err": "plugin_activate_failed",
-            "id": "lifecycle/wrap#bare-activate"
+            "match": {
+              "err": {
+                "code": "plugin_activate_failed"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -9640,10 +9959,15 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "plugin_define_failed"
+            "match": {
+              "err": {
+                "code": "plugin_define_failed"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9657,10 +9981,14 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "plugin_deactivate_failed"
+            "match": {
+              "err": {
+                "code": "plugin_deactivate_failed"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -9685,7 +10013,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "lifecycle/wrap#own-code-kept",
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -9699,8 +10029,11 @@
                 "ref": "noisy$a"
               }
             ],
-            "err": "store_unreachable",
-            "id": "lifecycle/wrap#own-code-kept"
+            "match": {
+              "err": {
+                "code": "store_unreachable"
+              }
+            }
           }
         ]
       }
@@ -9709,7 +10042,9 @@
       "lifetime": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "nest/lifetime#inner-live",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9724,8 +10059,6 @@
                 "ref": "probe$outer"
               }
             ],
-            "doc": true,
-            "id": "nest/lifetime#inner-live",
             "match": {
               "out": {
                 "result": {
@@ -9735,7 +10068,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "nest/lifetime#outer-closes-inner",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9754,7 +10088,6 @@
                 "ref": "probe$outer"
               }
             ],
-            "id": "nest/lifetime#outer-closes-inner",
             "match": {
               "out": {
                 "result": {}
@@ -9762,7 +10095,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "nest/lifetime#isolated",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9773,7 +10107,6 @@
                 "ref": "probe$outer"
               }
             ],
-            "id": "nest/lifetime#isolated",
             "match": {
               "out": {
                 "status": {
@@ -9787,7 +10120,9 @@
       "open": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "nest/open#nest-is-not-a-resource",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9798,8 +10133,6 @@
                 "ref": "probe$outer"
               }
             ],
-            "doc": true,
-            "id": "nest/open#nest-is-not-a-resource",
             "match": {
               "out": {
                 "open": 1
@@ -9807,7 +10140,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -9820,7 +10153,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "nest/open#inner-resources-stay-inner",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9832,7 +10166,6 @@
                 "ref": "probe$outer"
               }
             ],
-            "id": "nest/open#inner-resources-stay-inner",
             "match": {
               "out": {
                 "open": 1
@@ -9840,7 +10173,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "nest/open#unwinds",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -9856,7 +10190,6 @@
                 "ref": "probe$outer"
               }
             ],
-            "id": "nest/open#unwinds",
             "match": {
               "out": {
                 "open": 0
@@ -9870,7 +10203,9 @@
       "band": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/band#lower-first",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9894,8 +10229,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/band#lower-first",
             "match": {
               "out": {
                 "result": [
@@ -9906,7 +10239,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9937,7 +10270,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9972,7 +10305,9 @@
       "constraint": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/constraint#after",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -9993,8 +10328,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/constraint#after",
             "match": {
               "out": {
                 "result": [
@@ -10005,7 +10338,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10036,7 +10369,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10077,7 +10410,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10122,7 +10455,10 @@
       "cycle": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "err": true,
+            "id": "order/cycle#pair",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10146,12 +10482,15 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "err": "plugin_order_cycle",
-            "id": "order/cycle#pair"
+            "match": {
+              "err": {
+                "code": "plugin_order_cycle"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10182,7 +10521,6 @@
                 "point": "p"
               }
             ],
-            "err": true,
             "match": {
               "err": {
                 "code": "plugin_order_cycle"
@@ -10190,7 +10528,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10207,14 +10546,20 @@
                 "point": "p"
               }
             ],
-            "err": "plugin_order_cycle"
+            "match": {
+              "err": {
+                "code": "plugin_order_cycle"
+              }
+            }
           }
         ]
       },
       "list": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/list#after-one",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10241,8 +10586,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/list#after-one",
             "match": {
               "out": {
                 "result": [
@@ -10253,7 +10596,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/list#after-many",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10288,8 +10633,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/list#after-many",
             "match": {
               "out": {
                 "result": [
@@ -10301,7 +10644,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/list#before-many",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10336,8 +10681,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/list#before-many",
             "match": {
               "out": {
                 "result": [
@@ -10349,7 +10692,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/list#empty-is-no-constraint",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10374,8 +10719,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/list#empty-is-no-constraint",
             "match": {
               "out": {
                 "result": [
@@ -10386,7 +10729,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/list#name-and-ref-are-one-edge",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10418,8 +10763,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/list#name-and-ref-are-one-edge",
             "match": {
               "out": {
                 "result": [
@@ -10430,7 +10773,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/list#vacuous-member",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10458,8 +10803,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/list#vacuous-member",
             "match": {
               "out": {
                 "result": [
@@ -10474,7 +10817,9 @@
       "pin": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/pin#innermost",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -10508,8 +10853,6 @@
                 "point": "c"
               }
             ],
-            "doc": true,
-            "id": "order/pin#innermost",
             "match": {
               "out": {
                 "result": [
@@ -10520,7 +10863,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -10557,10 +10901,14 @@
                 "point": "c"
               }
             ],
-            "err": "plugin_order_pinned"
+            "match": {
+              "err": {
+                "code": "plugin_order_pinned"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -10608,7 +10956,9 @@
       "pinorder": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/pinorder#two-names",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -10634,8 +10984,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/pinorder#two-names",
             "match": {
               "out": {
                 "result": [
@@ -10650,7 +10998,9 @@
       "precedence": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/precedence#constraint-wins",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10675,8 +11025,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/precedence#constraint-wins",
             "match": {
               "out": {
                 "result": [
@@ -10691,7 +11039,9 @@
       "recompute": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/recompute#reactivate",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10720,8 +11070,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/recompute#reactivate",
             "match": {
               "out": {
                 "result": [
@@ -10732,7 +11080,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10753,7 +11101,9 @@
       "seqtie": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/seqtie#shared-pos",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$z"
@@ -10775,8 +11125,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/seqtie#shared-pos",
             "match": {
               "out": {
                 "result": [
@@ -10791,7 +11139,9 @@
       "tie": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/tie#pos",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10818,8 +11168,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/tie#pos",
             "match": {
               "out": {
                 "result": [
@@ -10831,7 +11179,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10884,7 +11232,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10957,7 +11305,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -10993,7 +11341,9 @@
       "vacuous": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "order/vacuous#absent",
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -11010,8 +11360,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "order/vacuous#absent",
             "match": {
               "out": {
                 "result": [
@@ -11021,7 +11369,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "define",
                 "name": "probe"
@@ -11061,7 +11409,9 @@
       "bail": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/bail#stops",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11094,8 +11444,6 @@
                 "point": "v"
               }
             ],
-            "doc": true,
-            "id": "point/bail#stops",
             "match": {
               "out": {
                 "result": "A"
@@ -11103,7 +11451,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11125,7 +11473,9 @@
             }
           },
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/bail#null-declines",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11158,8 +11508,6 @@
                 "point": "v"
               }
             ],
-            "doc": true,
-            "id": "point/bail#null-declines",
             "match": {
               "out": {
                 "result": "B"
@@ -11167,7 +11515,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11211,7 +11559,9 @@
       "chain": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/chain#outermost",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11240,8 +11590,6 @@
                 "point": "c"
               }
             ],
-            "doc": true,
-            "id": "point/chain#outermost",
             "match": {
               "out": {
                 "result": "ABx"
@@ -11249,7 +11597,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/chain#band",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11284,7 +11633,6 @@
                 "point": "c"
               }
             ],
-            "id": "point/chain#band",
             "match": {
               "out": {
                 "result": "BAx"
@@ -11292,7 +11640,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11314,7 +11662,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/chain#recompose",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11347,7 +11696,6 @@
                 "point": "c"
               }
             ],
-            "id": "point/chain#recompose",
             "match": {
               "out": {
                 "result": "Bx"
@@ -11359,7 +11707,9 @@
       "hook": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/hook#fanout",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11386,8 +11736,6 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "id": "point/hook#fanout",
             "match": {
               "out": {
                 "result": 1
@@ -11395,7 +11743,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/hook#deactivated",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11422,7 +11771,6 @@
                 "ref": "probe$a"
               }
             ],
-            "id": "point/hook#deactivated",
             "match": {
               "out": {
                 "result": 0
@@ -11430,7 +11778,8 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "host",
                 "points": {}
@@ -11440,10 +11789,15 @@
                 "point": "nope"
               }
             ],
-            "err": "plugin_point_unknown"
+            "match": {
+              "err": {
+                "code": "plugin_point_unknown"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11457,14 +11811,20 @@
                 "point": "c"
               }
             ],
-            "err": "plugin_point_kind"
+            "match": {
+              "err": {
+                "code": "plugin_point_kind"
+              }
+            }
           }
         ]
       },
       "insert": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/insert#loaded-not-bound",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11482,8 +11842,6 @@
                 "point": "p"
               }
             ],
-            "doc": true,
-            "id": "point/insert#loaded-not-bound",
             "match": {
               "out": {
                 "result": []
@@ -11491,7 +11849,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11522,7 +11880,9 @@
       "position": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/position#outermost",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -11544,8 +11904,6 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "id": "point/position#outermost",
             "match": {
               "out": {
                 "result": {
@@ -11558,7 +11916,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/position#innermost",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -11580,7 +11939,6 @@
                 "ref": "probe$b"
               }
             ],
-            "id": "point/position#innermost",
             "match": {
               "out": {
                 "result": {
@@ -11593,7 +11951,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -11617,7 +11975,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/position#agrees-with-composition",
+            "in": [
               {
                 "do": "ready",
                 "options": {
@@ -11638,7 +11997,6 @@
                 "point": "c"
               }
             ],
-            "id": "point/position#agrees-with-composition",
             "match": {
               "out": {
                 "result": "ABx"
@@ -11650,7 +12008,9 @@
       "provider": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "point/provider#one",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11673,8 +12033,6 @@
                 "point": "v"
               }
             ],
-            "doc": true,
-            "id": "point/provider#one",
             "match": {
               "out": {
                 "result": "A"
@@ -11682,7 +12040,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/provider#highest",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11720,7 +12079,6 @@
                 "point": "v"
               }
             ],
-            "id": "point/provider#highest",
             "match": {
               "out": {
                 "result": "B"
@@ -11728,7 +12086,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/provider#shadowed",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11766,7 +12125,6 @@
                 "point": "v"
               }
             ],
-            "id": "point/provider#shadowed",
             "match": {
               "out": {
                 "result": [
@@ -11776,7 +12134,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "point/provider#tie-by-ref",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11808,7 +12167,6 @@
                 "point": "v"
               }
             ],
-            "id": "point/provider#tie-by-ref",
             "match": {
               "out": {
                 "result": "A"
@@ -11816,7 +12174,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11857,7 +12215,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11879,7 +12237,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "point/provider#exclusive",
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -11912,11 +12272,14 @@
                 "point": "v"
               }
             ],
-            "err": "plugin_point_exclusive",
-            "id": "point/provider#exclusive"
+            "match": {
+              "err": {
+                "code": "plugin_point_exclusive"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "host",
                 "points": {
@@ -12060,66 +12423,111 @@
               ""
             ],
             "doc": true,
-            "err": "plugin_bad_name",
-            "id": "ref/formatbad#emptyname"
+            "err": true,
+            "id": "ref/formatbad#emptyname",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
             "args": [
               "",
               "test"
             ],
-            "err": "plugin_bad_name"
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
             "args": [
               "1abc",
               ""
             ],
-            "err": "plugin_bad_name"
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
             "args": [
               "a$b",
               ""
             ],
-            "err": "plugin_bad_name"
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
             "args": [
               "stripe",
               "a/b"
             ],
-            "err": "plugin_bad_tag"
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
             "args": [
               "stripe",
               "a$b"
             ],
-            "err": "plugin_bad_tag"
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
             "args": [
               "stripe",
               "@x"
             ],
-            "err": "plugin_bad_tag"
+            "err": true,
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
             "args": [
               "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
               ""
             ],
-            "err": "plugin_bad_name",
-            "id": "ref/formatbad#name-overlong"
+            "err": true,
+            "id": "ref/formatbad#name-overlong",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
             "args": [
               "x",
               "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
             ],
-            "err": "plugin_bad_tag",
-            "id": "ref/formatbad#tag-overlong"
+            "err": true,
+            "id": "ref/formatbad#tag-overlong",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           }
         ]
       },
@@ -12348,92 +12756,197 @@
         "set": [
           {
             "doc": true,
-            "err": "plugin_bad_name",
+            "err": true,
             "id": "ref/parsebad#empty",
-            "in": ""
+            "in": "",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "$test"
+            "err": true,
+            "in": "$test",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "$"
+            "err": true,
+            "in": "$",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "1abc"
+            "err": true,
+            "in": "1abc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "-abc"
+            "err": true,
+            "in": "-abc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": ".abc"
+            "err": true,
+            "in": ".abc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "/abc"
+            "err": true,
+            "in": "/abc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "~abc"
+            "err": true,
+            "in": "~abc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "_abc"
+            "err": true,
+            "in": "_abc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "a b"
+            "err": true,
+            "in": "a b",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "a!b"
+            "err": true,
+            "in": "a!b",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
-            "in": "a#b"
+            "err": true,
+            "in": "a#b",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
+            "err": true,
             "id": "ref/parsebad#trailing-newline",
-            "in": "abc\n"
+            "in": "abc\n",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
-            "in": "a$b\n"
+            "err": true,
+            "in": "a$b\n",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
-            "in": "a$b$c"
+            "err": true,
+            "in": "a$b$c",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
-            "in": "a$b/c"
+            "err": true,
+            "in": "a$b/c",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
-            "in": "a$@b"
+            "err": true,
+            "in": "a$@b",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
-            "in": "a$b c"
+            "err": true,
+            "in": "a$b c",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
-            "in": "a$b!c"
+            "err": true,
+            "in": "a$b!c",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           },
           {
-            "err": "plugin_bad_name",
+            "err": true,
             "id": "ref/parsebad#name-overlong",
-            "in": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            "in": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "match": {
+              "err": {
+                "code": "plugin_bad_name"
+              }
+            }
           },
           {
-            "err": "plugin_bad_tag",
+            "err": true,
             "id": "ref/parsebad#tag-overlong",
-            "in": "x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            "in": "x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "match": {
+              "err": {
+                "code": "plugin_bad_tag"
+              }
+            }
           }
         ]
       },
@@ -12695,7 +13208,9 @@
       "scope": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "resource/scope#difference",
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12706,8 +13221,6 @@
                 "ref": "greedy$a"
               }
             ],
-            "doc": true,
-            "id": "resource/scope#difference",
             "match": {
               "out": {
                 "open": 2
@@ -12715,7 +13228,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12737,7 +13250,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "resource/scope#double-release",
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12752,7 +13266,6 @@
                 "ref": "greedy$a"
               }
             ],
-            "id": "resource/scope#double-release",
             "match": {
               "out": {
                 "open": 0
@@ -12760,7 +13273,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "resource/scope#partial-rollback",
+            "in": [
               {
                 "do": "load",
                 "options": {
@@ -12774,7 +13288,6 @@
                 "ref": "noisy$a"
               }
             ],
-            "id": "resource/scope#partial-rollback",
             "match": {
               "out": {
                 "open": 0
@@ -12782,7 +13295,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12807,7 +13320,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "resource/scope#reverse",
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12826,7 +13340,6 @@
                 "ref": "greedy$a"
               }
             ],
-            "id": "resource/scope#reverse",
             "match": {
               "out": {
                 "result": [
@@ -12838,7 +13351,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "resource/scope#release-counts",
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12848,7 +13362,6 @@
                 "ref": "greedy$a"
               }
             ],
-            "id": "resource/scope#release-counts",
             "match": {
               "out": {
                 "open": 3
@@ -12856,7 +13369,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12877,7 +13390,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12899,7 +13412,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "resource/scope#stray",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -12910,11 +13425,14 @@
                 "ref": "probe$a"
               }
             ],
-            "err": "plugin_release_scope",
-            "id": "resource/scope#stray"
+            "match": {
+              "err": {
+                "code": "plugin_release_scope"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -12933,7 +13451,9 @@
             }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "resource/scope#capture-phase",
+            "in": [
               {
                 "definition": "greedy",
                 "do": "load",
@@ -12943,11 +13463,15 @@
                 "ref": "greedy$a"
               }
             ],
-            "err": "plugin_release_scope",
-            "id": "resource/scope#capture-phase"
+            "match": {
+              "err": {
+                "code": "plugin_release_scope"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "in": [
               {
                 "definition": "greedy",
                 "do": "load",
@@ -12957,10 +13481,16 @@
                 "ref": "greedy$a"
               }
             ],
-            "err": "plugin_release_scope"
+            "match": {
+              "err": {
+                "code": "plugin_release_scope"
+              }
+            }
           },
           {
-            "cmd": [
+            "err": true,
+            "id": "resource/scope#release-failed",
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -12975,11 +13505,14 @@
                 "ref": "greedy$a"
               }
             ],
-            "err": "plugin_release_failed",
-            "id": "resource/scope#release-failed"
+            "match": {
+              "err": {
+                "code": "plugin_release_failed"
+              }
+            }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "definition": "greedy",
                 "do": "ready",
@@ -13011,7 +13544,9 @@
       "survive": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "state/survive#cycle",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -13035,8 +13570,6 @@
                 "ref": "probe$a"
               }
             ],
-            "doc": true,
-            "id": "state/survive#cycle",
             "match": {
               "out": {
                 "result": 1
@@ -13044,7 +13577,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -13088,7 +13621,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "state/survive#unload-destroys",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -13112,7 +13646,6 @@
                 "ref": "probe$a"
               }
             ],
-            "id": "state/survive#unload-destroys",
             "match": {
               "out": {
                 "result": 0
@@ -13120,7 +13653,7 @@
             }
           },
           {
-            "cmd": [
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -13153,7 +13686,9 @@
       "record": {
         "set": [
           {
-            "cmd": [
+            "doc": true,
+            "id": "trace/record#forward",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -13162,8 +13697,6 @@
                 "do": "trace"
               }
             ],
-            "doc": true,
-            "id": "trace/record#forward",
             "match": {
               "out": {
                 "result": [
@@ -13180,7 +13713,8 @@
             }
           },
           {
-            "cmd": [
+            "id": "trace/record#seq",
+            "in": [
               {
                 "do": "ready",
                 "ref": "probe$a"
@@ -13197,7 +13731,6 @@
                 "do": "trace"
               }
             ],
-            "id": "trace/record#seq",
             "match": {
               "out": {
                 "result": [
@@ -13370,59 +13903,124 @@
         "set": [
           {
             "doc": true,
-            "err": "plugin_bad_range",
+            "err": true,
             "id": "version/rangebad#empty",
-            "in": ""
+            "in": "",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "x"
+            "err": true,
+            "in": "x",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "2.x"
+            "err": true,
+            "in": "2.x",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": ">=2.1"
+            "err": true,
+            "in": ">=2.1",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "^2.1"
+            "err": true,
+            "in": "^2.1",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "2.1.3.4"
+            "err": true,
+            "in": "2.1.3.4",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "~"
+            "err": true,
+            "in": "~",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "-1"
+            "err": true,
+            "in": "-1",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
+            "err": true,
             "id": "version/rangebad#trailing-newline",
-            "in": "2.1\n"
+            "in": "2.1\n",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
+            "err": true,
             "id": "version/rangebad#component-bound",
-            "in": "9223372036854775808"
+            "in": "9223372036854775808",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "2147483648"
+            "err": true,
+            "in": "2147483648",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "1.2147483648"
+            "err": true,
+            "in": "1.2147483648",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           },
           {
-            "err": "plugin_bad_range",
-            "in": "1.2.2147483648"
+            "err": true,
+            "in": "1.2.2147483648",
+            "match": {
+              "err": {
+                "code": "plugin_bad_range"
+              }
+            }
           }
         ]
       },

@@ -59,6 +59,13 @@
 # and empty sets all fail rather than passing silently.
 PLUGIN: version: 1
 
+# The omni spec-format version. `primary`, the group `set` lists and every
+# entry field here are omni's, so this corpus is readable by omni's runner
+# in any of its twenty-four ports; version 1 turns on its strict entry
+# validation (unknown fields, several argument sources, `err` beside
+# `out`, an empty `set`).
+OMNI: version: 1
+
 
 # ---------------------------------------------------------------------------
 # ref — name/tag identity. THE FIRST SECTION A PORT PASSES.
@@ -146,37 +153,37 @@ primary: ref: {
   # Grammar violations. The code says which HALF is wrong, which is the
   # whole reason there are two codes rather than one plugin_bad_ref.
   parsebad: set: [
-    { id: 'ref/parsebad#empty', doc: true, in: '', err: 'plugin_bad_name' }
-    { in: '$test', err: 'plugin_bad_name' }
-    { in: '$', err: 'plugin_bad_name' }
-    { in: '1abc', err: 'plugin_bad_name' }
-    { in: '-abc', err: 'plugin_bad_name' }
-    { in: '.abc', err: 'plugin_bad_name' }
-    { in: '/abc', err: 'plugin_bad_name' }
-    { in: '~abc', err: 'plugin_bad_name' }
-    { in: '_abc', err: 'plugin_bad_name' }
-    { in: 'a b', err: 'plugin_bad_name' }
-    { in: 'a!b', err: 'plugin_bad_name' }
-    { in: 'a#b', err: 'plugin_bad_name' }
+    { id: 'ref/parsebad#empty', doc: true, in: '', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '$test', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '$', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '1abc', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '-abc', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '.abc', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '/abc', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '~abc', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: '_abc', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: 'a b', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: 'a!b', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: 'a#b', err: true, match: { err: { code: 'plugin_bad_name' } } }
     # ...and through the public entry, not only the predicate, so a port
     # cannot fix one and leave the other.
-    { id: 'ref/parsebad#trailing-newline', in: "abc\n", err: 'plugin_bad_name' }
-    { in: "a$b\n", err: 'plugin_bad_tag' }
+    { id: 'ref/parsebad#trailing-newline', in: "abc\n", err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { in: "a$b\n", err: true, match: { err: { code: 'plugin_bad_tag' } } }
 
     # Splits on the FIRST `$`, so the name is `a` and the tag is `b$c`.
     # See the header note: this is a corpus decision, not a grammar one.
-    { in: 'a$b$c', err: 'plugin_bad_tag' }
-    { in: 'a$b/c', err: 'plugin_bad_tag' }
-    { in: 'a$@b', err: 'plugin_bad_tag' }
-    { in: 'a$b c', err: 'plugin_bad_tag' }
-    { in: 'a$b!c', err: 'plugin_bad_tag' }
+    { in: 'a$b$c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
+    { in: 'a$b/c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
+    { in: 'a$@b', err: true, match: { err: { code: 'plugin_bad_tag' } } }
+    { in: 'a$b c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
+    { in: 'a$b!c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
 
     # The 1024 maximum applies to the PUBLIC REFERENCE OPERATIONS, not
     # only to the predicates. A port implementing checkname/checktag
     # separately from parseref would otherwise pass `bound` while its
     # parser happily accepted a 1025-character component.
-    { id: 'ref/parsebad#name-overlong', in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', err: 'plugin_bad_name' }
-    { id: 'ref/parsebad#tag-overlong', in: 'x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', err: 'plugin_bad_tag' }
+    { id: 'ref/parsebad#name-overlong', in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { id: 'ref/parsebad#tag-overlong', in: 'x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', err: true, match: { err: { code: 'plugin_bad_tag' } } }
   ]
 
 
@@ -196,18 +203,18 @@ primary: ref: {
 
 
   formatbad: set: [
-    { id: 'ref/formatbad#emptyname', doc: true, args: ['', ''], err: 'plugin_bad_name' }
-    { args: ['', 'test'], err: 'plugin_bad_name' }
-    { args: ['1abc', ''], err: 'plugin_bad_name' }
-    { args: ['a$b', ''], err: 'plugin_bad_name' }
-    { args: ['stripe', 'a/b'], err: 'plugin_bad_tag' }
-    { args: ['stripe', 'a$b'], err: 'plugin_bad_tag' }
-    { args: ['stripe', '@x'], err: 'plugin_bad_tag' }
+    { id: 'ref/formatbad#emptyname', doc: true, args: ['', ''], err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { args: ['', 'test'], err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { args: ['1abc', ''], err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { args: ['a$b', ''], err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { args: ['stripe', 'a/b'], err: true, match: { err: { code: 'plugin_bad_tag' } } }
+    { args: ['stripe', 'a$b'], err: true, match: { err: { code: 'plugin_bad_tag' } } }
+    { args: ['stripe', '@x'], err: true, match: { err: { code: 'plugin_bad_tag' } } }
 
     # And through formatref, which is the other public operation the
     # maximum applies to.
-    { id: 'ref/formatbad#name-overlong', args: ['abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', ''], err: 'plugin_bad_name' }
-    { id: 'ref/formatbad#tag-overlong', args: ['x', 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'], err: 'plugin_bad_tag' }
+    { id: 'ref/formatbad#name-overlong', args: ['abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', ''], err: true, match: { err: { code: 'plugin_bad_name' } } }
+    { id: 'ref/formatbad#tag-overlong', args: ['x', 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'], err: true, match: { err: { code: 'plugin_bad_tag' } } }
   ]
 
 
@@ -694,15 +701,15 @@ primary: config: {
     {
       id: 'config/normreserved#doc', doc: true
       in: { reserved: ['station'], doc: { plugin: 1, instance: { station: {} } } }
-      err: 'plugin_ref_reserved'
+      err: true, match: { err: { code: 'plugin_ref_reserved' } }
     }
     {
       in: { reserved: ['station'], doc: { plugin: 1, instance: { 'station$eu': {} } } }
-      err: 'plugin_ref_reserved'
+      err: true, match: { err: { code: 'plugin_ref_reserved' } }
     }
     {
       in: { reserved: ['station'], doc: { plugin: 1, default: { station: {} } } }
-      err: 'plugin_ref_reserved'
+      err: true, match: { err: { code: 'plugin_ref_reserved' } }
     }
     # In a profile overlay too — §9.1 lists every input layer, and a
     # guarantee that holds only at the root is trivially bypassable.
@@ -711,7 +718,7 @@ primary: config: {
         reserved: ['station'], profile: 'prod'
         doc: { plugin: 1, profile: { prod: { instance: { station: {} } } } }
       }
-      err: 'plugin_ref_reserved'
+      err: true, match: { err: { code: 'plugin_ref_reserved' } }
     }
     # A name that merely starts with the reserved one is NOT reserved.
     {
@@ -1034,15 +1041,15 @@ primary: config: {
   # defect class this repo exists to avoid.
   optmergebad: set: [
     { id: 'config/optmergebad#zero', doc: true
-      in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: -1 } } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: 1.5 } } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: 'two' } } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: null } } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': 'merge' } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': 'REPLACE' } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': true } } }, err: 'plugin_shape_invalid' }
-    { in: { ref: 'r', shape: { m: { '$MERGE': {} } } }, err: 'plugin_shape_invalid' }
+      in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: -1 } } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: 1.5 } } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: 'two' } } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': { deep: null } } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': 'merge' } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': 'REPLACE' } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': true } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
+    { in: { ref: 'r', shape: { m: { '$MERGE': {} } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
     # The error names the key AND the directive (§9.4), so a shape with
     # two problems is diagnosable without bisecting it. `/m/` alone
     # would accept "invalid shape at m", which never mentions $MERGE and
@@ -1077,7 +1084,7 @@ primary: lifecycle: {
   forward: set: [
     {
       id: 'lifecycle/forward#full', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'load', ref: 'probe$a' }
         { do: 'activate', ref: 'probe$a' }
@@ -1087,12 +1094,12 @@ primary: lifecycle: {
     # `load` stops at loaded: configured, stateful, INERT. No resource is
     # held, because capture belongs to activation and nowhere else.
     {
-      cmd: [ { do: 'define', name: 'probe' }, { do: 'load', ref: 'probe$a' } ]
+      in: [ { do: 'define', name: 'probe' }, { do: 'load', ref: 'probe$a' } ]
       out: { status: { 'probe$a': 'loaded' }, open: 0, log: ['probe$a:define'], result: null }
     }
     # `ready` walks the whole staircase in one call (§5.1).
     {
-      cmd: [ { do: 'define', name: 'probe' }, { do: 'ready', ref: 'probe$a' } ]
+      in: [ { do: 'define', name: 'probe' }, { do: 'ready', ref: 'probe$a' } ]
       match: { out: { status: { 'probe$a': 'live' }, open: 1 } }
     }
   ]
@@ -1103,7 +1110,7 @@ primary: lifecycle: {
   back: set: [
     {
       id: 'lifecycle/back#deactivate', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'deactivate', ref: 'probe$a' }
@@ -1114,7 +1121,7 @@ primary: lifecycle: {
     # unload runs close and removes the entry entirely — an absent
     # instance is ABSENT from status, not present with a null status.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'unload', ref: 'probe$a' }
@@ -1125,7 +1132,7 @@ primary: lifecycle: {
     # unload from `live` deactivates first, then closes (§5.2's table) —
     # the log proves the order rather than just the end state.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'unload', ref: 'probe$a' }
@@ -1143,7 +1150,7 @@ primary: lifecycle: {
   idem: set: [
     {
       id: 'lifecycle/idem#activate', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'activate', ref: 'probe$a' }
@@ -1154,7 +1161,7 @@ primary: lifecycle: {
     }
     # Likewise load on a loaded instance: `define` fires once.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'load', ref: 'probe$a' }
         { do: 'load', ref: 'probe$a' }
@@ -1163,7 +1170,7 @@ primary: lifecycle: {
     }
     # And deactivate on a loaded instance.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'load', ref: 'probe$a' }
         { do: 'deactivate', ref: 'probe$a' }
@@ -1181,7 +1188,7 @@ primary: lifecycle: {
   pending: set: [
     {
       id: 'lifecycle/pending#unmet', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'dep' }
         { do: 'load', ref: 'dep$a', options: { requires: ['missing'] } }
         { do: 'activate', ref: 'dep$a' }
@@ -1191,7 +1198,7 @@ primary: lifecycle: {
     # The withdrawal is callback-free and CANNOT FAIL: no `deactivate` in
     # the log, and the instance lands back at `loaded`.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'dep' }
         { do: 'load', ref: 'dep$a', options: { requires: ['missing'] } }
         { do: 'activate', ref: 'dep$a' }
@@ -1203,7 +1210,7 @@ primary: lifecycle: {
     # nothing bound — but it is a STATE and not a flag, because it means
     # something entirely different to whoever reads the status map.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'dep' }
         { do: 'load', ref: 'dep$a', options: { requires: ['missing'] } }
         { do: 'activate', ref: 'dep$a' }
@@ -1225,7 +1232,7 @@ primary: lifecycle: {
     # both — and it is the pair that matters.
     {
       id: 'lifecycle/fail#activate', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'probe_boom' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
@@ -1234,17 +1241,17 @@ primary: lifecycle: {
     }
     # The raise itself, uncaught, so the code is pinned too.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'probe_boom' } }
         { do: 'activate', ref: 'noisy$a' }
       ]
-      err: 'probe_boom'
+      err: true, match: { err: { code: 'probe_boom' } }
     }
     # A failed instance remains REGISTERED AND INSPECTABLE — that is the
     # point: a failed plugin must be visible, not vanished.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
@@ -1254,16 +1261,16 @@ primary: lifecycle: {
     }
     # It accepts ONLY unload. Any other transition raises.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'activate', ref: 'noisy$a' }
       ]
-      err: 'plugin_bad_state'
+      err: true, match: { err: { code: 'plugin_bad_state' } }
     }
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
@@ -1274,7 +1281,7 @@ primary: lifecycle: {
     # Bindings are ALWAYS removed before the status changes, so a failed
     # instance never participates in anything, whatever went wrong.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
@@ -1287,7 +1294,7 @@ primary: lifecycle: {
     # The probe acquires BEFORE it raises, so a port that unwinds only
     # on a clean path leaves this at 1.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
@@ -1309,18 +1316,18 @@ primary: lifecycle: {
   faildown: set: [
     {
       id: 'lifecycle/faildown#deactivate', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate' } }
         { do: 'deactivate', ref: 'noisy$a', catch: true }
       ]
       match: { out: { status: { 'noisy$a': 'failed' }, open: 0 } }
     }
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate', code: 'probe_boom' } }
         { do: 'deactivate', ref: 'noisy$a' }
       ]
-      err: 'probe_boom'
+      err: true, match: { err: { code: 'probe_boom' } }
     }
     # ...and through `unload`, which §5.2 defines as "deactivate first,
     # then close". The deactivate half failing is still a transition
@@ -1329,7 +1336,7 @@ primary: lifecycle: {
     # has to be able to see.
     {
       id: 'lifecycle/faildown#unload'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate' } }
         { do: 'unload', ref: 'noisy$a', catch: true }
       ]
@@ -1338,7 +1345,7 @@ primary: lifecycle: {
     # A second unload then takes it out through the `failed` row, which
     # runs `close` and drops the entry.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate' } }
         { do: 'unload', ref: 'noisy$a', catch: true }
         { do: 'unload', ref: 'noisy$a' }
@@ -1350,7 +1357,7 @@ primary: lifecycle: {
     # the one place a failure leaves nothing behind.
     {
       id: 'lifecycle/faildown#close-drops'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'noisy$a', options: { fail: 'close' } }
         { do: 'unload', ref: 'noisy$a', catch: true }
         { do: 'list' }
@@ -1382,7 +1389,7 @@ primary: lifecycle: {
   slow: set: [
     {
       id: 'lifecycle/slow#is-a-probe', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'slow$a' }
         { do: 'deactivate', ref: 'slow$a' }
         { do: 'unload', ref: 'slow$a' }
@@ -1397,7 +1404,7 @@ primary: lifecycle: {
     # ...and it settles EAGERLY: `ready` returns with the instance live
     # and its resource held, in the same synchronous call.
     {
-      cmd: [ { do: 'ready', ref: 'slow$a' } ]
+      in: [ { do: 'ready', ref: 'slow$a' } ]
       match: { out: { status: { 'slow$a': 'live' }, open: 1 } }
     }
   ]
@@ -1405,26 +1412,26 @@ primary: lifecycle: {
   wrap: set: [
     {
       id: 'lifecycle/wrap#bare-activate', doc: true
-      cmd: [
+      in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', bare: true } }
         { do: 'activate', ref: 'noisy$a' }
       ]
-      err: 'plugin_activate_failed'
+      err: true, match: { err: { code: 'plugin_activate_failed' } }
     }
     {
-      cmd: [ { do: 'load', ref: 'noisy$a', options: { fail: 'define', bare: true } } ]
-      err: 'plugin_define_failed'
+      in: [ { do: 'load', ref: 'noisy$a', options: { fail: 'define', bare: true } } ]
+      err: true, match: { err: { code: 'plugin_define_failed' } }
     }
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'noisy$a', options: { fail: 'deactivate', bare: true } }
         { do: 'deactivate', ref: 'noisy$a' }
       ]
-      err: 'plugin_deactivate_failed'
+      err: true, match: { err: { code: 'plugin_deactivate_failed' } }
     }
     # ...and the instance still lands in `failed`, wrapped or not.
     {
-      cmd: [
+      in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', bare: true } }
         { do: 'activate', ref: 'noisy$a', catch: true }
       ]
@@ -1433,11 +1440,11 @@ primary: lifecycle: {
     # A code the plugin chose survives untouched.
     {
       id: 'lifecycle/wrap#own-code-kept'
-      cmd: [
+      in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', code: 'store_unreachable' } }
         { do: 'activate', ref: 'noisy$a' }
       ]
-      err: 'store_unreachable'
+      err: true, match: { err: { code: 'store_unreachable' } }
     }
   ]
 
@@ -1450,16 +1457,16 @@ primary: lifecycle: {
   failedexit: set: [
     {
       id: 'lifecycle/failedexit#deactivate', doc: true
-      cmd: [
+      in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'deactivate', ref: 'noisy$a' }
       ]
-      err: 'plugin_bad_state'
+      err: true, match: { err: { code: 'plugin_bad_state' } }
     }
     # ...and it stays `failed` rather than being quietly rehabilitated.
     {
-      cmd: [
+      in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'deactivate', ref: 'noisy$a', catch: true }
@@ -1475,25 +1482,25 @@ primary: lifecycle: {
   # than left to the reader.
   illegal: set: [
     { id: 'lifecycle/illegal#activate-absent', doc: true
-      cmd: [ { do: 'activate', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
-    { cmd: [ { do: 'deactivate', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
-    { cmd: [ { do: 'unload', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
-    { cmd: [ { do: 'options', ref: 'nope$a', patch: {} } ], err: 'plugin_not_loaded' }
+      in: [ { do: 'activate', ref: 'nope$a' } ], err: true, match: { err: { code: 'plugin_not_loaded' } } }
+    { in: [ { do: 'deactivate', ref: 'nope$a' } ], err: true, match: { err: { code: 'plugin_not_loaded' } } }
+    { in: [ { do: 'unload', ref: 'nope$a' } ], err: true, match: { err: { code: 'plugin_not_loaded' } } }
+    { in: [ { do: 'options', ref: 'nope$a', patch: {} } ], err: true, match: { err: { code: 'plugin_not_loaded' } } }
     # A load onto an OCCUPIED ref is plugin_ref_duplicate (§4 rule 1) —
     # not a silent overwrite as in seneca, and not an impossibility as in
     # sdkgen. Note this is `load` twice, which the idem group shows is a
     # no-op; the duplicate is a SECOND DEFINITION claiming a taken ref.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'other' }
         { do: 'load', ref: 'probe$a' }
         { do: 'load', ref: 'probe$a', definition: 'other' }
       ]
-      err: 'plugin_ref_duplicate'
+      err: true, match: { err: { code: 'plugin_ref_duplicate' } }
     }
     # An unknown definition, distinct from an unknown ref.
-    { cmd: [ { do: 'load', ref: 'nosuch$a' } ], err: 'plugin_unknown_definition' }
+    { in: [ { do: 'load', ref: 'nosuch$a' } ], err: true, match: { err: { code: 'plugin_unknown_definition' } } }
   ]
 
 
@@ -1503,7 +1510,7 @@ primary: lifecycle: {
   introspect: set: [
     {
       id: 'lifecycle/introspect#free', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
         { do: 'list' }
@@ -1514,7 +1521,7 @@ primary: lifecycle: {
     # `declared` costs nothing: twenty lazy instances are twenty map
     # entries and no executed code, which is the property station needs.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' }, 'probe$b': { start: 'lazy' } } } }
       ]
@@ -1530,12 +1537,12 @@ primary: lifecycle: {
   reentrant: set: [
     {
       id: 'lifecycle/reentrant#activate', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
         { do: 'load', ref: 'noisy$a', options: { reenter: 'activate' } }
         { do: 'activate', ref: 'noisy$a' }
       ]
-      err: 'plugin_reentrant'
+      err: true, match: { err: { code: 'plugin_reentrant' } }
     }
   ]
 
@@ -1552,26 +1559,26 @@ primary: lifecycle: {
   bindscope: set: [
     {
       id: 'lifecycle/bindscope#activate', doc: true
-      cmd: [
+      in: [
         { do: 'load', ref: 'greedy$a', options: { bind: 'activate' } }
         { do: 'activate', ref: 'greedy$a' }
       ]
-      err: 'plugin_bind_scope'
+      err: true, match: { err: { code: 'plugin_bind_scope' } }
     }
     # ...and from `deactivate` too. The guard is on the PHASE, not on
     # "not define", and an entry exercising only one callback leaves the
     # other's mutation alive.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', options: { bind: 'deactivate' } }
         { do: 'deactivate', ref: 'greedy$a' }
       ]
-      err: 'plugin_bind_scope'
+      err: true, match: { err: { code: 'plugin_bind_scope' } }
     }
     # ...and the failure lands the instance in `failed` like any other
     # callback raise, with nothing left behind.
     {
-      cmd: [
+      in: [
         { do: 'load', ref: 'greedy$a', options: { bind: 'activate' } }
         { do: 'activate', ref: 'greedy$a', catch: true }
       ]
@@ -1582,7 +1589,7 @@ primary: lifecycle: {
   resource: set: [
     {
       id: 'lifecycle/resource#unwind', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'greedy', probe: 'greedy' }
         { do: 'load', ref: 'greedy$a', options: { acquire: 3, release: 1 } }
         { do: 'activate', ref: 'greedy$a' }
@@ -1592,7 +1599,7 @@ primary: lifecycle: {
     # Deactivation unwinds the rest — the instance scope, not a ledger
     # the plugin has to remember to keep.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'greedy', probe: 'greedy' }
         { do: 'load', ref: 'greedy$a', options: { acquire: 3, release: 1 } }
         { do: 'activate', ref: 'greedy$a' }
@@ -1605,7 +1612,7 @@ primary: lifecycle: {
     # through the probe's COUNTER rather than object identity, so a port
     # whose language has no stable identity is not failed for it.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'bump' }
@@ -1619,7 +1626,7 @@ primary: lifecycle: {
     # unload destroys it — going back to absent means "as if never
     # loaded", and close is what properly undoes `define`.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'bump' }
@@ -1655,7 +1662,7 @@ primary: order: {
   constraint: set: [
     {
       id: 'order/constraint#after', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
@@ -1666,7 +1673,7 @@ primary: order: {
     # `before` is the mirror, and must not be implemented as "after,
     # reversed" — a port that does gets this one backwards.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b', order: { before: 'probe$a' } }
@@ -1677,7 +1684,7 @@ primary: order: {
     # Matching BY NAME orders behind every instance of that definition
     # (§7), which is the whole reason the two spellings exist.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'late' }
         { do: 'ready', ref: 'probe$a' }
@@ -1690,7 +1697,7 @@ primary: order: {
     # By REF orders behind exactly one, so the other instance is free to
     # sort ahead of the constrained binding.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'late' }
         { do: 'ready', ref: 'probe$a' }
@@ -1710,7 +1717,7 @@ primary: order: {
   band: set: [
     {
       id: 'order/band#lower-first', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 10 } }
         { do: 'ready', ref: 'probe$b', order: { band: 1 } }
@@ -1721,7 +1728,7 @@ primary: order: {
     # Default band is 0, so an unbanded binding sorts ahead of band 1 —
     # a port defaulting to 1, or to "no band", gets this backwards.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 1 } }
         { do: 'ready', ref: 'probe$b' }
@@ -1732,7 +1739,7 @@ primary: order: {
     # Negative bands are ordinary integers, not an error: a host adding a
     # layer BELOW an existing one should not have to renumber.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b', order: { band: -5 } }
@@ -1750,7 +1757,7 @@ primary: order: {
   precedence: set: [
     {
       id: 'order/precedence#constraint-wins', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
         { do: 'ready', ref: 'probe$b', order: { band: 1, after: 'probe$a' } }
@@ -1772,7 +1779,7 @@ primary: order: {
   list: set: [
     {
       id: 'order/list#after-one', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
         { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['probe$a'] } }
@@ -1783,7 +1790,7 @@ primary: order: {
     # A list means after ALL of them, not after the first one read.
     {
       id: 'order/list#after-many', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
         { do: 'ready', ref: 'probe$c', order: { band: 99 } }
@@ -1795,7 +1802,7 @@ primary: order: {
     # The `before` spelling takes a list on the same terms.
     {
       id: 'order/list#before-many', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99, before: ['probe$b', 'probe$c'] } }
         { do: 'ready', ref: 'probe$b', order: { band: 1 } }
@@ -1809,7 +1816,7 @@ primary: order: {
     # empty array is truthy, which is most of them.
     {
       id: 'order/list#empty-is-no-constraint', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
         { do: 'ready', ref: 'probe$b', order: { band: 1, after: [] } }
@@ -1827,7 +1834,7 @@ primary: order: {
     # working, not a list defect, and it cost this entry one rewrite.
     {
       id: 'order/list#name-and-ref-are-one-edge', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'other' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
@@ -1840,7 +1847,7 @@ primary: order: {
     # satisfied vacuously (§7) and the real constraint still holds.
     {
       id: 'order/list#vacuous-member', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { band: 99 } }
         { do: 'ready', ref: 'probe$b', order: { band: 1, after: ['nosuchthing', 'probe$a'] } }
@@ -1867,7 +1874,7 @@ primary: order: {
   seqtie: set: [
     {
       id: 'order/seqtie#shared-pos', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$z' }
         { do: 'ready', ref: 'probe$b' }
         { do: 'unload', ref: 'probe$z' }
@@ -1890,7 +1897,7 @@ primary: order: {
   tie: set: [
     {
       id: 'order/tie#pos', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'apply', doc: { plugin: 1, instance: [
             { ref: 'probe$first' }, { ref: 'probe$second' }, { ref: 'probe$third' } ] } }
@@ -1902,7 +1909,7 @@ primary: order: {
     # document order may load in whatever order their first ready() calls
     # arrive — and the document's order is the one that must decide.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'apply', doc: { plugin: 1, instance: [
             { ref: 'probe$first', start: 'lazy' }
@@ -1920,7 +1927,7 @@ primary: order: {
     # would sort it behind everything that never moved, silently
     # reordering a chain. `pos` is stable across the redeclaration.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'apply', doc: { plugin: 1, instance: [
             { ref: 'probe$first' }, { ref: 'probe$second' }, { ref: 'probe$third' } ] } }
@@ -1935,7 +1942,7 @@ primary: order: {
     # In the map form, `pos` is the SORTED-ref index, so the tie-break is
     # byte-stable rather than dependent on the parser's key order.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$c': {}, 'probe$a': {}, 'probe$b': {} } } }
         { do: 'order', point: 'p' }
@@ -1951,7 +1958,7 @@ primary: order: {
   vacuous: set: [
     {
       id: 'order/vacuous#absent', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { after: 'nosuchthing' } }
         { do: 'order', point: 'p' }
@@ -1962,7 +1969,7 @@ primary: order: {
     # binding is not in the live set, so the edge is vacuous rather than
     # blocking.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
@@ -1980,7 +1987,7 @@ primary: order: {
   recompute: set: [
     {
       id: 'order/recompute#reactivate', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
@@ -1992,7 +1999,7 @@ primary: order: {
     }
     # An empty live set is an empty order, not an error.
     {
-      cmd: [ { do: 'define', name: 'probe' }, { do: 'order', point: 'p' } ]
+      in: [ { do: 'define', name: 'probe' }, { do: 'order', point: 'p' } ]
       match: { out: { result: [] } }
     }
   ]
@@ -2003,16 +2010,16 @@ primary: order: {
   cycle: set: [
     {
       id: 'order/cycle#pair', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { after: 'probe$b' } }
         { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
         { do: 'order', point: 'p' }
       ]
-      err: 'plugin_order_cycle'
+      err: true, match: { err: { code: 'plugin_order_cycle' } }
     }
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { after: 'probe$c' } }
         { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
@@ -2023,12 +2030,12 @@ primary: order: {
     }
     # A self-edge is a cycle of one, and must not be silently dropped.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'probe' }
         { do: 'ready', ref: 'probe$a', order: { after: 'probe$a' } }
         { do: 'order', point: 'p' }
       ]
-      err: 'plugin_order_cycle'
+      err: true, match: { err: { code: 'plugin_order_cycle' } }
     }
   ]
 
@@ -2053,7 +2060,7 @@ primary: order: {
   pinorder: set: [
     {
       id: 'order/pinorder#two-names', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { p: { kind: 'hook', pin: { noisy: 'first', probe: 'first' } } } }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'noisy$b' }
@@ -2079,7 +2086,7 @@ primary: order: {
   pin: set: [
     {
       id: 'order/pin#innermost', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain', pin: { adapter: 'innermost' } } } }
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'adapter' }
@@ -2094,7 +2101,7 @@ primary: order: {
     # immediately outside the base transport; an `order` list that moves
     # it has to fail.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain', pin: { adapter: 'innermost' } } } }
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'adapter' }
@@ -2102,12 +2109,12 @@ primary: order: {
         { do: 'ready', ref: 'probe$a', order: { after: 'adapter$x' } }
         { do: 'order', point: 'c' }
       ]
-      err: 'plugin_order_pinned'
+      err: true, match: { err: { code: 'plugin_order_pinned' } }
     }
     # `outermost` is the other end, and a hook's vocabulary is
     # first/last — the same mechanism, named for the shape it applies to.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain', pin: { adapter: 'outermost' } } } }
         { do: 'define', name: 'probe' }
         { do: 'define', name: 'adapter' }
@@ -2252,10 +2259,10 @@ primary: env: {
   ambiguous: set: [
     { id: 'env/ambiguous#tag-vs-underscore', doc: true
       in: { refs: ['retry$fast', 'retry__fast'], env: {} }
-      err: 'plugin_env_ambiguous' }
+      err: true, match: { err: { code: 'plugin_env_ambiguous' } } }
     # Case folding collides too.
-    { in: { refs: ['retry$fast', 'Retry$fast'], env: {} }, err: 'plugin_env_ambiguous' }
-    { in: { refs: ['retry$fast', 'retry$Fast'], env: {} }, err: 'plugin_env_ambiguous' }
+    { in: { refs: ['retry$fast', 'Retry$fast'], env: {} }, err: true, match: { err: { code: 'plugin_env_ambiguous' } } }
+    { in: { refs: ['retry$fast', 'retry$Fast'], env: {} }, err: true, match: { err: { code: 'plugin_env_ambiguous' } } }
     # The message names BOTH refs — one name leaves the reader bisecting.
     { in: { refs: ['retry$fast', 'retry__fast'], env: {} }
       err: true, match: { err: { message: '/retry\\$fast/' } } }
@@ -2275,13 +2282,13 @@ primary: env: {
   reserved: set: [
     { id: 'env/reserved#inactive', doc: true
       in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'station' } }
-      err: 'plugin_ref_reserved' }
+      err: true, match: { err: { code: 'plugin_ref_reserved' } } }
     { in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_ACTIVE: 'station' } }
-      err: 'plugin_ref_reserved' }
+      err: true, match: { err: { code: 'plugin_ref_reserved' } } }
     { in: { refs: ['station$eu'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'station$eu' } }
-      err: 'plugin_ref_reserved' }
+      err: true, match: { err: { code: 'plugin_ref_reserved' } } }
     { in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_STATION_X: '1' } }
-      err: 'plugin_ref_reserved' }
+      err: true, match: { err: { code: 'plugin_ref_reserved' } } }
     # A name merely starting with the reserved one is not reserved.
     { in: { refs: ['stationary'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'stationary' } }
       match: { out: { inactive: ['stationary'] } } }
@@ -2316,21 +2323,21 @@ primary: version: {
 
 
   rangebad: set: [
-    { id: 'version/rangebad#empty', doc: true, in: '', err: 'plugin_bad_range' }
-    { in: 'x', err: 'plugin_bad_range' }
-    { in: '2.x', err: 'plugin_bad_range' }
-    { in: '>=2.1', err: 'plugin_bad_range' }
-    { in: '^2.1', err: 'plugin_bad_range' }
-    { in: '2.1.3.4', err: 'plugin_bad_range' }
-    { in: '~', err: 'plugin_bad_range' }
-    { in: '-1', err: 'plugin_bad_range' }
+    { id: 'version/rangebad#empty', doc: true, in: '', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: 'x', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '2.x', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '>=2.1', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '^2.1', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '2.1.3.4', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '~', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '-1', err: true, match: { err: { code: 'plugin_bad_range' } } }
     # THE SAME ANCHOR TRAP AS THE REF GRAMMAR, in the one other place
     # this library holds a regex. Python's `$` matches before a trailing
     # newline and ruby's matches at every line boundary, so `^...$`
     # accepts "2.1\n" as a range in both. Its own entry because a port
     # that fixed the ref grammar and left the version grammar alone
     # would pass the whole `ref` section.
-    { id: 'version/rangebad#trailing-newline', in: "2.1\n", err: 'plugin_bad_range' }
+    { id: 'version/rangebad#trailing-newline', in: "2.1\n", err: true, match: { err: { code: 'plugin_bad_range' } } }
     # A COMPONENT IS BOUNDED, like a ref is (§4's 1024). The grammar
     # admits an unbounded digit sequence and every language then
     # disagrees past its integer range: JS silently loses precision,
@@ -2340,10 +2347,10 @@ primary: version: {
     #
     # 2^31-1, because every port has a signed 32-bit integer and no real
     # version has ever needed more. Found by review of the go port.
-    { id: 'version/rangebad#component-bound', in: '9223372036854775808', err: 'plugin_bad_range' }
-    { in: '2147483648', err: 'plugin_bad_range' }
-    { in: '1.2147483648', err: 'plugin_bad_range' }
-    { in: '1.2.2147483648', err: 'plugin_bad_range' }
+    { id: 'version/rangebad#component-bound', in: '9223372036854775808', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '2147483648', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '1.2147483648', err: true, match: { err: { code: 'plugin_bad_range' } } }
+    { in: '1.2.2147483648', err: true, match: { err: { code: 'plugin_bad_range' } } }
   ]
 
 
@@ -2858,7 +2865,7 @@ primary: point: {
   hook: set: [
     {
       id: 'point/hook#fanout', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { p: { kind: 'hook' } } }
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b' }
@@ -2872,7 +2879,7 @@ primary: point: {
     # a mutation nobody recorded.
     {
       id: 'point/hook#deactivated'
-      cmd: [
+      in: [
         { do: 'host', points: { p: { kind: 'hook' } } }
         { do: 'ready', ref: 'probe$a' }
         { do: 'deactivate', ref: 'probe$a' }
@@ -2883,17 +2890,17 @@ primary: point: {
     }
     # An unknown point is an error, not a silent no-op.
     {
-      cmd: [ { do: 'host', points: {} }, { do: 'emit', point: 'nope' } ]
-      err: 'plugin_point_unknown'
+      in: [ { do: 'host', points: {} }, { do: 'emit', point: 'nope' } ]
+      err: true, match: { err: { code: 'plugin_point_unknown' } }
     }
     # Emitting on a chain point is a KIND error — the two are not
     # interchangeable and a host that confuses them gets told.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain' } } }
         { do: 'emit', point: 'c' }
       ]
-      err: 'plugin_point_kind'
+      err: true, match: { err: { code: 'plugin_point_kind' } }
     }
   ]
 
@@ -2904,7 +2911,7 @@ primary: point: {
   bail: set: [
     {
       id: 'point/bail#stops', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
@@ -2914,7 +2921,7 @@ primary: point: {
     }
     # With no bindings, nothing is returned — absent, not an error.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
         { do: 'emit', point: 'v' }
       ]
@@ -2929,7 +2936,7 @@ primary: point: {
     # entry is what makes the two readings disagree out loud.
     {
       id: 'point/bail#null-declines', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: null } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
@@ -2941,7 +2948,7 @@ primary: point: {
     # falsiness, which is where a port reaching for its own truthiness
     # would land.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: false } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
@@ -2958,7 +2965,7 @@ primary: point: {
   chain: set: [
     {
       id: 'point/chain#outermost', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain' } } }
         { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
@@ -2970,7 +2977,7 @@ primary: point: {
     # direction §7 gives, so one rule covers hooks and chains.
     {
       id: 'point/chain#band'
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain' } } }
         { do: 'ready', ref: 'probe$a', options: { wrap: 'A' }, order: { band: 10 } }
         { do: 'ready', ref: 'probe$b', options: { wrap: 'B' }, order: { band: 1 } }
@@ -2980,7 +2987,7 @@ primary: point: {
     }
     # With no bindings the base is called directly.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain' } } }
         { do: 'chain', point: 'c', arg: 'x' }
       ]
@@ -2990,7 +2997,7 @@ primary: point: {
     # any change to the live set, not cached at startup (§6.2).
     {
       id: 'point/chain#recompose'
-      cmd: [
+      in: [
         { do: 'host', points: { c: { kind: 'chain' } } }
         { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
@@ -3012,7 +3019,7 @@ primary: point: {
   provider: set: [
     {
       id: 'point/provider#one', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider' } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
         { do: 'provider', point: 'v' }
@@ -3022,7 +3029,7 @@ primary: point: {
     # Highest band wins.
     {
       id: 'point/provider#highest'
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider' } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' }, order: { band: 1 } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' }, order: { band: 9 } }
@@ -3033,7 +3040,7 @@ primary: point: {
     # And the loser is LISTED, not dropped.
     {
       id: 'point/provider#shadowed'
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider' } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' }, order: { band: 1 } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' }, order: { band: 9 } }
@@ -3052,7 +3059,7 @@ primary: point: {
     # in this group. Found by the python port (§18, P4).
     {
       id: 'point/provider#tie-by-ref'
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider' } } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
@@ -3061,7 +3068,7 @@ primary: point: {
       match: { out: { result: 'A' } }
     }
     {
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider' } } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
@@ -3071,7 +3078,7 @@ primary: point: {
     }
     # With no binding the host's default answers.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider', default: 'D' } } }
         { do: 'provider', point: 'v' }
       ]
@@ -3081,17 +3088,17 @@ primary: point: {
     # shadow — for a host that would rather fail than pick.
     {
       id: 'point/provider#exclusive'
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v', value: 'B' } }
         { do: 'provider', point: 'v' }
       ]
-      err: 'plugin_point_exclusive'
+      err: true, match: { err: { code: 'plugin_point_exclusive' } }
     }
     # One binding is fine on an exclusive point.
     {
-      cmd: [
+      in: [
         { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v', value: 'A' } }
         { do: 'provider', point: 'v' }
@@ -3121,7 +3128,7 @@ primary: point: {
   position: set: [
     {
       id: 'point/position#outermost', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
         { do: 'call', ref: 'probe$a', method: 'position', point: 'c' }
@@ -3130,7 +3137,7 @@ primary: point: {
     }
     {
       id: 'point/position#innermost'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
         { do: 'call', ref: 'probe$b', method: 'position', point: 'c' }
@@ -3140,7 +3147,7 @@ primary: point: {
     # A LONE binding is both, which a port special-casing one flag gets
     # wrong.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'position', point: 'c' }
       ]
@@ -3150,7 +3157,7 @@ primary: point: {
     # both ways, so a port cannot satisfy one and invert the other.
     {
       id: 'point/position#agrees-with-composition'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'ready', ref: 'probe$b', options: { wrap: 'B' } }
         { do: 'chain', point: 'c', arg: 'x' }
@@ -3167,7 +3174,7 @@ primary: point: {
   insert: set: [
     {
       id: 'point/insert#loaded-not-bound', doc: true
-      cmd: [
+      in: [
         { do: 'host', points: { p: { kind: 'hook' } } }
         { do: 'load', ref: 'probe$a' }
         { do: 'order', point: 'p' }
@@ -3175,7 +3182,7 @@ primary: point: {
       match: { out: { result: [] } }
     }
     {
-      cmd: [
+      in: [
         { do: 'host', points: { p: { kind: 'hook' } } }
         { do: 'ready', ref: 'probe$a' }
         { do: 'order', point: 'p' }
@@ -3195,7 +3202,7 @@ primary: export: {
   key: set: [
     {
       id: 'export/key#qualified', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'export', key: 'probe$a/client' }
       ]
@@ -3203,7 +3210,7 @@ primary: export: {
     }
     # A key nothing exports is absent, not an error.
     {
-      cmd: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe$a/nope' } ]
+      in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe$a/nope' } ]
       match: { out: { result: '__NULL__' } }
     }
     # EXPORTS OF A `loaded` (not live) INSTANCE ARE VISIBLE (§11). They
@@ -3211,7 +3218,7 @@ primary: export: {
     # make the loaded state useless for introspection.
     {
       id: 'export/key#loaded-visible'
-      cmd: [ { do: 'load', ref: 'probe$a' }, { do: 'export', key: 'probe$a/client' } ]
+      in: [ { do: 'load', ref: 'probe$a' }, { do: 'export', key: 'probe$a/client' } ]
       match: { out: { result: 'probe$a' } }
     }
   ]
@@ -3226,7 +3233,7 @@ primary: export: {
   alias: set: [
     {
       id: 'export/alias#untagged-wins', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe' }
         { do: 'ready', ref: 'probe$a' }
         { do: 'export', key: 'probe/client' }
@@ -3235,23 +3242,23 @@ primary: export: {
     }
     # No untagged one, exactly one tagged: that one.
     {
-      cmd: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/client' } ]
+      in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/client' } ]
       match: { out: { result: 'probe$a' } }
     }
     # Two tagged and no untagged: ERROR, not last-wins.
     {
       id: 'export/alias#ambiguous'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b' }
         { do: 'export', key: 'probe/client' }
       ]
-      err: 'plugin_export_ambiguous'
+      err: true, match: { err: { code: 'plugin_export_ambiguous' } }
     }
     # The message names every candidate — one name leaves the reader
     # guessing which pair collided.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b' }
         { do: 'export', key: 'probe/client' }
@@ -3275,7 +3282,7 @@ primary: depend: {
   pending: set: [
     {
       id: 'depend/pending#unmet', doc: true
-      cmd: [
+      in: [
         { do: 'load', ref: 'dep$a', options: { requires: ['clock'] } }
         { do: 'activate', ref: 'dep$a' }
       ]
@@ -3285,7 +3292,7 @@ primary: depend: {
     # instance provides `clock` satisfies it.
     {
       id: 'depend/pending#capability'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'activate', ref: 'dep$c' }
@@ -3294,7 +3301,7 @@ primary: depend: {
     }
     # AN OPTIONAL REQUIREMENT NEVER BLOCKS.
     {
-      cmd: [
+      in: [
         { do: 'load', ref: 'dep$a', options: { requires: ['clock'], optional: ['clock'] } }
         { do: 'activate', ref: 'dep$a' }
       ]
@@ -3324,7 +3331,7 @@ primary: depend: {
   byref: set: [
     {
       id: 'depend/byref#satisfies', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
       ]
@@ -3336,7 +3343,7 @@ primary: depend: {
     # there is no other, that a port dropping the canonicalization fails.
     {
       id: 'depend/byref#canonical-comparison'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$'] } }
       ]
@@ -3346,7 +3353,7 @@ primary: depend: {
     # entry and no executed code (§5.1), and it can no more satisfy a
     # requirement than a capability nobody has provided yet.
     {
-      cmd: [
+      in: [
         { do: 'declare', ref: 'dep$p', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
       ]
@@ -3355,7 +3362,7 @@ primary: depend: {
     # ...and `loaded` is not enough either, which is the line that makes
     # this the same rule as the capability one rather than a second one.
     {
-      cmd: [
+      in: [
         { do: 'load', ref: 'dep$p', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
       ]
@@ -3365,7 +3372,7 @@ primary: depend: {
     # ref path could be satisfied once at activation and never rechecked.
     {
       id: 'depend/byref#lost'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['dep$p'] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3379,7 +3386,7 @@ primary: depend: {
     # provider going away. A ref requirement is not a third axis.
     {
       id: 'depend/byref#lost-dynamic'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep'
           options: { requires: ['dep$p'], policy: 'dynamic' } }
@@ -3391,7 +3398,7 @@ primary: depend: {
     # first place, so losing it changes nothing.
     {
       id: 'depend/byref#lost-optional'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep' }
         { do: 'ready', ref: 'dep$c', definition: 'dep'
           options: { requires: ['dep$p'], optional: ['dep$p'] } }
@@ -3410,7 +3417,7 @@ primary: depend: {
     # well-formed ref, which is why seventeen implementations carried it.
     {
       id: 'depend/byref#capability-not-a-ref', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep'
           options: { provides: [ { name: '2fa' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['2fa'] } }
@@ -3419,7 +3426,7 @@ primary: depend: {
     }
     # A space is not in the name grammar either, and is likewise fine.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep'
           options: { provides: [ { name: 'my cap' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['my cap'] } }
@@ -3429,7 +3436,7 @@ primary: depend: {
     # An UNMET one of those still just goes pending - "not a ref" must
     # mean "compare as a capability", not "skip the requirement".
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['2fa'] } }
       ]
       match: { out: { status: { 'dep$c': 'pending' } } }
@@ -3443,7 +3450,7 @@ primary: depend: {
   arrive: set: [
     {
       id: 'depend/arrive#auto', doc: true
-      cmd: [
+      in: [
         { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'activate', ref: 'dep$c' }
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
@@ -3453,7 +3460,7 @@ primary: depend: {
     # A CHAIN settles in one pass rather than needing N calls.
     {
       id: 'depend/arrive#chain'
-      cmd: [
+      in: [
         { do: 'load', ref: 'dep$c', definition: 'dep', options: { requires: ['b'] } }
         { do: 'activate', ref: 'dep$c' }
         { do: 'load', ref: 'dep$b', definition: 'dep', options: { requires: ['a'], provides: [ { name: 'b' } ] } }
@@ -3471,7 +3478,7 @@ primary: depend: {
   lost: set: [
     {
       id: 'depend/lost#back-to-pending', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3481,7 +3488,7 @@ primary: depend: {
     # Recursively, through the consumer's own consumers.
     {
       id: 'depend/lost#recursive'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'a' } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { requires: ['a'], provides: [ { name: 'b' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['b'] } }
@@ -3494,7 +3501,7 @@ primary: depend: {
     # asking again.
     {
       id: 'depend/lost#recovers'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'a' } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { requires: ['a'], provides: [ { name: 'b' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['b'] } }
@@ -3509,7 +3516,7 @@ primary: depend: {
     # assuming they can is a live instance holding a dead reference.
     {
       id: 'depend/lost#dynamic-stays'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], policy: 'dynamic' } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3518,7 +3525,7 @@ primary: depend: {
     }
     # An OPTIONAL requirement never causes a loss either.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], optional: ['clock'] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3534,7 +3541,7 @@ primary: depend: {
   select: set: [
     {
       id: 'depend/select#rank', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
         { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
         { do: 'capability', name: 's' }
@@ -3544,7 +3551,7 @@ primary: depend: {
     # Deactivating one of two providers moves nobody: ANY live instance
     # providing it satisfies a requirement for it.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p1', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$p2', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
@@ -3566,7 +3573,7 @@ primary: depend: {
     # on `status`.
     {
       id: 'depend/select#reluctant', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
         { do: 'ready', ref: 'dep$hi', definition: 'dep', options: { provides: [ { name: 's', version: '2.9' } ] } }
@@ -3585,7 +3592,7 @@ primary: depend: {
     # `dep$hi` instead and lets `dep$lo` go.
     {
       id: 'depend/select#reluctant-holds', doc: true
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
@@ -3598,7 +3605,7 @@ primary: depend: {
     # goes down and comes back, it ranks afresh and takes `dep$hi`, so
     # `dep$hi` is now the one that cannot be deactivated under `hold`.
     {
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$lo', definition: 'dep', options: { provides: [ { name: 's', version: '2.1' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 's', range: '2.1' } ] } }
@@ -3607,7 +3614,7 @@ primary: depend: {
         { do: 'activate', ref: 'dep$c' }
         { do: 'deactivate', ref: 'dep$hi' }
       ]
-      err: 'plugin_dependency_held'
+      err: true, match: { err: { code: 'plugin_dependency_held' } }
     }
   ]
 
@@ -3631,7 +3638,7 @@ primary: depend: {
   cascadefail: set: [
     {
       id: 'depend/cascadefail#consumer', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 's' } ] } }
         { do: 'ready', ref: 'noisy$c', options: { requires: ['s'], fail: 'deactivate' } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3641,7 +3648,7 @@ primary: depend: {
     # ...and it is NOT revived when the provider comes back, which is the
     # whole reason `failed` is not `pending`.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 's' } ] } }
         { do: 'ready', ref: 'noisy$c', options: { requires: ['s'], fail: 'deactivate' } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3655,7 +3662,7 @@ primary: depend: {
   cascade: set: [
     {
       id: 'depend/cascade#consumer-first', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3669,7 +3676,7 @@ primary: depend: {
     # tearing down a runs c, then b, then a.
     {
       id: 'depend/cascade#deepest-first', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: ['x'] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['y'] } }
@@ -3688,7 +3695,7 @@ primary: depend: {
     # consumer.
     {
       id: 'depend/cascade#close-inherits', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$z', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'close' }
@@ -3707,7 +3714,7 @@ primary: depend: {
   policy: set: [
     {
       id: 'depend/policy#per-requirement-dynamic', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 'clock', policy: 'dynamic' } ] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3719,7 +3726,7 @@ primary: depend: {
     # it live.
     {
       id: 'depend/policy#mixed-keeps-live-on-dynamic-loss', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$s', definition: 'dep', options: { provides: [ { name: 'store' } ] } }
         { do: 'ready', ref: 'dep$m', definition: 'dep', options: { provides: [ { name: 'metrics' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [
@@ -3735,7 +3742,7 @@ primary: depend: {
     # two requirements are read separately.
     {
       id: 'depend/policy#mixed-restarts-on-static-loss', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$s', definition: 'dep', options: { provides: [ { name: 'store' } ] } }
         { do: 'ready', ref: 'dep$m', definition: 'dep', options: { provides: [ { name: 'metrics' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [
@@ -3753,7 +3760,7 @@ primary: depend: {
     # activate holding no reference at all.
     {
       id: 'depend/policy#dynamic-still-gates-first-activation', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 'clock', policy: 'dynamic' } ] } }
       ]
       match: { out: { status: { 'dep$c': 'pending' } } }
@@ -3769,7 +3776,7 @@ primary: depend: {
     # ends `live` with its scope reopened, having been down in between.
     {
       id: 'depend/policy#optional-static-restarts', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 'clock', optional: true } ] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3786,7 +3793,7 @@ primary: depend: {
     # nothing else, so no callback runs on the consumer at all.
     {
       id: 'depend/policy#optional-dynamic-is-untouched', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: [ { name: 'clock', optional: true, policy: 'dynamic' } ] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3805,31 +3812,31 @@ primary: depend: {
   cycle: set: [
     {
       id: 'depend/cycle#mutual-mandatory', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ], requires: ['y'] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: ['x'] } }
       ]
-      err: 'plugin_dependency_cycle'
+      err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
     {
       id: 'depend/cycle#three-node'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ], requires: ['z'] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: ['x'] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { provides: [ { name: 'z' } ], requires: ['y'] } }
       ]
-      err: 'plugin_dependency_cycle'
+      err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
     # A CYCLE THROUGH REFS IS A CYCLE (§11.1) - the edge does not have to
     # run through a declared capability, because a ref satisfies too and
     # an edge is "could this be the provider selected".
     {
       id: 'depend/cycle#through-refs'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { requires: ['dep$b'] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { requires: ['dep$a'] } }
       ]
-      err: 'plugin_dependency_cycle'
+      err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
     # ...AND THE SPELLING DOES NOT DECIDE WHETHER IT IS ONE. The detector
     # indexed providers by canonical ref and looked them up with the raw
@@ -3841,11 +3848,11 @@ primary: depend: {
     # `depend/byref` does not open.
     {
       id: 'depend/cycle#through-refs-noncanonical', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep', definition: 'dep', options: { requires: ['other$'] } }
         { do: 'ready', ref: 'other', definition: 'other', options: { requires: ['dep$'] } }
       ]
-      err: 'plugin_dependency_cycle'
+      err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
     # STATIC OPTIONAL EDGES ARE RESTART-CAUSING, so they cycle too. An
     # earlier draft of §11.3 excluded every optional edge and thereby
@@ -3853,11 +3860,11 @@ primary: depend: {
     # entry is the one that catches that reading.
     {
       id: 'depend/cycle#static-optional-still-cycles', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ], requires: [ { name: 'y', optional: true } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: [ { name: 'x', optional: true } ] } }
       ]
-      err: 'plugin_dependency_cycle'
+      err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
     # ONLY DYNAMIC OPTIONAL EDGES ARE EXCLUDED, and they are the ones the
     # exclusion was for: two plugins that optionally and dynamically
@@ -3865,7 +3872,7 @@ primary: depend: {
     # other, nothing restarts, so nothing oscillates.
     {
       id: 'depend/cycle#dynamic-optional-is-permitted', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ], requires: [ { name: 'y', optional: true, policy: 'dynamic' } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: [ { name: 'x', optional: true, policy: 'dynamic' } ] } }
       ]
@@ -3875,17 +3882,17 @@ primary: depend: {
     # mutual pair still deadlocks even though neither would restart.
     {
       id: 'depend/cycle#mandatory-dynamic-still-cycles'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ], requires: [ { name: 'y', policy: 'dynamic' } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: [ { name: 'x', policy: 'dynamic' } ] } }
       ]
-      err: 'plugin_dependency_cycle'
+      err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
     # A chain is not a cycle, and this is the entry that stops a port
     # from passing the four above by rejecting every requirement graph.
     {
       id: 'depend/cycle#chain-is-not-a-cycle', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'x' } ] } }
         { do: 'ready', ref: 'dep$b', definition: 'dep', options: { provides: [ { name: 'y' } ], requires: ['x'] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['y'] } }
@@ -3900,19 +3907,19 @@ primary: depend: {
   hold: set: [
     {
       id: 'depend/hold#ad-hoc-deactivate-is-refused', doc: true
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'deactivate', ref: 'dep$p' }
       ]
-      err: 'plugin_dependency_held'
+      err: true, match: { err: { code: 'plugin_dependency_held' } }
     }
     # The error names the HOLDERS, because "something needs this" without
     # saying what is the diagnostic §12 exists to prevent.
     {
       id: 'depend/hold#names-the-holders', doc: true
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
@@ -3929,13 +3936,13 @@ primary: depend: {
     # cascade's restart-causing set excluded this consumer entirely.
     {
       id: 'depend/hold#mandatory-dynamic-holds', doc: true
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], policy: 'dynamic' } }
         { do: 'deactivate', ref: 'dep$p' }
       ]
-      err: 'plugin_dependency_held'
+      err: true, match: { err: { code: 'plugin_dependency_held' } }
     }
     # ...and an OPTIONAL consumer does NOT hold, whatever its policy. It
     # said in writing that it does not need the thing; `hold` refusing a
@@ -3945,7 +3952,7 @@ primary: depend: {
     # `hold` inherited a holder the design never called required.
     {
       id: 'depend/hold#optional-does-not-hold', doc: true
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'], optional: ['clock'] } }
@@ -3958,7 +3965,7 @@ primary: depend: {
     # freeze.
     {
       id: 'depend/hold#unheld-deactivates-normally'
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -3974,7 +3981,7 @@ primary: depend: {
     # The consumers-first order still holds.
     {
       id: 'depend/hold#close-is-coordinated', doc: true
-      cmd: [
+      in: [
         { do: 'host', dependency: 'hold' }
         { do: 'ready', ref: 'dep$a', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$z', definition: 'dep', options: { requires: ['clock'] } }
@@ -3990,7 +3997,7 @@ primary: depend: {
     # port that refused the deactivation unconditionally.
     {
       id: 'depend/hold#restart-is-the-default', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['clock'] } }
         { do: 'deactivate', ref: 'dep$p' }
@@ -4023,7 +4030,7 @@ primary: declare: {
   clear: set: [
     {
       id: 'declare/clear#empty-options', doc: true
-      cmd: [
+      in: [
         { do: 'declare', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'load', ref: 'probe$a', options: {} }
         { do: 'activate', ref: 'probe$a' }
@@ -4035,7 +4042,7 @@ primary: declare: {
     # ...while OMITTING options leaves the declared ones alone, which is
     # the distinction truthiness cannot draw.
     {
-      cmd: [
+      in: [
         { do: 'declare', ref: 'probe$a', options: { wrap: 'A' } }
         { do: 'load', ref: 'probe$a' }
         { do: 'activate', ref: 'probe$a' }
@@ -4054,14 +4061,14 @@ primary: declare: {
   lookup: set: [
     {
       id: 'declare/lookup#malformed', doc: true
-      cmd: [ { do: 'seq', ref: 'bad name' } ]
-      err: 'plugin_bad_name'
+      in: [ { do: 'seq', ref: 'bad name' } ]
+      err: true, match: { err: { code: 'plugin_bad_name' } }
     }
     # A WELL-FORMED ref that is simply absent is not an error - it is the
     # ordinary "nothing here" answer, and the pair is what keeps the two
     # distinguishable.
     {
-      cmd: [ { do: 'seq', ref: 'probe$nope' } ]
+      in: [ { do: 'seq', ref: 'probe$nope' } ]
       match: { out: { result: '__NULL__' } }
     }
   ]
@@ -4070,7 +4077,7 @@ primary: declare: {
   free: set: [
     {
       id: 'declare/free#nothing-runs', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: {
           'probe$a': { start: 'lazy' }, 'probe$b': { start: 'lazy' } } } }
       ]
@@ -4079,14 +4086,14 @@ primary: declare: {
     }
     # `start: eager` (the default) does run it.
     {
-      cmd: [ { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } } ]
+      in: [ { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } } ]
       match: { out: { status: { 'probe$a': 'live' } } }
     }
     # `active: false` BARS it: declared, and `ready` on it fails rather
     # than quietly doing nothing.
     {
       id: 'declare/free#barred'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
       ]
       match: { out: { status: { 'probe$a': 'declared' }, log: [] } }
@@ -4098,20 +4105,20 @@ primary: declare: {
     # by any later `ready`.
     {
       id: 'declare/free#barred-stays-barred', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
         { do: 'ready', ref: 'probe$a' }
       ]
-      err: 'plugin_inactive'
+      err: true, match: { err: { code: 'plugin_inactive' } }
     }
-    { cmd: [
+    { in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
         { do: 'activate', ref: 'probe$a' }
-      ], err: 'plugin_inactive' }
+      ], err: true, match: { err: { code: 'plugin_inactive' } } }
     # ...and a document that turns it back on clears the bar. A bar that
     # could not be lifted would be a worse bug than one that never held.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
       ]
@@ -4125,16 +4132,16 @@ primary: declare: {
   autotag: set: [
     {
       id: 'declare/autotag#first', doc: true
-      cmd: [ { do: 'declare', ref: 'probe', tag: '?' } ]
+      in: [ { do: 'declare', ref: 'probe', tag: '?' } ]
       match: { out: { result: 'probe$1' } }
     }
-    { cmd: [ { do: 'declare', ref: 'probe', tag: '?' }, { do: 'declare', ref: 'probe', tag: '?' } ]
+    { in: [ { do: 'declare', ref: 'probe', tag: '?' }, { do: 'declare', ref: 'probe', tag: '?' } ]
       match: { out: { result: 'probe$2' } } }
     # LOWEST UNUSED, not next-highest: a gap is filled. A counter-based
     # implementation passes the two entries above and fails this one.
     {
       id: 'declare/autotag#fills-gap'
-      cmd: [
+      in: [
         { do: 'declare', ref: 'probe$1' }
         { do: 'declare', ref: 'probe$3' }
         { do: 'declare', ref: 'probe', tag: '?' }
@@ -4143,7 +4150,7 @@ primary: declare: {
     }
     # It skips an existing explicit tag rather than colliding with it.
     {
-      cmd: [ { do: 'declare', ref: 'probe$1' }, { do: 'declare', ref: 'probe', tag: '?' } ]
+      in: [ { do: 'declare', ref: 'probe$1' }, { do: 'declare', ref: 'probe', tag: '?' } ]
       match: { out: { result: 'probe$2' } }
     }
   ]
@@ -4156,15 +4163,15 @@ primary: declare: {
   seq: set: [
     {
       id: 'declare/seq#advances', doc: true
-      cmd: [ { do: 'declare', ref: 'probe$a' }, { do: 'declare', ref: 'probe$b' }, { do: 'seq', ref: 'probe$b' } ]
+      in: [ { do: 'declare', ref: 'probe$a' }, { do: 'declare', ref: 'probe$b' }, { do: 'seq', ref: 'probe$b' } ]
       match: { out: { result: 1 } }
     }
-    { cmd: [ { do: 'declare', ref: 'probe$a' }, { do: 'seq', ref: 'probe$a' } ]
+    { in: [ { do: 'declare', ref: 'probe$a' }, { do: 'seq', ref: 'probe$a' } ]
       match: { out: { result: 0 } } }
     # A RE-DECLARED instance gets a FRESH seq — it is a new incarnation.
     {
       id: 'declare/seq#fresh-on-reload'
-      cmd: [
+      in: [
         { do: 'declare', ref: 'probe$a' }
         { do: 'declare', ref: 'probe$b' }
         { do: 'unload', ref: 'probe$a' }
@@ -4178,7 +4185,7 @@ primary: declare: {
     # re-declared instance behind everything that never moved.
     {
       id: 'declare/seq#pos-stable'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
         { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a', active: false }, { ref: 'probe$b' } ] } }
         { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
@@ -4199,17 +4206,17 @@ primary: declare: {
   register: set: [
     {
       id: 'declare/register#probe-differs-from-name', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'adapter', probe: 'noisy' }
         { do: 'load', ref: 'adapter$a', options: { fail: 'define', code: 'probe_boom' } }
       ]
-      err: 'probe_boom'
+      err: true, match: { err: { code: 'probe_boom' } }
     }
     # The pre-seeded `adapter` is a bare record probe that binds nothing,
     # so a driver that took the name and ignored `probe` answers 'x'.
     {
       id: 'declare/register#backed-by-probe'
-      cmd: [
+      in: [
         { do: 'define', name: 'adapter', probe: 'probe' }
         { do: 'ready', ref: 'adapter$a' }
         { do: 'chain', point: 'c', arg: 'x' }
@@ -4220,7 +4227,7 @@ primary: declare: {
     # that comes back must be named what was asked for" is satisfied by
     # the ref rather than by the probe it borrowed.
     {
-      cmd: [
+      in: [
         { do: 'define', name: 'adapter', probe: 'probe' }
         { do: 'ready', ref: 'adapter$a' }
         { do: 'list' }
@@ -4249,13 +4256,13 @@ primary: declare: {
   shape: set: [
     {
       id: 'declare/shape#at-registration', doc: true
-      cmd: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': { deep: 0 } } } } ]
-      err: 'plugin_shape_invalid'
+      in: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': { deep: 0 } } } } ]
+      err: true, match: { err: { code: 'plugin_shape_invalid' } }
     }
     # The word form too, so the raise is not one special case of `deep`.
     {
-      cmd: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': 'merge' } } } ]
-      err: 'plugin_shape_invalid'
+      in: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': 'merge' } } } ]
+      err: true, match: { err: { code: 'plugin_shape_invalid' } }
     }
     # A REJECTED REGISTRATION LEAVES NOTHING BEHIND. Without this, a port
     # could store the definition and then raise, and the next `load`
@@ -4264,11 +4271,11 @@ primary: declare: {
     # command can ask.
     {
       id: 'declare/shape#rejected-not-registered'
-      cmd: [
+      in: [
         { do: 'define', name: 'shaped', shape: { m: { '$MERGE': { deep: 0 } } }, catch: true }
         { do: 'load', ref: 'shaped$a' }
       ]
-      err: 'plugin_unknown_definition'
+      err: true, match: { err: { code: 'plugin_unknown_definition' } }
     }
     # ...AND A VALID SHAPE IS KEPT, not merely inspected and dropped.
     # §10.1: "a catalog entry carries the definition's option shape, and
@@ -4280,7 +4287,7 @@ primary: declare: {
     # the `c` chain with `options.wrap`.
     {
       id: 'declare/shape#reaches-resolution', doc: true
-      cmd: [
+      in: [
         { do: 'define', name: 'probe', shape: { wrap: 'S' } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'chain', point: 'c', arg: 'x' }
@@ -4290,7 +4297,7 @@ primary: declare: {
     # The same run WITHOUT the shape, because 'Sx' alone does not say
     # where the S came from.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'chain', point: 'c', arg: 'x' }
       ]
@@ -4303,7 +4310,7 @@ primary: declare: {
     # capability; `append` keeps the document default's `a` as well.
     {
       id: 'declare/shape#directive-at-apply'
-      cmd: [
+      in: [
         { do: 'define', name: 'probe', shape: { provides: { '$MERGE': 'append' } } }
         { do: 'apply', doc: { plugin: 1
             default: { probe: { options: { provides: [ { name: 'a' } ] } } }
@@ -4312,7 +4319,7 @@ primary: declare: {
       ]
       match: { out: { result: ['probe$x'] } }
     }
-    { cmd: [
+    { in: [
         { do: 'apply', doc: { plugin: 1
             default: { probe: { options: { provides: [ { name: 'a' } ] } } }
             instance: { 'probe$x': { options: { provides: [ { name: 'b' } ] } } } } }
@@ -4332,7 +4339,7 @@ primary: state: {
   survive: set: [
     {
       id: 'state/survive#cycle', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'bump' }
         { do: 'deactivate', ref: 'probe$a' }
@@ -4344,7 +4351,7 @@ primary: state: {
     # Deactivating a rate limiter and reactivating it ten seconds later
     # must not reset its window counters — several cycles, one state.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'bump' }
         { do: 'deactivate', ref: 'probe$a' }
@@ -4360,7 +4367,7 @@ primary: state: {
     # loaded", and `close` is what properly undoes `define`.
     {
       id: 'state/survive#unload-destroys'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'bump' }
         { do: 'unload', ref: 'probe$a' }
@@ -4371,7 +4378,7 @@ primary: state: {
     }
     # Two instances of one definition do not share state.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b' }
         { do: 'call', ref: 'probe$a', method: 'bump' }
@@ -4399,7 +4406,7 @@ primary: resource: {
   scope: set: [
     {
       id: 'resource/scope#difference', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3, release: 1 } }
       ]
       match: { out: { open: 2 } }
@@ -4407,7 +4414,7 @@ primary: resource: {
     # Deactivation unwinds the rest — the scope's job, not a ledger the
     # plugin has to remember to keep.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3, release: 1 } }
         { do: 'deactivate', ref: 'greedy$a' }
       ]
@@ -4418,7 +4425,7 @@ primary: resource: {
     # double-free — releasing early must not make teardown wrong.
     {
       id: 'resource/scope#double-release'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 2, release: 2 } }
         { do: 'deactivate', ref: 'greedy$a' }
       ]
@@ -4428,7 +4435,7 @@ primary: resource: {
     # raises, so a port that unwinds only on the clean path leaks here.
     {
       id: 'resource/scope#partial-rollback'
-      cmd: [
+      in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
       ]
@@ -4436,7 +4443,7 @@ primary: resource: {
     }
     # Closing the host unwinds everything still held.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3 } }
         { do: 'ready', ref: 'probe$b' }
         { do: 'close' }
@@ -4452,7 +4459,7 @@ primary: resource: {
     # themselves. Found by the go port (§18, P4).
     {
       id: 'resource/scope#reverse'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { mark: 3 } }
         { do: 'deactivate', ref: 'greedy$a' }
         { do: 'call', ref: 'greedy$a', method: 'unwound' }
@@ -4471,13 +4478,13 @@ primary: resource: {
     # two do.
     {
       id: 'resource/scope#release-counts'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { mark: 3 } }
       ]
       match: { out: { open: 3 } }
     }
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { mark: 3 } }
         { do: 'deactivate', ref: 'greedy$a' }
       ]
@@ -4486,7 +4493,7 @@ primary: resource: {
     # ...and a host close unwinds them too, which is the case the leak
     # made unreachable.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 2, mark: 2 } }
         { do: 'close' }
       ]
@@ -4503,13 +4510,13 @@ primary: resource: {
     # review of the go port.
     {
       id: 'resource/scope#stray'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'stray' }
       ]
-      err: 'plugin_release_scope'
+      err: true, match: { err: { code: 'plugin_release_scope' } }
     }
-    { cmd: [
+    { in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'call', ref: 'probe$a', method: 'stray', catch: true }
       ]
@@ -4523,18 +4530,18 @@ primary: resource: {
     # permanent leak reachable from ordinary plugin code.
     {
       id: 'resource/scope#capture-phase'
-      cmd: [
+      in: [
         { do: 'load', ref: 'greedy$a', definition: 'greedy', options: { early: 'acquire' } }
       ]
-      err: 'plugin_release_scope'
+      err: true, match: { err: { code: 'plugin_release_scope' } }
     }
     # `release` carries the guard separately, so it needs its own entry:
     # a port fixing one and leaving the other would pass the row above.
     {
-      cmd: [
+      in: [
         { do: 'load', ref: 'greedy$a', definition: 'greedy', options: { early: 'release' } }
       ]
-      err: 'plugin_release_scope'
+      err: true, match: { err: { code: 'plugin_release_scope' } }
     }
 
     # A FAILING RELEASE. §8.3: "A failing release does not stop the rest.
@@ -4548,17 +4555,17 @@ primary: resource: {
     # instance that had failed to give back what it held.
     {
       id: 'resource/scope#release-failed'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy'
           options: { mark: 2, markfail: true } }
         { do: 'deactivate', ref: 'greedy$a' }
       ]
-      err: 'plugin_release_failed'
+      err: true, match: { err: { code: 'plugin_release_failed' } }
     }
     # EVERY entry still runs - the count returns to zero even though both
     # releases raised - and the instance ends in `failed`, not `loaded`.
     {
-      cmd: [
+      in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy'
           options: { mark: 2, markfail: true } }
         { do: 'deactivate', ref: 'greedy$a', catch: true }
@@ -4583,7 +4590,7 @@ primary: nest: {
   lifetime: set: [
     {
       id: 'nest/lifetime#inner-live', doc: true
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } }
         { do: 'inner', ref: 'probe$outer' }
       ]
@@ -4594,7 +4601,7 @@ primary: nest: {
     # lifetime" has to mean to be more than a sentence.
     {
       id: 'nest/lifetime#outer-closes-inner'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } }
         { do: 'deactivate', ref: 'probe$outer' }
         { do: 'inner', ref: 'probe$outer' }
@@ -4605,7 +4612,7 @@ primary: nest: {
     # two levels, not one flattened namespace.
     {
       id: 'nest/lifetime#isolated'
-      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
+      in: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
       match: { out: { status: { 'probe$outer': 'live' } } }
     }
   ]
@@ -4631,14 +4638,14 @@ primary: nest: {
   open: set: [
     {
       id: 'nest/open#nest-is-not-a-resource', doc: true
-      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
+      in: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
       match: { out: { open: 1 } }
     }
     # THE SAME NUMBER AS WITHOUT THE NEST, which is the half that says
     # `open: 1` above is the outer's own `acquire` rather than a nest
     # that happens to cost one.
     {
-      cmd: [ { do: 'ready', ref: 'probe$a' } ]
+      in: [ { do: 'ready', ref: 'probe$a' } ]
       match: { out: { open: 1 } }
     }
     # AND IT DOES NOT SCALE WITH THE INNER HOST'S CONTENTS. Two inner
@@ -4646,7 +4653,7 @@ primary: nest: {
     # accumulating them into the outer's counter answers 3.
     {
       id: 'nest/open#inner-resources-stay-inner'
-      cmd: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } } ]
+      in: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } } ]
       match: { out: { open: 1 } }
     }
     # ...and the outer's deactivation returns it to zero, closing the
@@ -4654,7 +4661,7 @@ primary: nest: {
     # the inner is gone; this asserts nothing was left held.
     {
       id: 'nest/open#unwinds'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } }
         { do: 'deactivate', ref: 'probe$outer' }
       ]
@@ -4673,7 +4680,7 @@ primary: trace: {
   record: set: [
     {
       id: 'trace/record#forward', doc: true
-      cmd: [ { do: 'ready', ref: 'probe$a' }, { do: 'trace' } ]
+      in: [ { do: 'ready', ref: 'probe$a' }, { do: 'trace' } ]
       match: { out: { result: [
         { ref: 'probe$a', event: 'define' }
         { ref: 'probe$a', event: 'activate' }
@@ -4684,7 +4691,7 @@ primary: trace: {
     # trace, where `pos` would be identical for both.
     {
       id: 'trace/record#seq'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'unload', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$a' }
@@ -4716,7 +4723,7 @@ primary: apply: {
   idempotent: set: [
     {
       id: 'apply/idempotent#twice', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
       ]
@@ -4726,7 +4733,7 @@ primary: apply: {
     # The LOG is the assertion, not the status: a port that re-ran
     # `define` would end in the same state and be wrong.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
       ]
@@ -4748,7 +4755,7 @@ primary: apply: {
     # chain result is the option, not a copy of it.
     {
       id: 'apply/idempotent#options-first-time', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
         { do: 'chain', point: 'c', arg: 'x' }
       ]
@@ -4757,7 +4764,7 @@ primary: apply: {
     # ...and are still there after a second, identical apply — the fix
     # must not trade the first apply for the second.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
         { do: 'chain', point: 'c', arg: 'x' }
@@ -4768,7 +4775,7 @@ primary: apply: {
     # refill exists for: the binding closed over the map at `define`.
     {
       id: 'apply/idempotent#options-changed'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'W' } } } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'Z' } } } } }
         { do: 'chain', point: 'c', arg: 'x' }
@@ -4788,7 +4795,7 @@ primary: apply: {
   gone: set: [
     {
       id: 'apply/gone#dropped', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {}, 'probe$b': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
       ]
@@ -4797,7 +4804,7 @@ primary: apply: {
     # It is UNLOADED, not merely deactivated: `probe$b` is absent from
     # the status map entirely, and its resource is released.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {}, 'probe$b': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'list' }
@@ -4806,7 +4813,7 @@ primary: apply: {
     }
     # ...and `close` ran, which is what makes "as if never loaded" true.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: {} } }
       ]
@@ -4819,7 +4826,7 @@ primary: apply: {
     # `close` on an instance that never ran `define`.
     {
       id: 'apply/gone#declared-untouched'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
         { do: 'apply', doc: { plugin: 1, instance: {} } }
       ]
@@ -4835,7 +4842,7 @@ primary: apply: {
   phases: set: [
     {
       id: 'apply/phases#declare-all-then-activate', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
       ]
       match: { out: { log: ['probe$a:define', 'probe$b:define'
@@ -4845,7 +4852,7 @@ primary: apply: {
     # declared after its provider goes down before it.
     {
       id: 'apply/phases#reverse-teardown'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$a' }, { ref: 'probe$b' } ] } }
         { do: 'apply', doc: { plugin: 1, instance: [ { ref: 'probe$c' } ] } }
       ]
@@ -4861,7 +4868,7 @@ primary: apply: {
     # ADD: a new ref appears.
     {
       id: 'apply/change#add', doc: true
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {}, 'probe$b': {} } } }
       ]
@@ -4869,7 +4876,7 @@ primary: apply: {
     }
     # PATCH: options change without the instance restarting from scratch.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'A' } } } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'Z' } } } } }
         { do: 'chain', point: 'c', arg: 'x' }
@@ -4884,7 +4891,7 @@ primary: apply: {
     # honest meaning of the change.
     {
       id: 'apply/change#toggle-off'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
       ]
@@ -4892,7 +4899,7 @@ primary: apply: {
     }
     # And the unload is VISIBLE in the log — `close` ran.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
       ]
@@ -4901,7 +4908,7 @@ primary: apply: {
     }
     # Toggling to LAZY does the same thing, for the same reason.
     {
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { start: 'lazy' } } } }
       ]
@@ -4910,7 +4917,7 @@ primary: apply: {
     # And BACK ON again, from a clean slate.
     {
       id: 'apply/change#toggle-back'
-      cmd: [
+      in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { active: false } } } }
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
@@ -4927,7 +4934,7 @@ primary: apply: {
   profile: set: [
     {
       id: 'apply/profile#bar-survives', doc: true
-      cmd: [
+      in: [
         { do: 'apply', profile: 'prod', doc: {
           plugin: 1
           instance: { 'probe$a': { active: false } }
@@ -4967,25 +4974,25 @@ primary: error: {
     # The prefix and code, verbatim.
     {
       id: 'error/format#prefix', doc: true
-      cmd: [ { do: 'activate', ref: 'nope$a' } ]
+      in: [ { do: 'activate', ref: 'nope$a' } ]
       err: true, match: { err: { message: '/^plugin\\/plugin_not_loaded: /' } }
     }
     # The detail bracket, with the field that applies.
     {
-      cmd: [ { do: 'activate', ref: 'nope$a' } ]
+      in: [ { do: 'activate', ref: 'nope$a' } ]
       err: true, match: { err: { message: '/\\[ref="nope\\$a"\\]/' } }
     }
     # Values render as COMPACT JSON — quoted, so a ref containing a
     # space or a bracket cannot break a parser reading the line.
     {
       id: 'error/format#json-values'
-      cmd: [ { do: 'emit', point: 'nope' } ]
+      in: [ { do: 'emit', point: 'nope' } ]
       err: true, match: { err: { message: '/\\[point="nope"\\]/' } }
     }
     # A list field renders as a JSON ARRAY.
     {
       id: 'error/format#list-field'
-      cmd: [
+      in: [
         { do: 'ready', ref: 'probe$a', order: { after: 'probe$b' } }
         { do: 'ready', ref: 'probe$b', order: { after: 'probe$a' } }
         { do: 'order', point: 'p' }
@@ -4998,42 +5005,42 @@ primary: error: {
   # The codes themselves, each reached through the path that raises it.
   codes: set: [
     { id: 'error/codes#not-loaded', doc: true
-      cmd: [ { do: 'activate', ref: 'nope$a' } ], err: 'plugin_not_loaded' }
-    { cmd: [ { do: 'load', ref: 'nosuch$a' } ], err: 'plugin_unknown_definition' }
-    { cmd: [
+      in: [ { do: 'activate', ref: 'nope$a' } ], err: true, match: { err: { code: 'plugin_not_loaded' } } }
+    { in: [ { do: 'load', ref: 'nosuch$a' } ], err: true, match: { err: { code: 'plugin_unknown_definition' } } }
+    { in: [
         { do: 'load', ref: 'probe$a' }
         { do: 'load', ref: 'probe$a', definition: 'other' }
-      ], err: 'plugin_ref_duplicate' }
-    { cmd: [ { do: 'emit', point: 'nope' } ], err: 'plugin_point_unknown' }
-    { cmd: [ { do: 'chain', point: 'p' } ], err: 'plugin_point_kind' }
-    { cmd: [
+      ], err: true, match: { err: { code: 'plugin_ref_duplicate' } } }
+    { in: [ { do: 'emit', point: 'nope' } ], err: true, match: { err: { code: 'plugin_point_unknown' } } }
+    { in: [ { do: 'chain', point: 'p' } ], err: true, match: { err: { code: 'plugin_point_kind' } } }
+    { in: [
         { do: 'ready', ref: 'probe$a', order: { after: 'probe$a' } }
         { do: 'order', point: 'p' }
-      ], err: 'plugin_order_cycle' }
-    { cmd: [
+      ], err: true, match: { err: { code: 'plugin_order_cycle' } } }
+    { in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
         { do: 'activate', ref: 'noisy$a', catch: true }
         { do: 'activate', ref: 'noisy$a' }
-      ], err: 'plugin_bad_state' }
-    { cmd: [
+      ], err: true, match: { err: { code: 'plugin_bad_state' } } }
+    { in: [
         { do: 'load', ref: 'noisy$a', options: { reenter: 'activate' } }
         { do: 'activate', ref: 'noisy$a' }
-      ], err: 'plugin_reentrant' }
-    { cmd: [
+      ], err: true, match: { err: { code: 'plugin_reentrant' } } }
+    { in: [
         { do: 'ready', ref: 'probe$a' }
         { do: 'ready', ref: 'probe$b' }
         { do: 'export', key: 'probe/client' }
-      ], err: 'plugin_export_ambiguous' }
-    { cmd: [
+      ], err: true, match: { err: { code: 'plugin_export_ambiguous' } } }
+    { in: [
         { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
         { do: 'ready', ref: 'provider$a', definition: 'provider', options: { point: 'v' } }
         { do: 'ready', ref: 'provider$b', definition: 'provider', options: { point: 'v' } }
         { do: 'provider', point: 'v' }
-      ], err: 'plugin_point_exclusive' }
-    { cmd: [
+      ], err: true, match: { err: { code: 'plugin_point_exclusive' } } }
+    { in: [
         { do: 'host', reserved: ['station'] }
         { do: 'declare', ref: 'station$a' }
-      ], err: 'plugin_ref_reserved' }
+      ], err: true, match: { err: { code: 'plugin_ref_reserved' } } }
 
     # ...but THE HOST ITSELF MUST STILL BE ABLE TO DECLARE IT. §9.1:
     # "The host declares those instances itself, after the user merge,
@@ -5043,15 +5050,15 @@ primary: error: {
     # a feature that defeated its own purpose. Found by review of the go
     # port.
     { id: 'error/codes#reserved-host-path'
-      cmd: [
+      in: [
         { do: 'host', reserved: ['probe'] }
         { do: 'hostdeclare', ref: 'probe$a' }
       ], match: { out: { result: 'probe$a', status: { 'probe$a': 'declared' } } } }
     # ...while the ordinary path to the same ref stays barred, which is
     # what makes the pair an assertion rather than a bypass.
-    { cmd: [
+    { in: [
         { do: 'host', reserved: ['probe'] }
         { do: 'declare', ref: 'probe$a' }
-      ], err: 'plugin_ref_reserved' }
+      ], err: true, match: { err: { code: 'plugin_ref_reserved' } } }
   ]
 }

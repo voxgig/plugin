@@ -135,12 +135,12 @@ fn graphSubject(group: []const u8) ?corpus.Subject {
 
 // --- the twelve DRIVER sections ---------------------------------------
 
-/// Every entry carries `cmd`, and a port needs DOCS.md §4 to run them —
+/// Every entry carries `in`, and a port needs DOCS.md §4 to run them —
 /// the probe catalog, the command vocabulary, and the canonical
 /// observable {status, open, log, result}. Corpus files alone are not
 /// enough, which is why C2 shipped both together.
 fn subDrive(e: ?*v.Value) t.Err!?*v.Value {
-    return driver.drive(v.get(e, "cmd"));
+    return driver.drive(v.get(e, "in"));
 }
 fn driverSubject(group: []const u8) ?corpus.Subject {
     _ = group;

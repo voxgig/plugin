@@ -131,7 +131,7 @@ try runSection(spec, "config") { group in
 }
 
 for name in driverSections {
-    try runSection(spec, name) { _ in { try Driver.drive($0.at("cmd").items) } }
+    try runSection(spec, name) { _ in { try Driver.drive($0.at("in").items) } }
 }
 
 // EVERY CORPUS SECTION IS RUN. The per-section dispatch already fails on a
