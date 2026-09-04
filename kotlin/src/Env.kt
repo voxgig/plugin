@@ -26,7 +26,25 @@ object Env {
 
     /** `retry$fast` -> `RETRY__FAST`. */
     fun encodeRef(ref: String): String =
-        ref.replace("$", "__").replace(".", "_").toUpperCase()
+        upperAscii(ref.replace("$", "__").replace(".", "_"))
+
+    // ASCII, AND SPELLED THE LONG WAY, FOR TWO REASONS.
+    //
+    // LOCALE: an environment variable name must not depend on the JVM's
+    // default locale. `String.toUpperCase()` does -- in tr-TR it maps "i" to
+    // "\u0130", so `retry$fast` would encode to a name no shell can set.
+    //
+    // COMPILER: the fix the deprecation warning suggests, `uppercase()`, is
+    // Kotlin 1.5+. CI compiles this port with ubuntu's `kotlin` package,
+    // which is 1.3.31, where that name does not resolve at all. `toUpperCase`
+    // is deprecated from 1.5 and the Makefile builds with -Werror, so the
+    // stdlib call fails on ONE of the two compilers whichever one is chosen.
+    // A char range resolves on both and warns on neither.
+    private fun upperAscii(s: String): String =
+        buildString(s.length) { for (c in s) append(if (c in 'a'..'z') c - 32 else c) }
+
+    private fun lowerAscii(s: String): String =
+        buildString(s.length) { for (c in s) append(if (c in 'A'..'Z') c + 32 else c) }
 
     /**
      * Values parse as JSON, FALLING BACK TO STRING - so `8080` is a number,
@@ -116,7 +134,7 @@ object Env {
 
             if (rest == enc) continue // a ref with no path sets nothing
 
-            val path = rest.substring(enc.length + 1).toLowerCase().split("_")
+            val path = lowerAscii(rest.substring(enc.length + 1)).split("_")
 
             var node = options[ref]
             if (node !is MutableMap<*, *>) {

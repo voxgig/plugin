@@ -85,12 +85,20 @@ object Json {
                 CHAR_NEWLINE == c -> out.append("\\n")
                 CHAR_RETURN == c -> out.append("\\r")
                 CHAR_TAB == c -> out.append("\\t")
-                c.toInt() < 0x20 -> out.append("\\u%04x".format(c.toInt()))
+                c < CHAR_SPACE -> out.append("\\u%04x".format(codeOf(c)))
                 else -> out.append(c)
             }
         }
         out.append('"')
     }
+
+    // `Char.code` is Kotlin 1.5+ and does not resolve on the 1.3.31 ubuntu
+    // ships to CI; `Char.toInt()` is deprecated from 1.5 and the Makefile
+    // builds -Werror. `Char.minus(Char)` has been Int since 1.0 and is
+    // deprecated in neither, so it is the one spelling both compilers take.
+    private fun codeOf(c: Char): Int = c - '\u0000'
+
+    private const val CHAR_SPACE = '\u0020'
 
     private const val CHAR_BACKSLASH = '\u005C'
     private const val CHAR_NEWLINE = '\u000A'
