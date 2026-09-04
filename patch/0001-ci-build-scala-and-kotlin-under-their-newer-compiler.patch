@@ -1,0 +1,151 @@
+From 1e25e167ae742a2b0b4d2ca82e23800bab1f2cad Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 4 Sep 2026 13:32:40 +0000
+Subject: [PATCH] ci: build scala and kotlin under their newer compilers too
+
+Both ports were made to compile under two major versions of their language,
+because a machine that also builds voxgig/struct carries the newer ones:
+
+  #29  kotlin  four call sites spelled so 1.3.31 and 2.x both accept them
+  #30  scala   `export` backticked, companion applies made explicit, and a
+               Makefile that probes for the flags and the run command
+
+Nothing on GitHub built the newer half of either. `port` installs what
+ubuntu's archive carries -- scala 2.11.12 and kotlin 1.3.31 -- so a later
+change could break scala 3 or kotlin 2 compatibility and every check here
+would stay green. That is the same shape of gap as a port missing from
+`port`'s matrix: THE GATE STAYS GREEN BECAUSE THE CASE IS ABSENT FROM IT.
+
+`newer-toolchain` adds the missing half, two lanes, pinned release archives
+in the style dart, swift, zig and lean already use here:
+
+  scala   scala3-3.9.0.tar.gz              from github.com/scala/scala3
+  kotlin  kotlin-compiler-2.2.0.zip        from github.com/JetBrains/kotlin
+
+kotlin 2.2.0 is what voxgig/struct's kotlin port builds with, so the two
+repositories now agree on the newer end as well as differing at the older one.
+
+THE PORTS NEED NOTHING ADDED. Both Makefiles already take the compiler and
+the runner as overridable variables and probe for what they got, so each lane
+is the ordinary `make build/test/inspect` with PATH pointing at the newer
+toolchain. That was the point of the probes, and this is what collects on it.
+
+Both lanes were run before this was written, with the same archives the job
+fetches:
+
+  scala   19 files compile; 572 corpus entries across 19 sections, all pass
+          inspect: Scala compiler version 3.9.0
+  kotlin  19 files compile; 572 corpus entries across 19 sections, all pass
+          inspect: kotlinc-jvm 2.2.0
+
+The scala lane is also the first execution of the Scala CLI arm of #30's run
+probe. The real 3.9.0 launcher answers `scala --version` with
+
+    Scala code runner version: 1.16.0
+    Scala version (default): 3.9.0
+
+-- no mention of "Scala CLI" -- which is why that probe asks whether `run` is
+a subcommand instead of reading the banner.
+
+The two apt comments above now say that 2.11 and 1.3.31 are the OLDEST
+compilers these ports must satisfy rather than the only ones, and name the job
+that checks the other end.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01S5zKiMP1i1FRDZ6pzgzrUp
+---
+ .github/workflows/ci.yml | 72 +++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 68 insertions(+), 4 deletions(-)
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 7bfaf66..9994820 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -160,12 +160,17 @@ jobs:
+           unzip -q /tmp/dartsdk.zip -d /opt
+           echo /opt/dart-sdk/bin >> "$GITHUB_PATH"
+       # kotlin is in ubuntu's archive; the package is the compiler and the
+-      # stdlib jar beside it, which is all the port's Makefile looks for.
++      # stdlib jar beside it, which is all the port's Makefile looks for. As
++      # with scala, the archive's 1.3.31 is the oldest compiler this port must
++      # satisfy rather than the only one - `newer-toolchain` below has the
++      # other half.
+       - if: matrix.port == 'kotlin'
+         run: sudo apt-get update && sudo apt-get install -y kotlin
+-      # scala likewise. The archive carries 2.11, which is what this port is
+-      # written to - `make inspect-scala` prints the version it got, so a newer
+-      # one arriving is visible rather than silent.
++      # scala likewise. The archive carries 2.11, which is the OLDEST compiler
++      # this port must satisfy - not the only one. It also builds under scala
++      # 3, and `newer-toolchain` below is what checks that half.
++      # `make inspect-scala` prints the version it got, so a newer one
++      # arriving is visible rather than silent.
+       - if: matrix.port == 'scala'
+         run: sudo apt-get update && sudo apt-get install -y scala
+       # swift is not, so this is the release tarball from swift.org at a PINNED
+@@ -238,3 +243,62 @@ jobs:
+       - run: make build-${{ matrix.port }}
+       - run: make test-${{ matrix.port }}
+       - run: make inspect-${{ matrix.port }}
++
++  # THE SECOND TOOLCHAIN, for the two ports that must compile under more than
++  # one major version of their language.
++  #
++  # `port` above installs what ubuntu's archive carries - scala 2.11.12 and
++  # kotlin 1.3.31 - and that is deliberate: they are the OLDEST compilers
++  # these ports must still satisfy. But an old compiler is only half of a
++  # compatibility claim, and until this job existed the other half was checked
++  # by nobody. Both ports were made to build under two compilers (#29 kotlin,
++  # #30 scala) because a machine that also builds voxgig/struct carries the
++  # newer ones; with the newer half unbuilt on GitHub, a later change could
++  # break it while `make check` stayed green. That is the same shape of gap as
++  # a port missing from `port`'s matrix: THE GATE STAYS GREEN BECAUSE THE CASE
++  # IS ABSENT FROM IT.
++  #
++  # NEITHER TOOLCHAIN IS IN THE ARCHIVE, so both are PINNED release archives -
++  # the same trade dart, swift, zig and lean already take in this file, and for
++  # the same reason every action here is pinned to a SHA. An unpinned installer
++  # would put this job's meaning outside the repository.
++  #
++  # THE PORTS NEED NOTHING ADDED FOR THIS. Both Makefiles already take the
++  # compiler and the runner as overridable variables and probe for what they
++  # got, so a lane is the ordinary `make build/test/inspect` with PATH pointing
++  # at the newer toolchain. If that ever stops being true, fix the Makefile
++  # rather than special-casing it here.
++  newer-toolchain:
++    name: ${{ matrix.port }} (newer toolchain)
++    runs-on: ubuntu-latest
++    strategy:
++      fail-fast: false
++      matrix:
++        port: [scala, kotlin]
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
++      # scala 3, from the scala3 distribution tarball. `bin/scala` in this
++      # archive is the Scala CLI runner that scala 3.5 replaced the old one
++      # with, which is exactly why the port probes for a `run` subcommand
++      # instead of matching a version banner: this launcher reports itself as
++      # `Scala code runner version: 1.16.0` and never says "Scala CLI" at all.
++      - if: matrix.port == 'scala'
++        run: |
++          curl -fsSL -o /tmp/scala3.tar.gz \
++            https://github.com/scala/scala3/releases/download/3.9.0/scala3-3.9.0.tar.gz
++          sudo mkdir -p /opt/scala3
++          sudo tar xzf /tmp/scala3.tar.gz -C /opt/scala3 --strip-components=1
++          echo /opt/scala3/bin >> "$GITHUB_PATH"
++      # kotlin 2.x, from the compiler zip. The port's Makefile locates
++      # kotlin-stdlib.jar beside the compiler rather than fetching it, and this
++      # archive has the same bin/../lib layout ubuntu's package does, so the
++      # lookup needs no help.
++      - if: matrix.port == 'kotlin'
++        run: |
++          curl -fsSL -o /tmp/kotlin.zip \
++            https://github.com/JetBrains/kotlin/releases/download/v2.2.0/kotlin-compiler-2.2.0.zip
++          sudo unzip -q /tmp/kotlin.zip -d /opt
++          echo /opt/kotlinc/bin >> "$GITHUB_PATH"
++      - run: make build-${{ matrix.port }}
++      - run: make test-${{ matrix.port }}
++      - run: make inspect-${{ matrix.port }}
+-- 
+2.43.0
+
