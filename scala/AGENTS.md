@@ -53,7 +53,8 @@ already runs under).
 it. `Refs.checkName` carries an explicit parenthesis and says why; it compiled
 silently in the wrong shape first.
 
-**`Value` is a sealed trait, and `-Xfatal-warnings` is what makes that pay.**
+**`Value` is a sealed trait, and the warnings-are-errors gate is what makes
+that pay** (`-Xfatal-warnings` on scala 2, `-Werror` on scala 3).
 Adding a case makes every non-exhaustive match an ERROR rather than a note.
 Never widen a match to `case _ =>` to silence one — the whole point is being
 told where the new case has to be handled.
@@ -121,9 +122,13 @@ the sort and `order/order/pinorder#two-names` fails immediately.
 - Internal shapes are CASE CLASSES where they are never corpus values:
   `Binding`, `OrderNode`, `Export.Exported`, `GraphNode`, `Picked`.
   `Capability`'s candidates stay `Value`, because `provides` is corpus data.
-- `make build` is `scalac -Xlint -Xfatal-warnings`. `-Xlint` is what turns most
-  of the useful warnings on at all — an inferred `Any`, a discarded non-Unit
-  value, an unreachable case.
+- `make build` turns the compiler's warnings into errors, and WHICH FLAGS DO
+  THAT DEPENDS ON THE COMPILER — the Makefile probes and picks. On scala 2 it
+  is `-Xlint -Xfatal-warnings`, and `-Xlint` is what turns most of the useful
+  warnings on at all: an inferred `Any`, a discarded non-Unit value, an
+  unreachable case. On scala 3 it is `-Werror` alone, which is that same gate
+  under its current name; passing the scala 2 pair there fails the build over
+  its own deprecated spelling. Do not hardcode either one.
 
 ## Adding a corpus section
 

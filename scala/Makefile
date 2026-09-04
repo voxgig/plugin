@@ -41,14 +41,22 @@ endif
 # so the two spellings do not overlap and the launcher has to be asked which
 # one it is. The scala 3 spelling here is the one voxgig/omni's scala port
 # already runs under this same toolchain, long flags and all -- see its
-# `scala/Makefile`. Stdin is closed for the probe: a runner that does not
-# recognise `--version` must not be able to sit in a REPL waiting for input
-# with `make` blocked behind it.
-SCALA_CLI := $(shell $(SCALA) --version </dev/null 2>&1 | grep -c 'Scala CLI')
-ifeq ($(SCALA_CLI),0)
-  RUN = $(SCALA) -cp build voxgig.plugin.test.Run
-else
+# `scala/Makefile`.
+#
+# THE PROBE ASKS FOR THE CAPABILITY, NOT FOR A NAME. Matching a version banner
+# was the first attempt and it is wrong twice over: the same launcher renames
+# itself by the program name it is invoked as -- `scala` and `scala-cli` do
+# not print the same first line -- and the scala 3 runners BEFORE 3.5 take the
+# legacy form and would be misread as new by any test for "scala 3". Whether
+# `run` is a subcommand is the thing the recipe actually depends on, it is one
+# cheap `--help` away, and the 2.x runner answers it by looking for a class
+# called `run` and exiting 1. Stdin is closed so no runner can sit in a REPL
+# waiting for input with `make` blocked behind it.
+SCALA_HAS_RUN := $(shell $(SCALA) run --help </dev/null >/dev/null 2>&1 && echo yes)
+ifeq ($(SCALA_HAS_RUN),yes)
   RUN = $(SCALA) run --classpath build --main-class voxgig.plugin.test.Run
+else
+  RUN = $(SCALA) -cp build voxgig.plugin.test.Run
 endif
 
 .PHONY: test build inspect clean
