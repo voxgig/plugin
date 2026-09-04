@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-09-03**. The register in
+Live snapshot, **2026-09-04**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -208,7 +208,8 @@ table is the summary, that file is the authority. Neither blocks P1.
 
 - **The scala and kotlin ports are built under both their compilers** —
   #29 and #30 made the ports accept two major versions each, and #31
-  delivered the CI job that builds the newer one, applied as `f5a982e`.
+  delivered the CI job that builds the newer one, applied as `7c7e437`
+  and the delivery folder removed in `f5a982e`.
   Until it landed the newer half was asserted in two Makefiles and
   checked by nothing, which is the gap `ci.yml`'s matrix comment names:
   *the gate stays green because the case is missing from it.* `patch/`
