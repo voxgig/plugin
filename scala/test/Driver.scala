@@ -110,10 +110,10 @@ object Driver {
           val inner = next.get(v)
           VStr(wrap + inner.asString.getOrElse(inner.json))
         }, band)
-        i.export("client", VStr(i.ref))
+        i.`export`("client", VStr(i.ref))
         // The instance api itself, so the driver's `stray` command can call
         // `release` from OUTSIDE a lifecycle callback.
-        i.export("inst", VOpaque(i))
+        i.`export`("inst", VOpaque(i))
         declareProvides(i)
       },
       activate = Some { (i: Inst) =>
@@ -203,7 +203,7 @@ object Driver {
         i.statePut("count", VNum(0))
         declareProvides(i)
         val exports = opt(i, "exports")
-        exports.keys.foreach(k => i.export(k, exports.at(k)))
+        exports.keys.foreach(k => i.`export`(k, exports.at(k)))
       },
       activate = Some((i: Inst) => { i.acquire(); () })
     )
@@ -323,16 +323,16 @@ object Driver {
       case "emit"       => (host, Some(host.emit(point.get, cmd.at("arg"))))
       case "chain"      => (host, Some(host.call(point.get, cmd.at("arg"))))
       case "provider"   => (host, Some(host.provider(point.get, cmd.at("arg"))))
-      case "shadowed"   => (host, Some(VList(host.shadowed(point.get).map(VStr))))
+      case "shadowed"   => (host, Some(VList(host.shadowed(point.get).map(VStr.apply))))
       case "export"     => (host, Some(host.exports(cmd.at("key").asString.getOrElse(""))))
       case "capability" =>
-        (host, Some(VList(host.capability(cmd.at("name").asString.getOrElse("")).map(VStr))))
+        (host, Some(VList(host.capability(cmd.at("name").asString.getOrElse("")).map(VStr.apply))))
       case "trace"      => (host, Some(host.trace))
       // Section 9.1's host-owned path: the embedding host installing the
       // instance whose name it reserved.
       case "hostdeclare" => (host, Some(VStr(host.hostdeclare(ref, spec).ref)))
       case "declare"     => (host, Some(VStr(host.declare(ref, spec).ref)))
-      case "order"       => (host, Some(VList(host.order(point).map(VStr))))
+      case "order"       => (host, Some(VList(host.order(point).map(VStr.apply))))
       case "seq" =>
         (host, Some(host.instance(ref).map(e => VNum(e.seq.toDouble)).getOrElse(VNull)))
       case "pos" =>

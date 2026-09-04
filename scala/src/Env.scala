@@ -75,7 +75,7 @@ object Env {
         Types.fail(
           "plugin_env_ambiguous",
           "refs collide in the environment encoding as " + e + ": " + pair.mkString(", "),
-          Map("encoded" -> VStr(e), "refs" -> VList(pair.map(VStr)))
+          Map("encoded" -> VStr(e), "refs" -> VList(pair.map(VStr.apply)))
         )
       }
     }

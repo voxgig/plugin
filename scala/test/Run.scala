@@ -100,7 +100,7 @@ object Run {
     runMapped(spec, "resolve", Map(
       "candidates" -> ((e: Value) => VList(Resolve.resolveCandidates(
         inOf(e).at("name").asString.getOrElse(""), inOf(e).at("sources")
-      ).map(VStr))),
+      ).map(VStr.apply))),
       "from" -> ((e: Value) => VList(Resolve.resolveFrom(inOf(e))))
     ))
 

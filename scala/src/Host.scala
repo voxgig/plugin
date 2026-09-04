@@ -231,8 +231,14 @@ final class Inst(val host: Host, private val entry: Entry) {
     entry.bindings += Binding(ref, point, fn, band.asInt.getOrElse(0))
   }
 
-  /** Published for other plugins and for the application (section 11). */
-  def export(key: String, value: Value): Unit = {
+  /** Published for other plugins and for the application (section 11).
+    *
+    * BACKTICKED BECAUSE `export` IS A HARD KEYWORD IN SCALA 3 -- it introduces
+    * an export clause, so a bare `def export` is a SYNTAX error there, not a
+    * deprecation. The name is the one every other port uses (section 11), so
+    * the backticks buy parity with canonical rather than a scala-only alias.
+    */
+  def `export`(key: String, value: Value): Unit = {
     entry.exports = entry.exports + (key -> value)
   }
 
@@ -312,7 +318,7 @@ final class Host(opts: HostOptions = HostOptions()) {
   def observable(result: Value = VNull): Value = Value.map(
     "status" -> list,
     "open" -> VNum(open.toDouble),
-    "log" -> VList(log.toList.map(VStr)),
+    "log" -> VList(log.toList.map(VStr.apply)),
     "result" -> result
   )
 
@@ -381,7 +387,11 @@ final class Host(opts: HostOptions = HostOptions()) {
     * pair. Without `"?"`, a collision is an error.
     */
   private def autotag(name: String): String =
-    Stream.from(1).map(n => Refs.formatRef(VStr(name), VStr(n.toString)))
+    // `Iterator.from`, NOT `Stream.from`: `Stream` is deprecated from 2.13 in
+    // favour of `LazyList`, and `LazyList` does not exist before it. `Iterator`
+    // is in every version, is deprecated in none, and is lazy enough -- `find`
+    // stops at the first free tag either way.
+    Iterator.from(1).map(n => Refs.formatRef(VStr(name), VStr(n.toString)))
       .find(cand => !inst.contains(cand)).get
 
   def declare(ref: Value, spec: Value = VMap(Map.empty)): Entry = {
@@ -628,7 +638,7 @@ final class Host(opts: HostOptions = HostOptions()) {
     Types.fail(
       "plugin_release_failed",
       "release failed for " + entry.ref + ": " + causes.mkString("; "),
-      Map("ref" -> VStr(entry.ref), "cause" -> VList(causes.map(VStr)))
+      Map("ref" -> VStr(entry.ref), "cause" -> VList(causes.map(VStr.apply)))
     )
   }
 
@@ -782,7 +792,7 @@ final class Host(opts: HostOptions = HostOptions()) {
     Types.fail(
       "plugin_dependency_held",
       "instance is required by live consumers: " + entry.ref,
-      Map("ref" -> VStr(entry.ref), "holders" -> VList(holders.map(VStr)))
+      Map("ref" -> VStr(entry.ref), "holders" -> VList(holders.map(VStr.apply)))
     )
   }
 
@@ -958,16 +968,16 @@ final class Host(opts: HostOptions = HostOptions()) {
     val useProfile = profile.orElse(opts.profile)
     val norm = Config.normalizeConfig(Value.map(
       "doc" -> doc,
-      "profile" -> useProfile.map(VStr).getOrElse(VNull),
+      "profile" -> useProfile.map(VStr.apply).getOrElse(VNull),
       "keys" -> opts.keys,
-      "reserved" -> VList(reserved.map(VStr))
+      "reserved" -> VList(reserved.map(VStr.apply))
     ))
 
     val want = norm.at("order").items.map(_.asString.getOrElse(""))
     val optionsof = want.map { ref =>
       ref -> Config.resolveOptions(Value.map(
         "ref" -> VStr(ref), "doc" -> doc,
-        "profile" -> useProfile.map(VStr).getOrElse(VNull),
+        "profile" -> useProfile.map(VStr.apply).getOrElse(VNull),
         "shape" -> shapeOf(ref),
         "hostdefaults" -> opts.defaults.at(Refs.refName(VStr(ref)))
       ))

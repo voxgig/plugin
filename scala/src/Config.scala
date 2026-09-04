@@ -125,7 +125,7 @@ object Config {
 
     Value.map(
       "instance" -> VMap(instance),
-      "order" -> VList(order.map(VStr)),
+      "order" -> VList(order.map(VStr.apply)),
       "default" -> VMap(defout)
     )
   }

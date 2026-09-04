@@ -43,7 +43,7 @@ object Graph {
       .map(_._2)
 
     Value.map(
-      "resolved" -> VList(resolved.toList.sorted.map(VStr)),
+      "resolved" -> VList(resolved.toList.sorted.map(VStr.apply)),
       "blocked" -> VList(blocked)
     )
   }
@@ -77,7 +77,7 @@ object Graph {
       }
       val chain = ok.map(_.at("ref").asString.getOrElse("")).sorted
       return Some(why(node, name, Value.map(
-        "kind" -> VStr("blocked"), "chain" -> VList(chain.map(VStr))
+        "kind" -> VStr("blocked"), "chain" -> VList(chain.map(VStr.apply))
       )))
     }
 
@@ -90,7 +90,7 @@ object Graph {
       if (versions.nonEmpty) {
         return Some(why(node, name, Value.map(
           "kind" -> VStr("version"), "range" -> range,
-          "found" -> VList(versions.sorted.map(VStr))
+          "found" -> VList(versions.sorted.map(VStr.apply))
         )))
       }
     }
