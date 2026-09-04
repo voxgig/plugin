@@ -14,13 +14,26 @@ applied.
 
 ## Apply it
 
+From any checkout that carries this folder — this branch, or `main` once the
+delivery commit is merged:
+
 ```sh
-git show origin/claude/plugin-ci-second-toolchain-patch:patch/0001-ci-build-scala-and-kotlin-under-their-newer-compiler.patch | git am
+git am patch/0001-ci-build-scala-and-kotlin-under-their-newer-compiler.patch
 ```
 
-The command streams the patch out of the delivery commit rather than reading
-it from the worktree, so it works from any checkout — including `main` after
-this merges.
+**Read it from the worktree, not from a branch ref.** An earlier draft of this
+file said `git show origin/claude/plugin-ci-second-toolchain-patch:… | git am`
+and claimed that works after merging. It does not: merging is usually followed
+by deleting the source branch, and a fresh clone never had it, so the one
+documented command would fail exactly when it is most likely to be run. The
+file is tracked, so the worktree copy is the durable one.
+
+If you would rather not check the branch out at all, name a ref that outlives
+it:
+
+```sh
+git show origin/main:patch/0001-ci-build-scala-and-kotlin-under-their-newer-compiler.patch | git am
+```
 
 ## What it does
 

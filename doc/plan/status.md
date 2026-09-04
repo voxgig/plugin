@@ -13,8 +13,18 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**Nothing. P6 is complete — six of six — and no port work remains on
-the plan.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
+**One thing, and it is not port work: `patch/` is waiting on a
+maintainer.** It holds a `.github/workflows/ci.yml` change the session
+that wrote it could not push — GitHub refuses that path without
+`workflow` scope, on both the git and API paths — so it travels as a
+patch file with its own README. Until someone applies it and deletes the
+folder, the newer-compiler half of the scala and kotlin ports (#29, #30)
+is built by nothing on GitHub. `patch/README.md` has the command and the
+rationale. **A `patch/` folder in this repository always means exactly
+this, and its presence is the whole signal: the folder is transient and
+its existence is the reminder.**
+
+**No PORT work remains. P6 is complete — six of six.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
 so **twenty-three implementations pass all 572 corpus entries** and
 `make check` runs every one of them.
 
