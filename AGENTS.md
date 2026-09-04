@@ -223,6 +223,19 @@ rather than a good intention.
 it first in a new session, and update or delete it at the end of one. A
 wrong status file is worse than none.
 
+**An agent session cannot write `.github/workflows/`.** Both write paths
+refuse it: `git push` rejects the ref (*"refusing to allow an OAuth App to
+create or update workflow ... without workflow scope"*) and the GitHub
+App's file API fails on that path while writing every other file fine.
+That is a hard boundary, not a bug to route around. A change that touches
+a workflow arrives as `patch/` instead — a `git format-patch` file plus a
+`README.md` naming the apply command and what it touches — and **a
+`patch/` folder means exactly one thing: work applied by nobody yet.**
+Apply it, then delete the folder; applied, the file only duplicates the
+history it just created. `patch/` on `main` for longer than it takes to
+apply is the thing to notice. voxgig/plugin#31 is the worked example, and
+voxgig/struct's `AGENTS.md` carries the longer version of this note.
+
 
 ## 6. Where to start
 
