@@ -100,7 +100,7 @@ object Order {
       Types.fail(
         "plugin_order_cycle",
         "before/after constraints cycle: " + stuck.mkString(" -> "),
-        Map("cycle" -> VList(stuck.map(VStr)))
+        Map("cycle" -> VList(stuck.map(VStr.apply)))
       )
     }
 

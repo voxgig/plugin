@@ -158,13 +158,23 @@ object Depend {
     val colour = mutable.Map[String, Int]()
     nodes.foreach(n => colour(n.ref) = white)
 
-    edges.keys.toList.sorted.foreach { start =>
+    // NO `return` OUT OF A LAMBDA. Scala 2 compiles one into a
+    // `NonLocalReturnControl` thrown through the closure; scala 3 deprecates
+    // that and points at `boundary`/`boundary.break`, which 2.11 has no port
+    // of. A `found` cell that both loop conditions read is the one shape both
+    // compilers take, and it leaves the walk at the same instant the `return`
+    // did -- the DFS state is never observed again once it is set.
+    var found: Option[List[String]] = None
+    val starts = edges.keys.toList.sorted.iterator
+
+    while (found.isEmpty && starts.hasNext) {
+      val start = starts.next()
       if (colour(start) == white) {
         val path = mutable.ListBuffer[String](start)
         val stack = mutable.ArrayBuffer[(String, Int)]((start, 0))
         colour(start) = grey
 
-        while (stack.nonEmpty) {
+        while (found.isEmpty && stack.nonEmpty) {
           val (node, cursor) = stack(stack.length - 1)
           val outs = edges(node)
           if (cursor >= outs.length) {
@@ -176,9 +186,8 @@ object Depend {
             stack(stack.length - 1) = (node, cursor + 1)
             if (colour(next) == grey) {
               // Report the cycle itself, not the walk that found it.
-              return Some(path.drop(path.indexOf(next)).toList :+ next)
-            }
-            if (colour(next) != black) {
+              found = Some(path.drop(path.indexOf(next)).toList :+ next)
+            } else if (colour(next) != black) {
               colour(next) = grey
               path += next
               stack += ((next, 0))
@@ -187,7 +196,7 @@ object Depend {
         }
       }
     }
-    None
+    found
   }
 
   /** Raise on a cycle, naming it. Separate from the detector so the detector
@@ -198,7 +207,7 @@ object Depend {
     case Some(cycle) =>
       Types.fail(
         "plugin_dependency_cycle", "requirements cycle: " + cycle.mkString(" -> "),
-        Map("cycle" -> VList(cycle.map(VStr)))
+        Map("cycle" -> VList(cycle.map(VStr.apply)))
       )
   }
 }

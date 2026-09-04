@@ -14,6 +14,38 @@ running list.
 
 ## Scala-specific traps
 
+**THIS PORT COMPILES UNDER SCALA 2 AND SCALA 3, and it has to.** CI installs
+ubuntu's `scala` package -- 2.11.12 -- while a checkout that also builds
+voxgig/struct carries a scala 3, because that port is scala 3 only and apt's
+scala 2 cannot compile it. One `scalac` on PATH, two languages behind it. Four
+things in this port exist for that reason, and NONE of them is a style
+preference:
+
+- **`` `export` `` is backticked.** `export` is a hard keyword in scala 3 -- it
+  introduces an export clause -- so a bare `def export` is a syntax error
+  there, not a deprecation. The name is the one every other port uses
+  (section 11), so the backticks buy parity with canonical rather than a
+  scala-only alias.
+- **Companions are eta-expanded as `VStr.apply`, never bare `VStr`.** Scala 3
+  warns that it inserted the `apply` for you and that the insertion is on its
+  way out; `-Werror` makes the warning fatal. `.apply` is accepted by both and
+  warned about by neither.
+- **`Iterator.from`, not `Stream.from`.** `Stream` is deprecated from 2.13 in
+  favour of `LazyList`, and `LazyList` does not exist before it, so the
+  replacement the deprecation names is not reachable from here. `Iterator` is
+  in every version and deprecated in none.
+- **No `return` out of a lambda** (`Depend.dependencyCycle`). Scala 2 compiles
+  one into a `NonLocalReturnControl` thrown through the closure; scala 3
+  deprecates that and points at `boundary`/`boundary.break`, which 2.11 has no
+  port of. A `found` cell read by the loop conditions is what both accept.
+
+The Makefile probes rather than assumes, twice, and the comments there say
+why: **the warning flags are not common ground** (`-Werror` does not exist in
+scala 2; in scala 3 `-Xlint -Xfatal-warnings` fails the build over its own
+deprecated spelling, before reading any source), and **neither is the run
+command** (scala 3.5 replaced the `scala` runner with Scala CLI, which takes
+`run -cp <dir> -M <MainClass>` and not `-classpath <dir> <MainClass>`).
+
 **`match` binds tighter than `||`.** `a || b match {...}` is
 `a || (b match {...})`, so a disjunction guarding a match short-circuits past
 it. `Refs.checkName` carries an explicit parenthesis and says why; it compiled

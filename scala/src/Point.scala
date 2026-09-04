@@ -94,7 +94,7 @@ object Point {
         "plugin_point_exclusive",
         "point is exclusive and has " + bindings.length + " bindings: " +
           refs.mkString(", "),
-        Map("refs" -> VList(refs.map(VStr)))
+        Map("refs" -> VList(refs.map(VStr.apply)))
       )
     }
 

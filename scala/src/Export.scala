@@ -47,7 +47,7 @@ object Export {
                 "plugin_export_ambiguous",
                 "alias " + spec + " matches " + refs.length + " instances: " +
                   refs.mkString(", "),
-                Map("spec" -> VStr(spec), "refs" -> VList(refs.map(VStr)))
+                Map("spec" -> VStr(spec), "refs" -> VList(refs.map(VStr.apply)))
               )
           }
         }
