@@ -44,7 +44,9 @@ why: **the warning flags are not common ground** (`-Werror` does not exist in
 scala 2; in scala 3 `-Xlint -Xfatal-warnings` fails the build over its own
 deprecated spelling, before reading any source), and **neither is the run
 command** (scala 3.5 replaced the `scala` runner with Scala CLI, which takes
-`run -cp <dir> -M <MainClass>` and not `-classpath <dir> <MainClass>`).
+`run --classpath <dir> --main-class <MainClass>` and not
+`-classpath <dir> <MainClass>` -- the same spelling voxgig/omni's scala port
+already runs under).
 
 **`match` binds tighter than `||`.** `a || b match {...}` is
 `a || (b match {...})`, so a disjunction guarding a match short-circuits past

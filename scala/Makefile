@@ -36,17 +36,19 @@ endif
 
 # NEITHER IS THE RUN COMMAND. Scala 3.5 replaced the `scala` runner with Scala
 # CLI, which does not accept `-classpath <dir> <MainClass>`: every input must
-# be named explicitly, and a directory of compiled classes is an input, so the
-# same run is `scala run -cp <dir> -M <MainClass>`. The 2.x runner has no `run`
-# subcommand and the new one has no bare-main-class form, so the two spellings
-# do not overlap and the launcher has to be asked which one it is. Stdin is
-# closed for the probe: a runner that does not recognise `--version` must not
-# be able to sit in a REPL waiting for input with `make` blocked behind it.
+# be named explicitly, and a directory of compiled classes is one. The 2.x
+# runner has no `run` subcommand and the new one has no bare-main-class form,
+# so the two spellings do not overlap and the launcher has to be asked which
+# one it is. The scala 3 spelling here is the one voxgig/omni's scala port
+# already runs under this same toolchain, long flags and all -- see its
+# `scala/Makefile`. Stdin is closed for the probe: a runner that does not
+# recognise `--version` must not be able to sit in a REPL waiting for input
+# with `make` blocked behind it.
 SCALA_CLI := $(shell $(SCALA) --version </dev/null 2>&1 | grep -c 'Scala CLI')
 ifeq ($(SCALA_CLI),0)
   RUN = $(SCALA) -cp build voxgig.plugin.test.Run
 else
-  RUN = $(SCALA) run -cp build -M voxgig.plugin.test.Run
+  RUN = $(SCALA) run --classpath build --main-class voxgig.plugin.test.Run
 endif
 
 .PHONY: test build inspect clean
