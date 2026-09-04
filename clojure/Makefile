@@ -10,21 +10,48 @@
 # NO deps.edn AND NO leiningen. Section 16 permits one runtime dependency
 # and clojure has no port of it, so the JSON parser is
 # src/voxgig/plugin/json.clj and the suite is a plain script rather than
-# clojure.test. The debian `clojure` launcher takes `-cp`; that is the
-# whole build system this port needs.
-
+# clojure.test. Nothing here is resolved or installed.
+#
+# TWO DIFFERENT PROGRAMS ANSWER TO `clojure`, AND THEY SHARE NO ARGUMENT
+# SYNTAX. Each rejects the other's form outright, so the port has to ask
+# which one it has:
+#
+#   debian's `clojure` package   a shell script: takes `-cp`, hands the rest
+#                                to clojure.main. This is what CI installs
+#                                (`apt-get install -y clojure`, ci.yml).
+#   the official Clojure CLI     `-cp` reaches clojure.main as a SCRIPT PATH
+#                                and dies `FileNotFoundException: -cp`, which
+#                                reads as a broken suite rather than a wrong
+#                                launcher. `-Scp` is worse: it REPLACES the
+#                                computed classpath, clojure's own jar
+#                                included, so clojure.main is then not on it
+#                                at all. `-Sdeps` adds the paths and keeps
+#                                the jar, which is the form that works.
+#
+# `-Sdescribe` exists only on the official CLI, so it is the probe. A
+# contributor is more likely to have that one; CI has debian's. Both work.
 CLOJURE ?= clojure
+
+OFFICIAL := $(shell $(CLOJURE) -Sdescribe >/dev/null 2>&1 && echo yes)
+
+ifeq ($(OFFICIAL),yes)
+  CLJ_MAIN = $(CLOJURE) -Sdeps '{:paths ["src" "test"]}' -M
+  CLJ_EVAL = $(CLOJURE) -M -e
+else
+  CLJ_MAIN = $(CLOJURE) -cp src:test
+  CLJ_EVAL = $(CLOJURE) -e
+endif
 
 .PHONY: test build inspect clean
 
 test:
-	@$(CLOJURE) -cp src:test test/run.clj
+	@$(CLJ_MAIN) test/run.clj
 
 build:
-	@$(CLOJURE) -cp src:test test/build.clj
+	@$(CLJ_MAIN) test/build.clj
 
 inspect:
-	@$(CLOJURE) -e '(println "clojure" (clojure-version) "on java" (System/getProperty "java.version"))'
+	@$(CLJ_EVAL) '(println "clojure" (clojure-version) "on java" (System/getProperty "java.version"))'
 
 clean:
 	@rm -rf build
