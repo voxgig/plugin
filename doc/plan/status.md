@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-09-03**. The register in
+Live snapshot, **2026-09-04**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -13,18 +13,8 @@ a wrong status file is worse than none.**
 
 ## In flight
 
-**One thing, and it is not port work: `patch/` is waiting on a
-maintainer.** It holds a `.github/workflows/ci.yml` change the session
-that wrote it could not push — GitHub refuses that path without
-`workflow` scope, on both the git and API paths — so it travels as a
-patch file with its own README. Until someone applies it and deletes the
-folder, the newer-compiler half of the scala and kotlin ports (#29, #30)
-is built by nothing on GitHub. `patch/README.md` has the command and the
-rationale. **A `patch/` folder in this repository always means exactly
-this, and its presence is the whole signal: the folder is transient and
-its existence is the reminder.**
-
-**No PORT work remains. P6 is complete — six of six.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
+**Nothing. P6 is complete — six of six — and no port work remains on
+the plan.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
 so **twenty-three implementations pass all 572 corpus entries** and
 `make check` runs every one of them.
 
@@ -215,6 +205,15 @@ table is the summary, that file is the authority. Neither blocks P1.
 
 
 ## Recently settled
+
+- **The scala and kotlin ports are built under both their compilers** —
+  #29 and #30 made the ports accept two major versions each, and #31
+  delivered the CI job that builds the newer one, applied as `7c7e437`
+  and the delivery folder removed in `f5a982e`.
+  Until it landed the newer half was asserted in two Makefiles and
+  checked by nothing, which is the gap `ci.yml`'s matrix comment names:
+  *the gate stays green because the case is missing from it.* `patch/`
+  is gone, which is what "applied" looks like — see AGENTS.md §5.
 
 - **Does station hold Stage 5 until P4?** (register 5.3) — **moot: the
   hold expired rather than being decided.** P4 merged 2026-08-23, so
