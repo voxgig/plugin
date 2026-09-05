@@ -64,10 +64,13 @@ And one this repo adds:
 ```
 plugin/
 ├── README.md                    overview + language-neutral reference
-├── DOCS.md                      the comprehensive guide, incl. probe definitions
+├── DOCS.md                      the full guide, incl. probe definitions
+├── STYLE-GUIDE.md               how the reader-facing pages are written
 ├── AGENTS.md                    this file
 ├── CLAUDE.md                    points here
-├── Makefile                     test / parity / probes / spec aggregates
+├── Makefile                     test / parity / probes / spec / scan-prose aggregates
+├── .vale.ini                    the Vale half of the prose gate, with every level's reason
+├── .vale/styles/                the banned list, accept.txt, and the house WordChoice rule
 ├── docs/design/plugin.md        THE DESIGN
 ├── docs/ADR.md                  architecture decision records — the
 │                                decisions that are expensive to reverse
@@ -87,6 +90,7 @@ plugin/
 │   ├── check-spec-shape.js      corpus sources against the spec-format shape
 │   ├── check_parity.py          every port defines the canonical API
 │   ├── check_probes.py          every port implements every probe
+│   ├── check_prose.py           the second half of the prose gate; `--files` is the page set
 │   └── check_versions.py        manifests match VERSION; tag.yml tags every port
 ├── typescript/                  CANONICAL — src/ and test/
 ├── go/                          port — plugin/ (library) and test/ (driver + runner)
@@ -115,7 +119,8 @@ where it is written.
 | `make probes` | every port implements every probe definition |
 | `make test` | run every port's suite |
 | `make test-<lang>` | run one port's suite |
-| `make check` | `spec-check` + `parity` + `probes` + `test` |
+| `make scan-prose` | the prose gate over the reader-facing pages (Vale where installed, `tools/check_prose.py` always) |
+| `make check` | `spec-check` + `parity` + `probes` + `versions` + `scan-prose` + `test` |
 
 `make spec` and `make spec-check` need Node and network on first run
 (`tools/` installs `@voxgig/model`). No *port* needs a Node toolchain —
@@ -235,6 +240,34 @@ Apply it, then delete the folder; applied, the file only duplicates the
 history it just created. `patch/` on `main` for longer than it takes to
 apply is the thing to notice. voxgig/plugin#31 is the worked example, and
 voxgig/struct's `AGENTS.md` carries the longer version of this note.
+
+
+## 5c. Prose follows STYLE-GUIDE.md
+
+[`STYLE-GUIDE.md`](STYLE-GUIDE.md) is normative for the reader-facing
+pages: the root `README.md` and `DOCS.md`, and every port's `README.md`
+(19 pages). Two gates enforce it and both run in CI
+(`.github/workflows/docs.yml`) and under `make test`:
+
+| Gate | Checks |
+|---|---|
+| `vale --minAlertLevel=error $(python3 tools/check_prose.py --files)` | Google's rules plus the banned list, at the levels in `.vale.ini` |
+| `python3 tools/check_prose.py` | the banned list across line wraps, em-dash spacing and ration, first person, no emoji, no citations of a working document, resolving relative links, a complete page set |
+
+`make scan-prose` runs both (Vale where installed). The banned list is
+`.vale/styles/config/vocabularies/Plugin/reject.txt`, read by both gates.
+The page set is the configuration block at the top of
+`tools/check_prose.py`; a port directory joins it by carrying a
+`README.md`, and a new page anywhere else must be reachable from that
+block or neither gate reads it.
+
+Three things trip agents most often: a page must not name or link
+`AGENTS.md`, `CLAUDE.md`, `docs/ADR.md` or anything under `doc/plan/`
+(state the fact instead — the design, `docs/design/plugin.md`, stays
+citable because it is a specification); the em dash is spaced (` — `)
+and rationed to one aside per line; and a word Vale's dictionary does
+not know goes into `accept.txt` one entry at a time, never as a suffix
+pattern.
 
 
 ## 6. Where to start

@@ -61,8 +61,8 @@ JSON; this port holds JSON. Internal shapes that are *never* corpus values
 keys, and each says so where it is defined.
 
 **The registry is an atom, and `swap!` retries.** That is the whole of what
-makes this port's host different from ruby's. Two rules follow, and both
-are load-bearing:
+makes this port's host different from ruby's. Two rules follow, and neither
+is optional:
 
 - *Callbacks never run inside `swap!`.* A retried `swap!` would run a
   definition's `activate` twice, and a callback that called back into its

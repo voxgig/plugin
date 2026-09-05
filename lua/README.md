@@ -91,7 +91,7 @@ pass without the port having to know they exist.
 
 Mutation testing: 20 mutations, 15 caught. Of the five survivors, one is a
 non-mutation (deep-merging two lists immediately falls back to replace),
-one is the empty-map-versus-empty-list evidence above, and three are the
+one is the preceding empty-map-versus-empty-list evidence, and three are the
 gaps php, perl, rust and java each found independently — `order.band`
 accepting a non-integer, `providersof` without `canon`, and `config_pick`
 reading an authored null as absence.

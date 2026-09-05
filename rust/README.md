@@ -56,7 +56,7 @@ remember. `Num` is `f64` because JSON has one number type and the canonical
 is javascript; splitting int from float would disagree with the corpus
 about which spelling a document used. Type-strict `match` (`1` is not
 `true`, `"1"` is not `1`) falls out of the enum, so this port needs none of
-the guards php, perl and lua each carry.
+the guards php, perl, and lua each carry.
 
 **Never hold a borrow across a callback.** A definition's `define` calls
 back into the host — `bind`, `export`, `acquire`, `nest` — so every method
@@ -71,7 +71,7 @@ report as a divergence.
 expectations and every one is a literal, optionally `^`-anchored. So
 `regex_lite` unescapes and compares — and **panics** on any unescaped
 metacharacter, because the one thing a hand-rolled matcher must never do is
-quietly report a mismatch it could not evaluate.
+silently report a mismatch it could not evaluate.
 
 ## What the corpus cannot see here
 

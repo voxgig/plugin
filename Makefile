@@ -34,7 +34,7 @@
 # P4 is complete; P5 is under way. P6 the rest.
 LANGS = typescript go python javascript ruby php perl rust java lua csharp elixir clojure dart kotlin swift scala c cpp ocaml haskell zig lean
 
-.PHONY: all test build inspect clean parity probes versions check spec spec-check omni-check
+.PHONY: all test build inspect clean parity probes versions check spec spec-check omni-check scan-prose
 
 all: test
 
@@ -56,6 +56,11 @@ clean-%:
 	@$(MAKE) -C $* clean
 
 # ---- aggregates ----
+
+# The prose gate runs with the suites: a README that fails the style
+# guide is a failing test, and the docs.yml workflow is the same gate in
+# CI.
+test: scan-prose
 
 test:
 	@if [ -z "$(LANGS)" ]; then \
@@ -124,4 +129,20 @@ versions:
 omni-check:
 	@node tools/omni-check.js
 
-check: spec-check parity probes versions test
+# The prose gate over the reader-facing pages (STYLE-GUIDE.md). Vale runs
+# where it is installed, over the page set tools/check_prose.py prints,
+# so both halves read the same files; check_prose always runs, because it
+# carries the house rules .vale.ini switches Google rules OFF in favour
+# of -- skipping it silently would widen what is allowed.
+scan-prose:
+	@echo "======== scan: prose (vale + check_prose) ========"
+	@if command -v vale >/dev/null 2>&1; then \
+	  vale sync >/dev/null && \
+	  vale --minAlertLevel=error $$(python3 tools/check_prose.py --files); \
+	else \
+	  echo "(vale not installed - skipping the Google/banned-list half;"; \
+	  echo " see .github/workflows/docs.yml for the pinned version)"; \
+	fi
+	@python3 tools/check_prose.py
+
+check: spec-check parity probes versions scan-prose test

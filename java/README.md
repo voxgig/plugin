@@ -62,7 +62,7 @@ type; so does this port.
 
 What java gives for free: `Boolean.equals(Double)` is false, so the
 type-strict `match` rule needs no guard here. `capability/match` pins it
-anyway, for php, perl and lua.
+anyway, for php, perl, and lua.
 
 ## What the corpus cannot see here
 
