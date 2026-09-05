@@ -260,10 +260,10 @@ normalization has never seen; flattening the layers would make
 
 ### The host
 
-`declare` `load` `activate` `deactivate` `unload` `ready` `apply`
-`options` `close` — the lifecycle. `emit` `call` `provider` `shadowed`
-`order` — the points. `list` `instance` `exports` `capability` `trace` —
-observation, and **none of it advances the state**.
+The lifecycle is `declare` `load` `activate` `deactivate` `unload`
+`ready` `apply` `options` `close`. The points are `emit` `call` `provider`
+`shadowed` `order`. Observation is `list` `instance` `exports` `capability`
+`trace`, and **none of it advances the state**.
 
 ### The instance
 

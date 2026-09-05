@@ -75,7 +75,7 @@ testing found, not about what was there.
 | agreement with station | [reconciled](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md), and [sequenced](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md) |
 | corpus | **572 entries across all 19 sections** — the contract is complete |
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
-| ports | **twenty-three, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, `scala/`, `c/`, `cpp/`, `ocaml/`, `haskell/`, `zig/` and `lean/`. **No port work remains.** Next: P3.1's extraction (unblocked — station's Stages 2–3b merged). |
+| ports | **twenty-three, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, `scala/`, `c/`, `cpp/`, `ocaml/`, `haskell/`, `zig/` and `lean/`. **No port work remains.** Next: P3.1's extraction (unblocked: station's Stages 2–3b merged). |
 
 What remains is **P3.1**, the extraction against station's merged
 Stages 2–3b: unblocked now that station has landed them, and the proof
