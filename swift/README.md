@@ -47,7 +47,7 @@ try host.ready(.str("retry$fast"))
 ## The three decisions swift forces
 
 **`Value` is an enum, not `Any`.** Swift can express the JSON model exactly,
-and `[String: Any]` would throw away the guarantees the language is for —
+and `[String: Any]` would throw away the checks the language is for —
 `dict["k"] = nil` REMOVES the key rather than storing a null, so an authored
 null and an absent key could not be told apart at all. That is the distinction
 `__NULL__` and `__UNDEF__` pin, and here it is the difference between `.null`
@@ -56,7 +56,7 @@ and a `nil` optional, checked by the compiler at every read.
 **Everything that can fail is `throws`.** Rust returns a `Result` and the other
 ports raise; swift makes the possibility part of the signature, so `try`
 appears at every call from `Host.ready` down to `Refs.parseRef`. It is verbose
-and it is honest: a reader can see from a signature alone whether a call can
+and it is explicit: a reader can see from a signature alone whether a call can
 produce a §12 error.
 
 **`Definition`, `HostOptions` and `PointSpec` are structs, not `Value` maps.**
@@ -88,7 +88,7 @@ suite. What that costs, and what it buys:
   uses — a literal with backslash escapes and at most a leading `^`, which is
   all ten `/re/` expectations are. It **traps on any metacharacter it does not
   implement**, so the day the corpus adds a real pattern this port fails loudly
-  instead of quietly matching the wrong thing.
+  instead of silently matching the wrong thing.
 - **Reading the corpus file goes through `Glibc`.**
 
 ## What the corpus cannot see here
@@ -109,7 +109,7 @@ the ones every other port also finds:
 - **A nested host counted as an open resource.** Nothing in `nest` asserts
   `open` while an inner host is live.
 
-Worth noting what the corpus DOES catch here that it catches nowhere else: a
+What the corpus DOES catch here, and catches nowhere else: a
 version component parsed without its `componentMax` bound fails
 `version/rangebad`, because this port's components are `Double` and would
 otherwise sail past 2**31-1 without complaint.

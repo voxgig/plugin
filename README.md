@@ -53,8 +53,7 @@ P5's ruby port then found the sharpest example yet: **`^` and `$` are
 not string anchors in every language**, and the python port had shipped
 accepting `"abc\n"` as a plugin name. Three ports rejected it, one
 accepted it, and no corpus entry distinguished them. All of it is fixed
-in the canonical and pinned by new entries — see
-[`doc/plan/handover.md`](./doc/plan/handover.md) §13 and §15.
+in the canonical and pinned by new entries.
 
 Twelve more ports since then found **no further defect in the
 canonical**, which is the result a settled contract should produce. What
@@ -67,8 +66,8 @@ and whether a nested host counts as an open resource.
 **All three are now closed** — `declare/shape`, `declare/register`,
 `depend/byref`, `depend/cycle`, `graph/resolve` and `nest/open`. Closing
 them turned up four defects the corpus had never been able to see, so
-the "no further defect" above is a statement about what mutation testing
-found, not about what was there. §18 of the handover has the account.
+the preceding "no further defect" is a statement about what mutation
+testing found, not about what was there.
 
 | | |
 |---|---|
@@ -78,17 +77,14 @@ found, not about what was there. §18 of the handover has the account.
 | driver contract | [`DOCS.md`](./DOCS.md) §4 |
 | ports | **twenty-three, all passing every section** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, `scala/`, `c/`, `cpp/`, `ocaml/`, `haskell/`, `zig/` and `lean/`. **No port work remains.** Next: P3.1's extraction (unblocked — station's Stages 2–3b merged). |
 
-Live per-item state is [`doc/plan/status.md`](./doc/plan/status.md);
-what this repo owes station, and what has actually landed, is
-[`doc/plan/contracts.md`](./doc/plan/contracts.md).
-
-Next are two parallel tracks: **P3.1**, the extraction against
-station's merged Stages 2–3b (unblocked by C3, and the proof that P3
-is not a thought experiment), and **P6**'s six tier-4 ports — see
-[`AGENTS.md`](./AGENTS.md) §6. Read
-[`doc/plan/handover.md`](./doc/plan/handover.md) §13 before writing one:
-the six defects the proving pair found were all of two kinds, and both
-are found by making another implementation decide from the same text.
+What remains is **P3.1**, the extraction against station's merged
+Stages 2–3b: unblocked now that station has landed them, and the proof
+that P3 is not a thought experiment. A further port, should one be
+wanted, starts at the recipe in [`DOCS.md`](./DOCS.md) §2, *Port to a
+new language*. The six defects the proving pair found were all of two
+kinds, a rule the design states that no corpus entry can distinguish
+and a code path no corpus entry enters, and both are found by making
+another implementation decide from the same text.
 
 [sekreto](https://github.com/voxgig/sekreto) is the second host, and
 the first to adopt the library rather than implement its semantics

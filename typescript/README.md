@@ -1,7 +1,7 @@
 # plugin — TypeScript (canonical)
 
 **This is the canonical implementation.** Behaviour is defined here;
-every other language is a port of it (AGENTS.md §1). A behaviour change
+every other language is a port of it. A behaviour change
 is TypeScript + corpus + every port, in one change set.
 
 ## Run
@@ -36,9 +36,9 @@ a private door into the spec.
 
 The canonical may not use reflection-backed APIs, `Proxy`, dynamic
 property interception, decorators, or meta-level interception of the
-host's own operations, and its lifecycle reconciliation must be eager
-(AGENTS.md §5). **A canonical that reaches for a JavaScript convenience
-is a bill twenty ports pay.**
+host's own operations, and its lifecycle reconciliation must be eager.
+**A canonical that reaches for a JavaScript convenience is a bill
+twenty ports pay.**
 
 Nothing here uses any of them. When adding to it, keep it that way: the
 cost of removing one at P4 is fourteen ports rewriting around it.
@@ -50,9 +50,10 @@ cost of removing one at P4 is fourteen ports rewriting around it.
 `graph`, `lifecycle`, `nest`, `order`, `point`, `ref`, `resolve`,
 `resource`, `state`, `trace` and `version`.
 
-Sixteen other implementations pass the same corpus: `go`, `python`,
+Twenty-two other implementations pass the same corpus: `go`, `python`,
 `javascript`, `ruby`, `php`, `perl`, `rust`, `java`, `lua`, `csharp`,
-`elixir`, `clojure`, `dart`, `kotlin`, `swift` and `scala`. That is the
+`elixir`, `clojure`, `dart`, `kotlin`, `swift`, `scala`, `c`, `cpp`,
+`ocaml`, `haskell`, `zig`, and `lean`. That is the
 point of the corpus — the contract is the same in every language, and
 this package is the one it is defined by.
 

@@ -79,7 +79,7 @@ so the type-strict `match` rule needs no guard; `sortedWith` is
 `java.util.Arrays.sort`, a documented-stable TimSort, so §7's fall-through to
 `pos` lands where the canonical's does; and `Regex.matches` requires the WHOLE
 input to match, so the ref grammar's anchors are unnecessary rather than
-load-bearing — swapping `matches` for `containsMatchIn` is what
+relied on — swapping `matches` for `containsMatchIn` is what
 `ref/name#trailing-newline` catches.
 
 ## The 1.3 compiler

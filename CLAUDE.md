@@ -17,6 +17,12 @@ Quick reminders (the full rationale is in `AGENTS.md`):
   `AGENTS.md` §1.
 - Build and check with `make spec`, `make spec-check`, `make parity`,
   `make check`.
+- **Prose follows [`STYLE-GUIDE.md`](./STYLE-GUIDE.md)** — normative for
+  the root `README.md` and `DOCS.md` and every port's `README.md`: the
+  voice, the banned phrases, the spaced em dash, and the rule that
+  documentation never cites a working document (this file included).
+  Two gates enforce it, `vale` and `python3 tools/check_prose.py`;
+  `make scan-prose` runs both.
 
 **Status: P6 COMPLETE — six of six.** The corpus is 572 entries across
 19 sections, and **twenty-three implementations pass every one of

@@ -1,4 +1,4 @@
-# Voxgig Plugin — Comprehensive Guide
+# Voxgig Plugin — the full guide
 
 > One plugin architecture, defined once and ported to every language.
 
@@ -9,7 +9,7 @@ conformance corpus as the runner is (design §15.2).
 
 ---
 
-## Status: P2 — complete
+## Status: complete
 
 Every section is written. The driver contract (§4) is the one still
 called a draft, and draft here means COVERAGE rather than stability: it
@@ -227,7 +227,7 @@ variable is first read.
 
 **Do not skip an entry you cannot pass.** A divergence is a thing to
 report, not a case to filter — filtering inverts the one mechanism
-keeping twenty implementations honest.
+keeping twenty implementations in agreement.
 
 
 ## 3. Reference
@@ -295,7 +295,7 @@ languages.
 
 Design §15.3 marks `lifecycle`, `order` and eleven other sections as
 *driver* rather than pure data. A port cannot run them from corpus files
-alone: it needs the probe catalog, the command vocabulary and the
+alone: it needs the probe catalog, the command vocabulary, and the
 canonical observable, and none of those belong in the corpus. They are
 here.
 
@@ -325,8 +325,8 @@ A driver entry carries **`cmd`**, a list of commands, in place of the
 
 **A command may carry `catch: true`, and §5.2 forces it.** That section's
 central claim is that a failed instance *remains registered and
-inspectable* — "the point is that a failed plugin must be visible, not
-vanished" — and a run that stops at the raise can never observe it. A
+inspectable*, visible rather than vanished, and a run that stops at
+the raise can never observe it. A
 command marked `catch` records its raise and the run continues, so the
 observable afterwards shows `failed` in `status` and whatever the scope
 unwound in `open`. Without it the corpus could pin that activation
@@ -353,9 +353,8 @@ a counting exercise in twenty languages.
 which §5.1 defines and §15.3 explicitly requires the `declare` section
 to pin ("`ready` walking the staircase"). The list is incomplete
 against the design's own section table rather than deliberately
-excluding it, so the vocabulary carries it and
-[`doc/plan/handover.md`](./doc/plan/handover.md) §6 records the
-correction owed to §15.2.
+excluding it, so the vocabulary carries it and the correction is owed
+to §15.2.
 
 Every port implements all of them; a section that never uses one still
 needs it present, because the next section will.
@@ -402,7 +401,7 @@ in the same way.
 |---|---|
 | `probe` | The workhorse. Records every callback it receives into the log, binds one hook point (`p`), wraps one chain point (`c`), holds an integer counter in its state, and **acquires exactly one synthetic resource per activation**. It also exports its own instance api as `inst`, which is how the `stray` command reaches `release` from *outside* a lifecycle callback. |
 | `noisy` | Fails on demand. `options.fail` names the callback that raises — `define`, `activate`, `deactivate` or `close` — and `options.code` the error code. `options.bare` raises with **no code at all**, which is the ordinary library error §12's `plugin_<phase>_failed` codes exist to wrap. Everything else is `probe`. |
-| `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). `options.early` acquires in **`define`** instead, where §8.1 says capture does not belong. `options.bind` names the callback — `activate` or `deactivate` — that declares a **binding** outside `define`, which is §8.1's other half and §12's `plugin_bind_scope`. `options.mark` additionally registers that many **foreign** releases through `release`, each recording its own index into `state.unwound` as it runs — which is the only way the *direction* of the unwind is observable, since an acquired handle is an idempotent counter decrement that reads the same either way. `options.markfail` makes each of those releases **raise**, which is the only way §8.3's `plugin_release_failed` and its `failed` status are reachable. |
+| `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). `options.early` acquires in **`define`** instead, where §8.1 says capture does not belong. `options.bind` names the callback (`activate` or `deactivate`) that declares a **binding** outside `define`, which is §8.1's other half and §12's `plugin_bind_scope`. `options.mark` additionally registers that many **foreign** releases through `release`, each recording its own index into `state.unwound` as it runs — which is the only way the *direction* of the unwind is observable, since an acquired handle is an idempotent counter decrement that reads the same either way. `options.markfail` makes each of those releases **raise**, which is the only way §8.3's `plugin_release_failed` and its `failed` status are reachable. |
 | `dep` | Declares requirements. `options.requires` is a list of refs or capability names, `options.optional` those that are optional rather than mandatory. |
 | `provider` | Binds a provider point named by `options.point`, returning `options.value`. `options.version` and `options.priority` feed the selection rank. |
 | `slow` | Behaviourally `probe`, and **it does not yield.** It is here because §18 settles transitions eagerly — the host calls a callback and does not await it — and a callback that yields therefore does not "complete later", it silently abandons everything after its first suspension point. So the probe cannot demonstrate eager settling by yielding; it would only demonstrate that half a callback vanished. The name is kept, and the catalog keeps six definitions, because the question it was invented for is still open (see below). |
@@ -535,7 +534,7 @@ would otherwise fail a test about something else.
   translation a corpus change.
 - **No port-local skips.** A driver section entry that a port cannot
   run is a divergence to report, not a case to filter — that inverts
-  the one mechanism keeping the ports honest (AGENTS.md §1).
+  the one mechanism keeping the ports in agreement.
 
 ## 5. Explanation
 
@@ -554,7 +553,7 @@ separately, which reads well and costs a second name to keep consistent,
 a field that can disagree with it, and an "is this the instance or the
 definition?" question at every use site. The one real forfeit is
 aliasing — an instance of `memcache` called `cache$hot` must be
-`memcache$hot` — a cosmetic loss against a load-bearing invariant.
+`memcache$hot` — a cosmetic loss against the invariant everything else rests on.
 
 ### Why `declared` costs nothing
 
@@ -564,7 +563,7 @@ its configuration is collected, and *nothing else has happened*: no
 module resolved, no callback run.
 
 That is also why **introspection never advances the state**. A status
-endpoint that quietly loaded what it listed would be a denial of service
+endpoint that silently loaded what it listed would be a denial of service
 with a friendly name.
 
 ### Why resource capture is a scope, not a ledger
@@ -579,7 +578,7 @@ An instance scope inverts that. The host records what it hands out, the
 plugin registers what it acquired elsewhere, and teardown unwinds in
 reverse. **You cannot forget to release what you never registered.**
 
-The honest limit, stated because a green suite must not be read as
+The limit, stated because a green suite must not be read as
 claiming more: the corpus proves the host stopped routing to a
 deactivated instance and unwound what it registered. **It cannot prove
 the instance stopped running.** A plugin that squirrels a reference into
@@ -618,5 +617,10 @@ which values are rejected. Each looked like a test and tested nothing.
 
 ## Per-language documentation
 
-Each port carries its own `DOCS.md` with the exact local spelling. None
-exist yet; P1 adds `typescript/`.
+Seventeen ports carry a `README.md` with the exact local spelling, the
+build, and the places the port diverges: the canonical
+[`typescript/`](./typescript/README.md) first, then `go/`, `python/`,
+`javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`,
+`csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, and
+`scala/`. The six tier-4 ports (`c/`, `cpp/`, `ocaml/`, `haskell/`,
+`zig/`, and `lean/`) do not carry one yet.

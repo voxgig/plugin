@@ -64,4 +64,4 @@ which decorates with the original index.
 
 What Ruby gives for free, and other dynamic ports do not: `true == 1` is
 already false, so the type-strict `match` rule needs no guard here.
-`capability/match` pins it anyway, for php, perl and lua.
+`capability/match` pins it anyway, for php, perl, and lua.
