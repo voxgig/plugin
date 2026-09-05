@@ -1,6 +1,6 @@
 {
   "name": "@voxgig/plugin-js",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "plugin: a multi-language plugin system — the javascript port",
   "main": "src/index.js",
   "type": "commonjs",

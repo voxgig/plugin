@@ -4,7 +4,7 @@
 # graph is also a supply chain, and this library is 3,000 lines.
 [package]
 name = "voxgig_plugin"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 rust-version = "1.70"
 
