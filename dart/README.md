@@ -54,9 +54,9 @@ catalog a data structure a document could produce. Errors are a
 
 ## The two things dart gets wrong for you
 
-**`List.sort` is not stable — and not just on paper.** Sorting two hundred
+**`List.sort` is not stable, and visibly so.** Sorting two hundred
 elements by a two-valued key visibly reorders equal ones; dart uses an
-insertion sort below 32 elements and a dual-pivot quicksort above, so the
+insertion sort below 32 elements and a dual-pivot quicksort beyond, so the
 break arrives exactly when a host gets big. §7's comparators fall through to
 a `pos` or ref tie-break that javascript's stable sort resolves BY POSITION,
 so `types.stableSortBy` decorates with the original index and breaks the

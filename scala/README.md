@@ -50,7 +50,7 @@ host.ready(VStr("retry$fast"))
 ## The value model
 
 **`Value` is a sealed trait, not `Any`.** Scala can express the JSON model
-exactly, and `Map[String, Any]` would throw away the guarantee that matters
+exactly, and `Map[String, Any]` would throw away the property that matters
 most here: **a pattern match over a sealed hierarchy is checked for
 exhaustiveness**. Adding a case to `Value.scala` makes the compiler name every
 place that has to handle it, which is a stronger discipline than any untyped
@@ -114,5 +114,5 @@ exactly the ones every other port also leaves:
 One more looked like a survivor and is not: `Value.keys` returning hash order
 passes only because a scala `Map` of four entries or fewer is a `Map4` and
 happens to iterate in insertion order. Reverse the sort instead and
-`order/order/pinorder#two-names` fails — the guard is load-bearing, and the
-corpus sees it once the masking is gone.
+`order/order/pinorder#two-names` fails — the guard is real, and the
+corpus catches it once the masking is gone.

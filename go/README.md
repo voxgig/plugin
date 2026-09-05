@@ -67,5 +67,5 @@ func types would read better in isolation and cannot be used: the
 corpus binds the same probe function to a hook point in one entry and a
 provider point in the next.
 
-Both are recorded in [`doc/plan/handover.md`](../doc/plan/handover.md)
-§13, along with the three canonical defects writing this port found.
+Writing this port also found three defects in the canonical, each fixed
+there and pinned by a corpus entry since.
