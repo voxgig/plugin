@@ -16,6 +16,17 @@
 # (voxgig/struct) and Lean has no port of it, so src/Plugin/Value.lean
 # parses the corpus.
 
+# elan installs to ~/.elan/bin, which a stock install does not put on a
+# non-login shell's PATH, so `make test` in a fresh checkout found no
+# lake. CI does not go through elan at all — it unpacks a pinned release
+# to /opt/lean/bin — so only a local checkout was affected, and this is
+# the same line sekreto's lean port carries. Prepending a directory that
+# does not exist is a no-op, so CI is unchanged. `make` runs each recipe
+# in its own shell; exporting PATH here is the only place all of them
+# see it.
+ELANBIN := $(HOME)/.elan/bin
+export PATH := $(ELANBIN):$(PATH)
+
 LAKE ?= lake
 BIN = .lake/build/bin/run
 
