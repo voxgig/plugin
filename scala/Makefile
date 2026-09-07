@@ -53,7 +53,37 @@ endif
 # called `run` and exiting 1. Stdin is closed so no runner can sit in a REPL
 # waiting for input with `make` blocked behind it.
 SCALA_HAS_RUN := $(shell $(SCALA) run --help </dev/null >/dev/null 2>&1 && echo yes)
-ifeq ($(SCALA_HAS_RUN),yes)
+
+# BUT PREFER `java -cp`, WHICH NEEDS NO LAUNCHER AT ALL. Both spellings above
+# depend on how scala was INSTALLED, not on which scala it is: the legacy
+# `scala -cp` form fails from an unpacked release tarball with "Could not find
+# package scala from compiler core libraries", because that launcher expects an
+# installation layout the tarball does not provide. The port then passes or
+# fails by accident of provenance, which is what happened when a checkpoint run
+# put the pinned 3.4.2 tarball on PATH.
+#
+# The runtime jars beside scalac are enough to run compiled classes, and
+# finding them from scalac's own location is the discovery voxgig/struct,
+# voxgig/omni and voxgig/sekreto already share. The wildcards are deliberately
+# loose: scala 3 ships `scala3-library_3-<v>.jar`, and ubuntu's scala 2 package
+# ships `scala-library.jar` with no version in the name at all.
+SCALAHOME := $(shell \
+  bin=$$(command -v $(SCALAC)) || exit 0; \
+  cd "$$(dirname "$$(readlink -f "$$bin")")/.." && pwd)
+
+SCALAJARS := $(wildcard $(SCALAHOME)/lib/scala3-library_3*.jar) \
+             $(wildcard $(SCALAHOME)/lib/scala-library*.jar) \
+             $(wildcard $(SCALAHOME)/lib/scala-reflect*.jar)
+
+empty :=
+space := $(empty) $(empty)
+SCALACP := $(subst $(space),:,$(strip $(SCALAJARS)))
+
+# The launcher forms stay as fallbacks, so a layout where the jars cannot be
+# found is no worse off than before rather than newly broken.
+ifneq ($(SCALACP),)
+  RUN = java -cp build:$(SCALACP) voxgig.plugin.test.Run
+else ifeq ($(SCALA_HAS_RUN),yes)
   RUN = $(SCALA) run --classpath build --main-class voxgig.plugin.test.Run
 else
   RUN = $(SCALA) -cp build voxgig.plugin.test.Run
