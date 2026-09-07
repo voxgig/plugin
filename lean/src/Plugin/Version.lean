@@ -67,7 +67,7 @@ def parseRange (range : Value) : PluginM Value := do
   --   '2.1'   >= 2.1.0 and < 3.0.0
   --   '~2.1'  >= 2.1.0 and < 2.2.0
   let tilde := s.startsWith "~"
-  let body := if tilde then s.drop 1 else s
+  let body := if tilde then (s.drop 1).toString else s
   match parse3 body with
   | none => raise "plugin_bad_range" ("invalid range: " ++ s) (details1 "range" range)
   | some (_, true) =>

@@ -99,7 +99,7 @@ def applyEnv (input : Value) : PluginM Value := do
 
   for key in env.sortedKeys do
     if !key.startsWith envPrefix then continue
-    let rest := key.drop envPrefix.length
+    let rest := (key.drop envPrefix.length).toString
     let raw := env.get key
     let val := if raw.isStr then raw.asStr else ""
 
@@ -125,7 +125,7 @@ def applyEnv (input : Value) : PluginM Value := do
     let enc? := order.find? (fun cand =>
       rest == cand ||
         (rest.length > cand.length && rest.startsWith cand
-          && (rest.drop cand.length).startsWith "_"))
+          && (rest.drop cand.length).toString.startsWith "_"))
     match enc? with
     -- not for any ref this host holds
     | none => continue
@@ -134,7 +134,7 @@ def applyEnv (input : Value) : PluginM Value := do
       checkReserved r reserved
       -- A ref with no path sets nothing.
       if rest == enc then continue
-      let pathText := rest.drop (enc.length + 1)
+      let pathText := (rest.drop (enc.length + 1)).toString
       let segs := (pathText.splitOn "_").map lower
       let options := out.get "options"
       let node := let x := options.get r; if x.isMap then x else Value.vmap

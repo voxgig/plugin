@@ -108,13 +108,13 @@ what turns on strict entry validation in every runner and a corpus that
 lost it must not silently downgrade this port's checking. -/
 def coverage (cor : Value) (tally : IO.Ref Tally) : IO Unit := do
   let primary := cor.get "primary"
-  let meta := cor.get "PLUGIN"
+  let corpusMeta := cor.get "PLUGIN"
   let run := pureSections ++ driverSections
   let bad (msg : String) : IO Unit := do
     tally.modify (fun t => { t with failures := t.failures + 1 })
     IO.println ("coverage: " ++ msg)
 
-  if (meta.get "version").asNum != 1.0 then
+  if (corpusMeta.get "version").asNum != 1.0 then
     bad "corpus PLUGIN.version must be 1"
 
   for name in primary.sortedKeys do

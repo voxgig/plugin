@@ -140,7 +140,7 @@ partial def corpusMatches (expect actual : Value) (present : Bool) : Except Stri
     else if s == "__NULL__" then .ok (present && actual.isNull)
     else if s.length > 2 && s.startsWith "/" && s.endsWith "/" then
       if !actual.isStr then .ok false
-      else regexLite (s.drop 1 |>.dropRight 1) actual.asStr
+      else regexLite (s.drop 1 |>.dropEnd 1 |>.toString) actual.asStr
     else structural
   else structural
 
