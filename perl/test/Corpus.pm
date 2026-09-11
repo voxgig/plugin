@@ -17,6 +17,20 @@ use File::Basename qw(dirname);
 use File::Spec;
 use JSON::PP ();
 use B ();
+
+# PERL 5.36 OR LATER, for the same `builtin::is_bool` the library needs and
+# for the same reason — see Voxgig::Plugin::Types, which carries the full
+# note. Stated again here because this file loads `builtin` BEFORE it loads
+# the library, so on 5.34 the runner would reach the cryptic
+# `Can't locate builtin.pm` first and the library's own message never.
+BEGIN {
+    if ($] < 5.036) {
+        die "the perl corpus runner requires perl 5.36 or later"
+            . " (this is $]): it uses builtin::is_bool, the only way perl"
+            . " can tell a true boolean from the number 1.\n";
+    }
+}
+
 use builtin qw(is_bool);
 no warnings 'experimental::builtin';
 use Voxgig::Plugin qw(codeof);
