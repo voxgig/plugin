@@ -16,7 +16,18 @@ import { parseref, canonref } from './Ref'
 export type Exported = { ref: string, key: string, value: any }
 
 export function resolveexport(spec: string, exported: Exported[]): any {
-  const cut = spec.indexOf('/')
+  // THE LAST SLASH, not the first. §4's `checkname` permits `/` in a
+  // NAME — `@acme/store` is legal, and `resolvecandidates` has a branch
+  // for resolving a scoped name verbatim — so splitting at the first one
+  // read `@acme/store/client` as the ref `@acme` with the key
+  // `store/client`, which matches nothing. A scoped definition had no
+  // spelling for its exports at all, and said so by answering absent.
+  //
+  // The cost is that an export KEY may not contain `/`. Nothing declares
+  // one, no port shipped one, and the two cannot both be reachable with
+  // one separator: a name may hold slashes because §4 says so, a key
+  // holds them because nobody stopped it.
+  const cut = spec.lastIndexOf('/')
   if (-1 === cut) {
     fail('plugin_export_ambiguous', 'export spec needs a key: ' + spec, { spec })
   }

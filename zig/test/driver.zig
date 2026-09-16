@@ -113,6 +113,8 @@ fn probeDefine(i: *Inst) t.Err!void {
     try host.bind(i, "p", probeHook, null, i, band);
     try host.bind(i, "c", null, probeChain, i, band);
     host.exportvalue(i, "client", v.vstr(i.ref));
+    // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+    host.exportvalue(i, "mark", v.vstr("marked"));
     // The instance api itself, so the driver's `stray` command can call
     // `release` from OUTSIDE a lifecycle callback — which is the only
     // way to exercise §8.3's scope guard. The driver looks the instance
@@ -233,6 +235,17 @@ fn depDefine(i: *Inst) t.Err!void {
     }
 }
 
+// WHICH provider this instance took, when the entry asks. See
+// typescript/test/driver.ts. The `acquire` is the canonical `dep`'s,
+// and this port did not have it: `dep` had no `activate` at all.
+fn depActivate(i: *Inst) t.Err!void {
+    _ = try host.acquire(i);
+    const capof = opt(i, "capof");
+    if (!v.isStr(capof)) return;
+    const picked = host.instcapability(i, v.asStr(capof));
+    host.exportvalue(i, "cap", if (picked) |r| v.vstr(r) else v.vnull());
+}
+
 fn providerDefine(i: *Inst) t.Err!void {
     v.set(i.state, "count", v.vnum(0));
     const pt = opt(i, "point");
@@ -264,6 +277,7 @@ fn probedef(name: []const u8) *catalog.Definition {
         d.deactivate = greedyDeactivate;
     } else if (std.mem.eql(u8, name, "dep")) {
         d.define = depDefine;
+        d.activate = depActivate;
     } else if (std.mem.eql(u8, name, "provider")) {
         d.define = providerDefine;
     }

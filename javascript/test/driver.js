@@ -32,6 +32,8 @@ function probes() {
       i.bind('c', (next, v) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
         i.options && i.options.band)
       i.export('client', i.ref)
+      // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+      i.export('mark', 'marked')
       // The instance api itself, so the driver's `stray` command can
       // call `release` from OUTSIDE a lifecycle callback.
       i.export('inst', i)
@@ -130,7 +132,14 @@ function probes() {
         for (const k of Object.keys(i.options.exports)) i.export(k, i.options.exports[k])
       }
     },
-    activate: (i) => { i.acquire() },
+    activate: (i) => {
+      i.acquire()
+      // WHICH provider this instance took, when the entry asks. See
+      // typescript/test/driver.ts.
+      if (i.options && i.options.capof) {
+        i.export('cap', i.capability(i.options.capof))
+      }
+    },
   }
 
   const provider = {

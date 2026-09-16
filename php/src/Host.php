@@ -232,6 +232,24 @@ class Inst
         $this->entry->exports[$key] = $value;
     }
 
+    /** WHICH provider this instance is bound to for $name (§11.1), as a
+     * ref, or null when nothing provides it.
+     *
+     * The host's own `capability` answers with the live providers
+     * RANKED, not with the one THIS instance took; §11.4's reluctant
+     * rebinding makes those differ. A REF, not the instance: every port
+     * can return a string and a corpus entry can assert on one. The
+     * selection is REMEMBERED, because this is the instance asking. */
+    public function capability(string $name): ?string
+    {
+        foreach (requirements($this->entry->options) as $req) {
+            if (($req['name'] ?? null) === $name) {
+                return $this->hostref->instcapability($this->entry, $req);
+            }
+        }
+        return null;
+    }
+
     /** What this instance can do for others (§11.1). */
     public function provides(array $prov): void
     {
@@ -830,6 +848,12 @@ class Host
      *
      * @param array<string,mixed> $req
      */
+    /** The instance api's way onto `chosen`, which is private. */
+    public function instcapability(Entry $entry, array $req): ?string
+    {
+        return $this->chosen($entry, $req, true);
+    }
+
     private function chosen(Entry $entry, array $req, bool $remember): ?string
     {
         $cands = $this->providersof($req);

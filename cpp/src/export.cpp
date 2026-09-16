@@ -17,7 +17,7 @@ namespace plugin {
 
 V resolveexport(const V& spec, const V& exported) {
   const std::string s = isstr(spec) ? asstr(spec) : "";
-  size_t cut = s.find('/');
+  size_t cut = s.rfind('/');
   if (std::string::npos == cut) {
     fail("plugin_export_ambiguous", "export spec needs a key: " + s,
          details1("spec", vstr(s)));

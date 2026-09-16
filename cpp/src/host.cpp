@@ -255,6 +255,25 @@ void Inst::exportvalue(const std::string& key, const V& value) {
 
 void Inst::provides(const V& p) { push(provides_, p); }
 
+/* WHICH provider this instance is bound to for `name` (§11.1), as a
+ * ref, or null when nothing provides it.
+ *
+ * The host's own `capability` answers with the live providers RANKED,
+ * not with the one THIS instance took; §11.4's reluctant rebinding
+ * makes those differ. A REF, not the instance. The selection is
+ * REMEMBERED, because this is the instance asking. */
+V Inst::capability(const std::string& name) const {
+  V reqs = requirements(options_);
+  for (size_t i = 0; i < len(reqs); i++) {
+    V r = at(reqs, i);
+    V rn = get(r, "name");
+    if (!isstr(rn) || asstr(rn) != name) continue;
+    const std::string picked = owner_->chosen(owner_->find(ref_), r, true);
+    return picked.empty() ? vnull() : vstr(picked);
+  }
+  return vnull();
+}
+
 HostPtr Inst::nest(const HostOptions& opts) {
   if (!owner_->intransition_) {
     fail("plugin_release_scope", "nest called outside a lifecycle callback");

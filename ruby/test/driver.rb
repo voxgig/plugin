@@ -38,6 +38,8 @@ module Driver
         # spell it backwards and make every chain expectation read wrong.
         i.bind('c', ->(nxt, v) { "#{i.options['wrap'] || ':'}#{nxt.call(v)}" }, band)
         i.export('client', i.ref)
+        # A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        i.export('mark', 'marked')
         # The instance api itself, so the driver's `stray` command can
         # call `release` from OUTSIDE a lifecycle callback.
         i.export('inst', i)
@@ -132,7 +134,12 @@ module Driver
           i.export(k, i.options['exports'][k])
         end
       end,
-      'activate' => ->(i) { i.acquire }
+      'activate' => lambda do |i|
+        i.acquire
+        # WHICH provider this instance took, when the entry asks. See
+        # typescript/test/driver.ts.
+        i.export('cap', i.capability(i.options['capof'])) if i.options['capof']
+      end
     }
 
     provider = {

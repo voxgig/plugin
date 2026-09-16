@@ -179,6 +179,86 @@ holders. It guards *ad-hoc* deactivation only: `close()` and an `apply`
 plan removing the holders too are coordinated teardowns and proceed,
 consumers first.
 
+### Expose a programmatic API
+
+A plugin can offer the application more than the host's own vocabulary.
+**Export it.** `inst.export(key, value)` during `define` publishes a
+value; `host.exports('<ref>/<key>')` reads it back.
+
+```ts
+define: (inst) => {
+  const store = openstore(inst.options)
+  // A CLOSURE, not `store.read` lifted off the object: a method that
+  // reads `this` loses its receiver the moment it is copied, and the
+  // host calls what it is handed.
+  inst.export('provider', { read: (name) => store.read(name) })
+  inst.export('admin', store)
+}
+```
+```ts
+const admin = host.exports('store$main/admin')
+admin.write('api.token', 'tok01')
+```
+
+**The spec splits at the LAST `/`**, so a scoped definition works:
+`@acme/store/admin` is the ref `@acme/store` with the key `admin`. §4
+permits `/` in a name and `resolvecandidates` resolves a scoped name
+verbatim, so the first-slash split left those definitions with no
+spelling for their exports at all. The cost is that **an export key may
+not contain `/`** — one separator cannot serve both.
+
+**A definition may publish as many as it likes**, and the host treats
+them identically. Two is the usual shape: one the host or its framework
+consumes, one the application does. A definition that publishes only
+what the framework wants leaves an application with no way to reach
+anything else the plugin can do.
+
+**The unqualified alias is what makes this pleasant to call.**
+`store/admin` resolves to the untagged instance **if that one exports
+the key**; if not, and exactly one tagged instance does, it resolves to
+that one; if two do, it is `plugin_export_ambiguous`, naming both. The
+key filters the candidates before the tag does, so an untagged instance
+that publishes something else entirely does not shadow the tagged one
+that publishes this. A library can therefore offer `adminof(host)` and
+have it work whether the store was configured as `store` or as
+`store$main` — and say so rather than pick one when there are two.
+
+**Exports of a `loaded` instance are visible**, before activation and
+after deactivation — `export/key#loaded-visible` pins it. They are
+declared in `define`, they are data, and
+hiding them would make the loaded state useless for introspection. An
+export whose value only means something while the instance is live is
+the plugin's to signal, and the convention is a getter closing over
+`inst.state`.
+
+Export for the **application**. For another plugin, declare a
+**capability** (*Depend on something*, preceding) as well — **not
+instead**. The two do different jobs and a provider needs both:
+`inst.provides` records what this instance is and what rank it has, and
+`host.capability(name)` answers with provider REFS, so neither carries a
+callable value. The capability is the edge the host resolves, orders,
+and can restart a consumer over; the API itself still travels as an
+export, or as a binding on an extension point. A provider that declares
+a capability and exports nothing leaves its consumer with a name and
+nothing to call. Going the other way — an export with no capability
+declared — gets a reference the lifecycle knows nothing about.
+
+On the consuming side, `inst.capability(name)` answers with the ref of
+the provider THIS instance is bound to, for one of its own declared
+requirements, or absent when nothing provides it — pair it with
+`host.exports(ref + '/key')` to reach the API. It is a different
+question from `host.capability(name)`, which ranks every live provider:
+rebinding is reluctant (*Depend on something*, preceding), so an
+instance keeps a provider that a newcomer outranks and the two answers
+part company.
+
+The worked example is
+[sekreto](https://github.com/voxgig/sekreto)'s mini vault, where each
+provider kind is a definition and the vault is the one that is written
+to as well as read: it exports `provider` for the chain and `vault` for
+the application, and ships a one-line `vaultof(secrets)` over the
+preceding alias rule.
+
 ### Hold a resource
 
 Acquire in `activate` and forget about it:
@@ -399,10 +479,10 @@ in the same way.
 
 | probe | behaviour |
 |---|---|
-| `probe` | The workhorse. Records every callback it receives into the log, binds one hook point (`p`), wraps one chain point (`c`), holds an integer counter in its state, and **acquires exactly one synthetic resource per activation**. It also exports its own instance api as `inst`, which is how the `stray` command reaches `release` from *outside* a lifecycle callback. |
+| `probe` | The workhorse. Records every callback it receives into the log, binds one hook point (`p`), wraps one chain point (`c`), holds an integer counter in its state, and **acquires exactly one synthetic resource per activation**. It exports three keys: `client`, its own ref; `mark`, the constant `marked`; and `inst`, its own instance api, which is how the `stray` command reaches `release` from *outside* a lifecycle callback. **`mark` is there so an entry can read a SECOND key off one instance** — every `export` entry once read `client`, so a port whose `exports` ignored the key and answered with the instance's first export passed all of them, and `inst` cannot close that because no entry can assert on an instance api. |
 | `noisy` | Fails on demand. `options.fail` names the callback that raises — `define`, `activate`, `deactivate` or `close` — and `options.code` the error code. `options.bare` raises with **no code at all**, which is the ordinary library error §12's `plugin_<phase>_failed` codes exist to wrap. Everything else is `probe`. |
 | `greedy` | Acquires `options.acquire` resources on activation and releases `options.release` of them explicitly, so the difference is what the instance scope must unwind (§8.3). `options.early` acquires in **`define`** instead, where §8.1 says capture does not belong. `options.bind` names the callback (`activate` or `deactivate`) that declares a **binding** outside `define`, which is §8.1's other half and §12's `plugin_bind_scope`. `options.mark` additionally registers that many **foreign** releases through `release`, each recording its own index into `state.unwound` as it runs — which is the only way the *direction* of the unwind is observable, since an acquired handle is an idempotent counter decrement that reads the same either way. `options.markfail` makes each of those releases **raise**, which is the only way §8.3's `plugin_release_failed` and its `failed` status are reachable. |
-| `dep` | Declares requirements. `options.requires` is a list of refs or capability names, `options.optional` those that are optional rather than mandatory. |
+| `dep` | Declares requirements, and **acquires one synthetic resource per activation** like `probe` does. `options.requires` is a list of refs or capability names, `options.optional` those that are optional rather than mandatory. `options.capof` names one of them and exports the answer of `inst.capability` as `cap` — **the only way an entry can see the instance-side question at all**, since `host.capability` answers with the ranking rather than with the provider this instance took, and reluctant rebinding (§11.4) makes those differ. |
 | `provider` | Binds a provider point named by `options.point`, returning `options.value`. `options.version` and `options.priority` feed the selection rank. |
 | `slow` | Behaviourally `probe`, and **it does not yield.** It is here because §18 settles transitions eagerly — the host calls a callback and does not await it — and a callback that yields therefore does not "complete later", it silently abandons everything after its first suspension point. So the probe cannot demonstrate eager settling by yielding; it would only demonstrate that half a callback vanished. The name is kept, and the catalog keeps six definitions, because the question it was invented for is still open (see below). |
 

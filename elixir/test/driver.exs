@@ -62,6 +62,8 @@ defmodule Driver do
         # backwards and make every chain expectation read wrong.
         Inst.bind(i, "c", fn next, v -> "#{opt(i, "wrap") || ":"}#{next.(v)}" end, band)
         Inst.export(i, "client", Inst.ref(i))
+        # A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        Inst.export(i, "mark", "marked")
         # The instance api itself, so the driver's `stray` command can call
         # `release` from OUTSIDE a lifecycle callback.
         Inst.export(i, "inst", i)
@@ -158,7 +160,15 @@ defmodule Driver do
         exports = opt(i, "exports") || %{}
         Enum.each(Types.keys(exports), &Inst.export(i, &1, Types.get(exports, &1)))
       end,
-      "activate" => fn i -> Inst.acquire(i) end}
+      "activate" => fn i ->
+        Inst.acquire(i)
+        # WHICH provider this instance took, when the entry asks. See
+        # typescript/test/driver.ts.
+        case opt(i, "capof") do
+          nil -> :ok
+          capof -> Inst.export(i, "cap", Inst.capability(i, capof))
+        end
+      end}
   end
 
   defp provider do

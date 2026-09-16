@@ -58,6 +58,8 @@ sub probes {
                 return ($i->options->{wrap} // ':') . $nxt->($v);
             }, $band);
             $i->export('client', $i->ref);
+            # A SECOND SCALAR KEY; see typescript/test/driver.ts.
+            $i->export('mark', 'marked');
             # The instance api itself, so the driver's `stray` command can
             # call `release` from OUTSIDE a lifecycle callback.
             $i->export('inst', $i);
@@ -174,7 +176,15 @@ sub probes {
             $i->export($_, $exports->{$_}) for sortedkeys($exports);
             return;
         },
-        activate => sub { $_[0]->acquire; return },
+        activate => sub {
+            my ($i) = @_;
+            $i->acquire;
+            # WHICH provider this instance took, when the entry asks.
+            # See typescript/test/driver.ts.
+            my $capof = $i->options->{capof};
+            $i->export('cap', $i->capability($capof)) if defined $capof;
+            return;
+        },
     };
 
     my $provider = {

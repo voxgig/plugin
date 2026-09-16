@@ -81,6 +81,8 @@
        ;; backwards and make every chain expectation read wrong.
        (h/bind! i "c" (fn [nxt v] (str (or (opt i "wrap") ":") (nxt v))) band))
      (h/export! i "client" (h/inst-ref i))
+     ;; A SECOND SCALAR KEY; see typescript/test/driver.ts.
+     (h/export! i "mark" "marked")
      ;; The instance api itself, so the driver's `stray` command can call
      ;; `release` from OUTSIDE a lifecycle callback.
      (h/export! i "inst" i)
@@ -157,7 +159,12 @@
               (declare-provides i)
               (let [exports (or (opt i "exports") {})]
                 (doseq [k (t/sorted-keys exports)] (h/export! i k (t/get exports k)))))
-   "activate" (fn [i] (h/acquire! i))})
+   "activate" (fn [i]
+                (h/acquire! i)
+                ;; WHICH provider this instance took, when the entry asks.
+                ;; See typescript/test/driver.ts.
+                (when-let [capof (opt i "capof")]
+                  (h/export! i "cap" (h/inst-capability i capof))))})
 
 (defn- provider []
   {"name" "provider"

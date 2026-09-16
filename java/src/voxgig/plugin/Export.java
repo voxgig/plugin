@@ -38,7 +38,7 @@ public final class Export {
   }
 
   public static Object resolveExport(String spec, List<Exported> exported) {
-    int cut = spec.indexOf('/');
+    int cut = spec.lastIndexOf('/');
     if (cut < 0) {
       fail("plugin_export_ambiguous", "export spec needs a key: " + spec, details("spec", spec));
     }

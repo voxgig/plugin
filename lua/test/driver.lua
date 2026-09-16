@@ -106,6 +106,8 @@ function M.probes()
         return wrap .. text(nxt(v))
       end, band)
       i:export('client', i.ref)
+      -- A SECOND SCALAR KEY; see typescript/test/driver.ts.
+      i:export('mark', 'marked')
       -- The instance api itself, so the driver's `stray` command can call
       -- `release` from OUTSIDE a lifecycle callback.
       i:export('inst', i)
@@ -211,7 +213,14 @@ function M.probes()
         i:export(k, exports[k])
       end
     end,
-    activate = function(i) i:acquire() end,
+    activate = function(i)
+      i:acquire()
+      -- WHICH provider this instance took, when the entry asks. See typescript/test/driver.ts.
+      local capof = T.getv(i:options(), 'capof')
+      if capof then
+        i:export('cap', i:capability(capof))
+      end
+    end,
   }
 
   out[#out + 1] = {

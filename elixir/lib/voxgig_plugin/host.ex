@@ -638,6 +638,17 @@ defmodule Voxgig.Plugin.Host do
   #
   # `remember` is false for the questions asked ABOUT an instance rather
   # than BY it: introspection must not create a binding.
+  @doc false
+  # The instance api's way onto `chosen`, which is private.
+  def instcapability(host, ref, name) do
+    Depend.requirements(field(host, ref, "options"))
+    |> Enum.find(fn req -> Types.get(req, "name") == name end)
+    |> case do
+      nil -> nil
+      req -> chosen(host, ref, req, true)
+    end
+  end
+
   defp chosen(host, ref, req, remember) do
     cands = providersof(host, req)
     name = Types.get(req, "name")

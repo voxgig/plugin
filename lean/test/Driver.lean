@@ -80,6 +80,8 @@ def probeDefine (i : InstApi) : PluginM Unit := do
   boom i "define"
   bindProbe i
   i.exportValue "client" (.str i.ref)
+  -- A SECOND SCALAR KEY; see typescript/test/driver.ts.
+  i.exportValue "mark" (.str "marked")
   -- The instance api itself, so the driver's `stray` command can call
   -- `release` from OUTSIDE a lifecycle callback — which is the only way
   -- to exercise §8.3's scope guard. The driver looks the instance up by
@@ -147,6 +149,17 @@ def depDefine (i : InstApi) : PluginM Unit := do
   if exports.isMap then
     for k in exports.keys do i.exportValue k (exports.get k)
 
+/-- WHICH provider this instance took, when the entry asks. See
+typescript/test/driver.ts. The `acquire` is the canonical `dep`'s, and
+this port did not have it: `dep` had no `activate` at all. -/
+def depActivate (i : InstApi) : PluginM Unit := do
+  let _ ← i.acquire
+  let capof ← opt i "capof"
+  if !capof.isStr then return
+  match ← i.capability capof.asStr with
+  | some r => i.exportValue "cap" (.str r)
+  | none => i.exportValue "cap" .null
+
 def providerDefine (i : InstApi) : PluginM Unit := do
   i.setState ((← i.getState).set "count" (.num 0.0))
   let point ← opt i "point"
@@ -187,7 +200,8 @@ def probeDef (name : String) : Definition :=
       define := some greedyDefine
       activate := some (fun i => do greedyCapture i; greedyBindAt i "activate")
       deactivate := some (fun i => greedyBindAt i "deactivate") }
-  else if name == "dep" then { base with define := some depDefine }
+  else if name == "dep" then
+    { base with define := some depDefine, activate := some depActivate }
   else if name == "provider" then { base with define := some providerDefine }
   else base
 

@@ -133,6 +133,20 @@ module VoxgigPlugin
       @entry['exports'][key] = value
     end
 
+    # WHICH provider this instance is bound to for `name` (11.1), as a
+    # ref, or nil when nothing provides it.
+    #
+    # The host's own `capability` answers with the live providers
+    # RANKED, not with the one THIS instance took; 11.4's reluctant
+    # rebinding makes those differ. A REF, not the instance: every port
+    # can return a string and a corpus entry can assert on one. The
+    # selection is REMEMBERED, because this is the instance asking.
+    def capability(name)
+      req = VoxgigPlugin.requirements(@entry['options']).find { |r| r['name'] == name }
+      return nil if req.nil?
+      @host.send(:chosen, @entry, req, true)
+    end
+
     # What this instance can do for others (section 11.1).
     def provides(prov)
       @entry['provides'] << prov

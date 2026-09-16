@@ -140,6 +140,8 @@ let probedefine (i : inst) =
   boom i "define";
   bindprobe i;
   Host.exportvalue i "client" (V.vstr i.iref);
+  (* A SECOND SCALAR KEY; see typescript/test/driver.ts. *)
+  Host.exportvalue i "mark" (V.vstr "marked");
   (* The instance api itself, so the driver's `stray` command can call
      `release` from OUTSIDE a lifecycle callback — which is the only
      way to exercise §8.3's scope guard. The driver looks the instance
@@ -202,6 +204,18 @@ let depdefine (i : inst) =
   let exports = opt i "exports" in
   if V.is_map exports then
     List.iter (fun k -> Host.exportvalue i k (V.get exports k)) (V.keys exports)
+
+(* WHICH provider this instance took, when the entry asks. See
+   typescript/test/driver.ts. The `acquire` is the canonical `dep`'s,
+   and this port did not have it: `dep` had no `activate` at all. *)
+let depactivate (i : inst) =
+  ignore (Host.acquire i);
+  let capof = opt i "capof" in
+  if V.is_str capof then
+    Host.exportvalue i "cap"
+      (match Host.instcapability i (V.as_str capof) with
+       | None -> V.vnull
+       | Some r -> V.vstr r)
 
 let providerdefine (i : inst) =
   V.set i.istate "count" (V.vnum 0.0);
@@ -267,7 +281,7 @@ and probedef name =
       define = Some greedydefine;
       activate = Some (fun i -> greedycapture i; greedybindat i "activate");
       deactivate = Some (fun i -> greedybindat i "deactivate") }
-  | "dep" -> { base with define = Some depdefine }
+  | "dep" -> { base with define = Some depdefine; activate = Some depactivate }
   | "provider" -> { base with define = Some providerdefine }
   | _ -> base
 

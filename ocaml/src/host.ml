@@ -355,6 +355,22 @@ let chosen h e req remember =
       Some first
   end
 
+(* WHICH provider this instance is bound to for `name` (§11.1), as a
+   ref, or None when nothing provides it.
+
+   The host's own `capability` answers with the live providers RANKED,
+   not with the one THIS instance took; §11.4's reluctant rebinding
+   makes those differ. A REF, not the instance. The selection is
+   REMEMBERED, because this is the instance asking. *)
+let instcapability e name =
+  match
+    List.find_opt
+      (fun r -> V.is_str (V.get r "name") && V.as_str (V.get r "name") = name)
+      (V.items (Depend.requirements e.options))
+  with
+  | None -> None
+  | Some req -> chosen e.owner e req true
+
 (* The instance currently SELECTED for each of this one's
    restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
    capability (§11.1): the selected one going away restarts a `static`

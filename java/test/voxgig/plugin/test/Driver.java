@@ -79,6 +79,8 @@ public final class Driver {
               },
               band);
           i.export("client", i.ref);
+          // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+          i.export("mark", "marked");
           // The instance api itself, so the driver's `stray` command can
           // call `release` from OUTSIDE a lifecycle callback.
           i.export("inst", i);
@@ -207,7 +209,16 @@ public final class Driver {
             i.export(k, Types.get(exports, k));
           }
         };
-    dep.activate = i -> i.acquire();
+    dep.activate =
+        i -> {
+          i.acquire();
+          // WHICH provider this instance took, when the entry asks. See
+          // typescript/test/driver.ts.
+          Object capof = Types.get(i.options(), "capof");
+          if (capof instanceof String) {
+            i.export("cap", i.capability((String) capof));
+          }
+        };
     out.add(dep);
 
     Definition provider = new Definition("provider");

@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-09-04**. The register in
+Live snapshot, **2026-09-16**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -15,7 +15,7 @@ a wrong status file is worse than none.**
 
 **Nothing. P6 is complete — six of six — and no port work remains on
 the plan.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
-so **twenty-three implementations pass all 572 corpus entries** and
+so **twenty-three implementations pass all 591 corpus entries** and
 `make check` runs every one of them.
 
 **The six tier-4 ports are deliberately not one port six times**, and
@@ -160,7 +160,7 @@ exists and passes; see above.
 
 **If a new port is ever added**, the toolchain notes are worth keeping:
 gcc/g++ 13.3.0 ship in the image; **ghc 9.4.7 and ocaml 4.14.1 come
-from apt**; **zig 0.13.0 from a ziglang.org tarball**; **lean 4.15.0
+from apt**; **zig 0.13.0 from a ziglang.org tarball**; **lean 4.32.1
 from a pinned GitHub *release asset*** — release assets download fine
 through the proxy, while `api.github.com` answers 403, so a
 version-discovery call fails where the asset URL does not. Read the six
@@ -205,6 +205,46 @@ table is the summary, that file is the authority. Neither blocks P1.
 
 
 ## Recently settled
+
+- **"Can a plugin expose a programmatic API?" is answered, and the
+  answer needed no code.** It is §11's exports: `inst.export(key, value)`
+  in `define`, `host.exports('<ref>/<key>')` to read it back, and the
+  unqualified alias so a library can offer a one-line accessor that works
+  whether the instance is tagged or not. The mechanism was documented for
+  plugin-to-plugin use and the application-facing half was not written
+  down, so DOCS.md §2 now carries **Expose a programmatic API**, including
+  when to export and when to provide a capability instead. The asker was
+  sekreto, whose mini vault publishes `provider` for the chain and `vault`
+  for the application from one `define`.
+
+- **Three gaps found while writing that**, all recorded rather than
+  closed, because each is a 23-port change set and this was a
+  documentation change. Row **6.8**: `resolveexport` splits at the first
+  `/`, so a scoped definition name (`@acme/store`, which §4 permits and
+  `resolvecandidates` handles) has no spelling for its exports. Row
+  **6.9**: §11.1 says `inst.capability(name)` returns the bound provider
+  and the canonical instance api had no such method. And row **6.7**: no
+  `export` entry read a SECOND key off one instance. **All three are now
+  closed.** 6.9 was implemented rather than struck, because the host
+  cannot answer the question it asks: `host.capability` ranks the live
+  providers, and reluctant rebinding (§11.4) means an instance keeps a
+  provider a newcomer outranks. It answers with a REF, so a capability
+  still carries no callable value and the API still travels as an
+  export.
+
+- **Both of those were measured, and both measurements corrected the
+  entry that prompted them.** Mutation is the only way to find out
+  whether an addition is pinned, and twice now the first draft of a
+  group was not. 6.9's first four entries left `host.capability(name)[0]`
+  — the exact thing `inst.capability` exists to not be — passing the
+  whole suite, and a lookup that never reads the name passing it too;
+  the six entries that close them are in the register. And 6.7's
+  first description was overstated: a port that ignored the key outright
+  was already caught by the absent-key entry, because ignoring the key
+  makes a missing key present. What nothing could distinguish is a lookup
+  that checks the key is present and then answers with the instance's
+  first export. Mutated that way, the alias branch left the whole suite
+  green. Measuring the gap is what corrected the claim about it.
 
 - **The scala and kotlin ports are built under both their compilers** —
   #29 and #30 made the ports accept two major versions each, and #31

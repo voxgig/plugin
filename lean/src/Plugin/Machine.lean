@@ -94,6 +94,7 @@ partial def instApi (h : HostState) (e : InstState) : InstApi := {
   bindChain := fun p f band => instBind h e p none (some f) band
   exportValue := fun k v => do e.exports.set ((← e.exports.get).set k v)
   provides := fun p => do e.provides.set ((← e.provides.get).push p)
+  capability := fun n => instCapability h e n
   acquire := instAcquire h e
   giveback := instGiveback h e
   release := instRelease h e

@@ -110,6 +110,8 @@ static void probe_define(Inst *i) {
   inst_bind(i, "p", probe_hook, NULL, i, band);
   inst_bind(i, "c", NULL, probe_chain, i, band);
   inst_export(i, "client", vstr(inst_ref(i)));
+  /* A SECOND SCALAR KEY; see typescript/test/driver.ts. */
+  inst_export(i, "mark", vstr("marked"));
   /* The instance api itself, so the driver's `stray` command can call
    * `release` from OUTSIDE a lifecycle callback — which is the only way
    * to exercise §8.3's scope guard. C cannot put a pointer in a Value,
@@ -234,6 +236,17 @@ static void dep_define(Inst *i) {
   }
 }
 
+/* WHICH provider this instance took, when the entry asks. See
+ * typescript/test/driver.ts. The `acquire` is the canonical `dep`'s,
+ * and this port did not have it: `dep` had no `activate` at all. */
+static void dep_activate(Inst *i) {
+  inst_acquire(i);
+  Value *capof = opt(i, "capof");
+  if (!visstr(capof)) return;
+  const char *picked = inst_capability(i, vasstr(capof));
+  inst_export(i, "cap", NULL == picked ? vnull() : vstr(picked));
+}
+
 static void provider_define(Inst *i) {
   Value *st = inst_state(i);
   vset(st, "count", vnum(0));
@@ -285,6 +298,7 @@ static Definition *probedef(const char *name) {
   }
   else if (0 == strcmp(name, "dep")) {
     d->define = dep_define;
+    d->activate = dep_activate;
   }
   else if (0 == strcmp(name, "provider")) {
     d->define = provider_define;

@@ -23,7 +23,7 @@ pub struct Exported {
 }
 
 pub fn resolve_export(spec: &str, exported: &[Exported]) -> Result<Value, PluginError> {
-    let cut = match spec.find('/') {
+    let cut = match spec.rfind('/') {
         Some(c) => c,
         None => {
             return fail(

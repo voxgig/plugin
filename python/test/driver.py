@@ -33,6 +33,8 @@ def probes():
         i.bind('c', lambda nxt, v: (i.options.get('wrap') or ':') +
                str(nxt(v)), band)
         i.export('client', i.ref)
+        # A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        i.export('mark', 'marked')
         # The instance api itself, so the driver's `stray` command can
         # call `release` from OUTSIDE a lifecycle callback.
         i.export('inst', i)
@@ -136,8 +138,16 @@ def probes():
         for key in sorted(i.options.get('exports') or {}):
             i.export(key, i.options['exports'][key])
 
+    def dep_activate(i):
+        i.acquire()
+        # WHICH provider this instance took, when the entry asks. See
+        # typescript/test/driver.ts: the host's own `capability` answers
+        # with the RANKING, not with this instance's choice.
+        if i.options.get('capof'):
+            i.export('cap', i.capability(i.options['capof']))
+
     dep = {'name': 'dep', 'define': dep_define,
-           'activate': lambda i: i.acquire()}
+           'activate': dep_activate}
 
     def provider_define(i):
         i.state['count'] = 0

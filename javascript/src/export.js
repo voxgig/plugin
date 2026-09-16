@@ -16,7 +16,7 @@ const { fail } = require('./types')
 const { parseref, canonref } = require('./ref')
 
 function resolveexport(spec, exported) {
-  const cut = spec.indexOf('/')
+  const cut = spec.lastIndexOf('/')
   if (-1 === cut) {
     fail('plugin_export_ambiguous', 'export spec needs a key: ' + spec, { spec })
   }

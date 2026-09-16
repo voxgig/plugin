@@ -16,7 +16,7 @@ from .ref import canon_ref, parse_ref
 
 
 def resolve_export(spec, exported):
-    cut = spec.find('/')
+    cut = spec.rfind('/')
     if -1 == cut:
         fail('plugin_export_ambiguous', 'export spec needs a key: ' + spec,
              {'spec': spec})

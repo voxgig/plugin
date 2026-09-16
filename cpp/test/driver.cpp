@@ -91,6 +91,8 @@ static void probedefine(Inst& i) {
   boom(i, "define");
   bindprobe(i);
   i.exportvalue("client", vstr(i.ref()));
+  // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+  i.exportvalue("mark", vstr("marked"));
   /* The instance api itself, so the driver's `stray` command can call
    * `release` from OUTSIDE a lifecycle callback — which is the only way
    * to exercise §8.3's scope guard. The driver looks the instance up by
@@ -183,6 +185,16 @@ static void depdefine(Inst& i) {
   }
 }
 
+/* WHICH provider this instance took, when the entry asks. See
+ * typescript/test/driver.ts. The `acquire` is the canonical `dep`'s,
+ * and this port did not have it: `dep` had no `activate` at all. */
+static void depactivate(Inst& i) {
+  i.acquire();
+  V capof = opt(i, "capof");
+  if (!isstr(capof)) return;
+  i.exportvalue("cap", i.capability(asstr(capof)));
+}
+
 static void providerdefine(Inst& i) {
   set(i.state(), "count", vnum(0));
   Inst* self = &i;
@@ -234,6 +246,7 @@ static DefinitionPtr probedef(const std::string& name) {
   }
   else if ("dep" == name) {
     d->define = depdefine;
+    d->activate = depactivate;
   }
   else if ("provider" == name) {
     d->define = providerdefine;

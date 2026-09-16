@@ -20,7 +20,7 @@ static int bytewise(const void *a, const void *b) {
 
 Value *resolveexport(Value *spec, Value *exported) {
   const char *s = visstr(spec) ? vasstr(spec) : "";
-  const char *cut = strchr(s, '/');
+  const char *cut = strrchr(s, '/');
   if (NULL == cut) {
     size_t sz = strlen(s) + 40;
     char *text = (char *)arena_alloc(sz);

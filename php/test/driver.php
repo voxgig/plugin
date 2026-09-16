@@ -77,6 +77,8 @@ class Driver
                     return ($i->options()['wrap'] ?? ':') . $nxt($v);
                 }, $band);
                 $i->export('client', $i->ref);
+                // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+                $i->export('mark', 'marked');
                 // The instance api itself, so the driver's `stray` command
                 // can call `release` from OUTSIDE a lifecycle callback.
                 $i->export('inst', $i);
@@ -209,6 +211,12 @@ class Driver
             },
             'activate' => static function (Inst $i): void {
                 $i->acquire();
+                // WHICH provider this instance took, when the entry asks.
+                // See typescript/test/driver.ts.
+                $capof = $i->options()['capof'] ?? null;
+                if (null !== $capof) {
+                    $i->export('cap', $i->capability($capof));
+                }
             },
         ];
 

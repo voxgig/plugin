@@ -73,6 +73,8 @@ pub fn probes() -> Vec<Definition> {
         i.bind("c", chainfn, &band)?;
 
         i.export("client", Value::str(&i.eref));
+        // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        i.export("mark", Value::str("marked"));
         // The instance api itself, so the driver's `stray` command can
         // call `release` from OUTSIDE a lifecycle callback.
         i.export("inst", Value::Opaque(Rc::new(i.clone())));
@@ -213,6 +215,18 @@ pub fn probes() -> Vec<Definition> {
     }));
     dep.activate = Some(Rc::new(|i: &Inst| {
         i.acquire()?;
+        // WHICH provider this instance took, when the entry asks. See
+        // typescript/test/driver.ts.
+        let capof = i.options().get("capof");
+        if let Some(name) = capof.as_str() {
+            i.export(
+                "cap",
+                match i.capability(name) {
+                    Some(r) => Value::str(&r),
+                    None => Value::Null,
+                },
+            );
+        }
         Ok(())
     }));
     out.push(dep);

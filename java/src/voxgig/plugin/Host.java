@@ -566,7 +566,7 @@ public final class Host {
    * <p>{@code remember} is false for the questions asked ABOUT an instance
    * rather than BY it: introspection must not create a binding.
    */
-  private String chosen(Entry entry, Object req, boolean remember) {
+  String chosen(Entry entry, Object req, boolean remember) {
     List<Object> cands = providersof(req);
     if (cands.isEmpty()) {
       return null;

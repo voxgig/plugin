@@ -31,6 +31,12 @@ export function probes(): Definition[] {
       i.bind('c', (next: any, v: any) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
         i.options && i.options.band)
       i.export('client', i.ref)
+      // A SECOND SCALAR KEY. Every `export` entry used to read
+      // `client`, so a port whose `exports` ignored the key and
+      // answered with the instance's first export passed all of them.
+      // `inst` below cannot close that: it is an instance api, shaped
+      // differently in every port, and no entry can assert on it.
+      i.export('mark', 'marked')
       // The instance api itself, so the driver's `stray` command can
       // call `release` from OUTSIDE a lifecycle callback — which is the
       // only way to exercise §8.3's scope guard, and which the command
@@ -144,7 +150,22 @@ export function probes(): Definition[] {
         for (const k of Object.keys(i.options.exports)) i.export(k, i.options.exports[k])
       }
     },
-    activate: (i: any) => { i.acquire() },
+    activate: (i: any) => {
+      i.acquire()
+      // WHICH provider this instance took, when the entry asks for it.
+      // `options.capof` names one of this instance's requirements and
+      // the answer is exported as `cap`, which is the only way a corpus
+      // entry can see `inst.capability` at all: the host's own
+      // `capability` answers with the RANKING, not with the choice this
+      // instance made, and §11.4 makes those differ.
+      //
+      // From `activate` rather than `define`, because the selection is
+      // made at activation — and so a deactivate/reactivate cycle
+      // re-exports whatever the second activation chose.
+      if (i.options && i.options.capof) {
+        i.export('cap', i.capability(i.options.capof))
+      }
+    },
   }
 
   const provider: Definition = {

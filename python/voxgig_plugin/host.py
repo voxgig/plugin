@@ -126,6 +126,22 @@ class Inst:
         11)."""
         self._entry['exports'][key] = value
 
+    def capability(self, name):
+        """WHICH provider this instance is bound to for `name` (section
+        11.1), as a ref, or None when nothing provides it.
+
+        The host's own `capability` answers with the live providers
+        RANKED, not with the one THIS instance took; section 11.4's
+        reluctant rebinding makes those differ. A REF, not the instance:
+        every port can return a string and a corpus entry can assert on
+        one. The selection is REMEMBERED, because this is the instance
+        asking.
+        """
+        for req in requirements(self._entry['options']):
+            if req['name'] == name:
+                return self._host._chosen(self._entry, req, True)
+        return None
+
     def provides(self, prov):
         """What this instance can do for others (section 11.1)."""
         self._entry['provides'].append(prov)

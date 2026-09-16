@@ -127,6 +127,8 @@ probeDefine i = do
   boom i "define"
   bindProbe i
   instExport i "client" (VStr (iRef i))
+  -- A SECOND SCALAR KEY; see typescript/test/driver.ts.
+  instExport i "mark" (VStr "marked")
   -- The instance api itself, so the driver's @stray@ command can call
   -- @release@ from OUTSIDE a lifecycle callback — which is the only way
   -- to exercise §8.3's scope guard. The driver looks the instance up by
@@ -201,6 +203,16 @@ depDefine i = do
   exports <- opt i "exports"
   when (isMap exports) $ forM_ (vkeys exports) $ \k -> instExport i k (vget exports k)
 
+-- | WHICH provider this instance took, when the entry asks. See
+-- typescript/test/driver.ts.
+depActivate :: Inst -> IO ()
+depActivate i = do
+  _ <- instAcquire i
+  capof <- opt i "capof"
+  when (isStr capof) $ do
+    picked <- instCapability i (asStr capof)
+    instExport i "cap" (maybe VNull VStr picked)
+
 providerDefine :: Inst -> IO ()
 providerDefine i = do
   modifyIORef' (iState i) (\st -> vset st "count" (VNum 0))
@@ -238,7 +250,7 @@ probeDef name = case name of
       , dActivate = Just (\i -> greedyCapture i >> greedyBindAt i "activate")
       , dDeactivate = Just (`greedyBindAt` "deactivate")
       }
-  "dep" -> base {dDefine = Just depDefine}
+  "dep" -> base {dDefine = Just depDefine, dActivate = Just depActivate}
   "provider" -> base {dDefine = Just providerDefine}
   _ -> base
   where

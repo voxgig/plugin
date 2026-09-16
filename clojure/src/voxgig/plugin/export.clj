@@ -17,7 +17,7 @@
   "`exported` is a list of `{:ref :key :value}` - an internal shape, never
   a corpus value, so it uses keyword keys where the data does not."
   [spec exported]
-  (let [cut (.indexOf ^String spec "/")]
+  (let [cut (.lastIndexOf ^String spec "/")]
     (when (neg? cut)
       (t/fail "plugin_export_ambiguous" (str "export spec needs a key: " spec)
               {"spec" spec}))

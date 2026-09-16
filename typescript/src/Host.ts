@@ -264,6 +264,32 @@ export function makehost(options?: HostOptions) {
       /** Published for other plugins and for the application (§11). */
       export: (key: string, value: any) => { e.exports[key] = value },
 
+      /** WHICH provider this instance is bound to for `name` (§11.1),
+       * as a ref, or undefined when nothing provides it.
+       *
+       * §11.1 says "the first is bound, and `inst.capability(name)`
+       * returns it", and §11.3 gives the case that needs it: a plugin
+       * that works without metrics and uses metrics when it is there
+       * has to be able to ask. Every port had `host.capability(name)`,
+       * which answers with the live providers RANKED — not with the one
+       * THIS instance actually took. §11.4's reluctant rebinding makes
+       * those differ: a better-ranked newcomer tops the ranking while
+       * the consumer keeps what it had.
+       *
+       * A REF, not the instance. `host.capability` answers in refs,
+       * every port can return a string, and a corpus entry can assert
+       * on one — an instance api is shaped differently in each and
+       * cannot be asserted at all.
+       *
+       * The selection is REMEMBERED, because this is the instance
+       * asking. `chosen(..., false)` is for questions asked ABOUT an
+       * instance, where answering must not create a binding. */
+      capability: (name: string): string | undefined => {
+        const req = requirements(e.options).find((r) => r.name === name)
+        if (undefined === req) return undefined
+        return chosen(e, req, true)
+      },
+
       /** What this instance can do for others (§11.1). */
       provides: (p: Provided) => { e.provides.push(p) },
 
