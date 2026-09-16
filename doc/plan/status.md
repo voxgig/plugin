@@ -1,6 +1,6 @@
 # Status — where the next session starts
 
-Live snapshot, **2026-09-04**. The register in
+Live snapshot, **2026-09-16**. The register in
 [`progress.md`](progress.md) is the per-item authority,
 [`contracts.md`](contracts.md) tracks what is owed across repos, and
 [`handover.md`](handover.md) is the durable record. This file says what
@@ -217,8 +217,14 @@ table is the summary, that file is the authority. Neither blocks P1.
   sekreto, whose mini vault publishes `provider` for the chain and `vault`
   for the application from one `define`.
 
-- **A fourth corpus gap, found while writing that** and recorded as
-  register row 6.7 rather than closed: **every `export` entry reads the
+- **Three gaps found while writing that**, all recorded rather than
+  closed, because each is a 23-port change set and this was a
+  documentation change. Row **6.8**: `resolveexport` splits at the first
+  `/`, so a scoped definition name (`@acme/store`, which §4 permits and
+  `resolvecandidates` handles) has no spelling for its exports. Row
+  **6.9**: §11.1 says `inst.capability(name)` returns the bound provider
+  and the canonical instance api has no such method, so a capability
+  carries no callable value. And row **6.7**: **every `export` entry reads the
   key `client`**. The `probe` definition exports two keys, but nothing
   reads the second, so a port whose `export` overwrote rather than keyed
   could stay green depending on write order. Closing it needs `probe` to

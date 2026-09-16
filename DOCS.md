@@ -188,14 +188,25 @@ value; `host.exports('<ref>/<key>')` reads it back.
 ```ts
 define: (inst) => {
   const store = openstore(inst.options)
-  inst.export('provider', { read: store.read })   // what the host wires up
-  inst.export('admin', store)                     // what the application calls
+  // A CLOSURE, not `store.read` lifted off the object: a method that
+  // reads `this` loses its receiver the moment it is copied, and the
+  // host calls what it is handed.
+  inst.export('provider', { read: (name) => store.read(name) })
+  inst.export('admin', store)
 }
 ```
 ```ts
 const admin = host.exports('store$main/admin')
 admin.write('api.token', 'tok01')
 ```
+
+**The spec splits at the FIRST `/`**, so this addresses a definition
+whose name has no slash in it. §4's grammar permits one — `@acme/store`
+is a legal name, and `resolvecandidates` resolves a scoped name
+verbatim — and `@acme/store/admin` therefore reads as the ref `@acme`
+with the key `store/admin`, which matches nothing. A scoped definition
+has no spelling for its exports today; nothing in the corpus covers it,
+and register row 6.8 carries it.
 
 **A definition may publish as many as it likes**, and the host treats
 them identically. Two is the usual shape: one the host or its framework
@@ -204,27 +215,34 @@ what the framework wants leaves an application with no way to reach
 anything else the plugin can do.
 
 **The unqualified alias is what makes this pleasant to call.**
-`store/admin` resolves to the untagged instance if there is one; if not,
-and exactly one tagged instance exports that key, it resolves to that
-one; if two do, it is `plugin_export_ambiguous`, naming both. So a
-library can offer `adminof(host)` and have it work whether the store was
-configured as `store` or as `store$main` — and say so rather than pick
-one when there are two of them.
+`store/admin` resolves to the untagged instance **if that one exports
+the key**; if not, and exactly one tagged instance does, it resolves to
+that one; if two do, it is `plugin_export_ambiguous`, naming both. The
+key filters the candidates before the tag does, so an untagged instance
+that publishes something else entirely does not shadow the tagged one
+that publishes this. A library can therefore offer `adminof(host)` and
+have it work whether the store was configured as `store` or as
+`store$main` — and say so rather than pick one when there are two.
 
 **Exports of a `loaded` instance are visible**, before activation and
-after deactivation. They are declared in `define`, they are data, and
+after deactivation — `export/key#loaded-visible` pins it. They are
+declared in `define`, they are data, and
 hiding them would make the loaded state useless for introspection. An
 export whose value only means something while the instance is live is
 the plugin's to signal, and the convention is a getter closing over
 `inst.state`.
 
-Export for the **application**; provide a **capability** (*Depend on
-something*, preceding) for another plugin. The difference is not
-enforced and is worth keeping anyway: a capability is a dependency the
-host resolves, orders, and can restart a consumer over, while an export
-is a value someone asks for by name. Reaching for an export to avoid
-declaring a dependency gets a reference the lifecycle knows nothing
-about.
+Export for the **application**. For another plugin, declare a
+**capability** (*Depend on something*, preceding) as well — **not
+instead**. The two do different jobs and a provider needs both:
+`inst.provides` records what this instance is and what rank it has, and
+`host.capability(name)` answers with provider REFS, so neither carries a
+callable value. The capability is the edge the host resolves, orders,
+and can restart a consumer over; the API itself still travels as an
+export, or as a binding on an extension point. A provider that declares
+a capability and exports nothing leaves its consumer with a name and
+nothing to call. Going the other way — an export with no capability
+declared — gets a reference the lifecycle knows nothing about.
 
 The worked example is
 [sekreto](https://github.com/voxgig/sekreto)'s mini vault, where each
