@@ -3221,6 +3221,54 @@ primary: export: {
       in: [ { do: 'load', ref: 'probe$a' }, { do: 'export', key: 'probe$a/client' } ]
       match: { out: { result: 'probe$a' } }
     }
+
+    # A SCOPED DEFINITION NAME, and the reason the spec splits at the
+    # LAST `/`. §4's `checkname` permits `/` in a NAME — `@acme/store` is
+    # legal, and §10.2 resolves a scoped name verbatim — so splitting at
+    # the FIRST one read this as the ref `@acme` with the key
+    # `probe$a/client`, matched nothing, and answered absent. A scoped
+    # definition had no spelling for its exports at all, and every entry
+    # in this section used `probe`, which has no slash, so nothing saw it.
+    {
+      id: 'export/key#scoped', doc: true
+      in: [
+        { do: 'define', name: '@acme/probe', probe: 'probe' }
+        { do: 'ready', ref: '@acme/probe$a' }
+        { do: 'export', key: '@acme/probe$a/client' }
+      ]
+      match: { out: { result: '@acme/probe$a' } }
+    }
+    # Untagged, so the ref IS the name: the exact branch answers.
+    {
+      id: 'export/key#scoped-untagged'
+      in: [
+        { do: 'define', name: '@acme/probe', probe: 'probe' }
+        { do: 'ready', ref: '@acme/probe' }
+        { do: 'export', key: '@acme/probe/client' }
+      ]
+      match: { out: { result: '@acme/probe' } }
+    }
+    # The ALIAS half splits the same way, or a scoped name would resolve
+    # qualified and not unqualified.
+    {
+      id: 'export/key#scoped-alias'
+      in: [
+        { do: 'define', name: '@acme/probe', probe: 'probe' }
+        { do: 'ready', ref: '@acme/probe$a' }
+        { do: 'export', key: '@acme/probe/client' }
+      ]
+      match: { out: { result: '@acme/probe$a' } }
+    }
+    # A key nothing exports is still absent, scoped or not — the split
+    # moved, the answer for a miss did not.
+    {
+      in: [
+        { do: 'define', name: '@acme/probe', probe: 'probe' }
+        { do: 'ready', ref: '@acme/probe$a' }
+        { do: 'export', key: '@acme/probe$a/nope' }
+      ]
+      match: { out: { result: '__NULL__' } }
+    }
   ]
 
 

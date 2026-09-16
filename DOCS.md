@@ -200,13 +200,12 @@ const admin = host.exports('store$main/admin')
 admin.write('api.token', 'tok01')
 ```
 
-**The spec splits at the FIRST `/`**, so this addresses a definition
-whose name has no slash in it. §4's grammar permits one — `@acme/store`
-is a legal name, and `resolvecandidates` resolves a scoped name
-verbatim — and `@acme/store/admin` therefore reads as the ref `@acme`
-with the key `store/admin`, which matches nothing. A scoped definition
-has no spelling for its exports today; nothing in the corpus covers it,
-and register row 6.8 carries it.
+**The spec splits at the LAST `/`**, so a scoped definition works:
+`@acme/store/admin` is the ref `@acme/store` with the key `admin`. §4
+permits `/` in a name and `resolvecandidates` resolves a scoped name
+verbatim, so the first-slash split left those definitions with no
+spelling for their exports at all. The cost is that **an export key may
+not contain `/`** — one separator cannot serve both.
 
 **A definition may publish as many as it likes**, and the host treats
 them identically. Two is the usual shape: one the host or its framework

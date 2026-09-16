@@ -19,7 +19,7 @@ object Export {
     data class Exported(val ref: String, val key: String, val value: Any?)
 
     fun resolveExport(spec: String, exported: List<Exported>): Any? {
-        val cut = spec.indexOf('/')
+        val cut = spec.lastIndexOf('/')
         if (0 > cut) {
             Types.fail(
                 "plugin_export_ambiguous", "export spec needs a key: $spec",

@@ -19,13 +19,20 @@ import Value
 -- rather than a null Value.
 resolveExport :: Value -> Value -> IO (Maybe Value)
 resolveExport spec exported =
-  case break (== '/') s of
-    (_, []) ->
+  case rsplit s of
+    Nothing ->
       raise "plugin_export_ambiguous" ("export spec needs a key: " ++ s)
         (details1 "spec" (VStr s))
-    (headS, _ : key) -> pick headS key
+    Just (headS, key) -> pick headS key
   where
     s = if isStr spec then asStr spec else ""
+
+    -- THE LAST `/`, not the first: a NAME may hold slashes (§4), a key
+    -- may not. `break` stops at the first, so the split is taken on the
+    -- REVERSED string and both halves are put back the right way round.
+    rsplit str = case break (== '/') (reverse str) of
+      (_, []) -> Nothing
+      (rkey, _ : rhead) -> Just (reverse rhead, reverse rkey)
 
     pick headS key = canonRefS headS >>= go headS key
 

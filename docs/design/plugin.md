@@ -1623,12 +1623,23 @@ plainly rather than implying a sandbox it does not have:
 the application: `inst.export('client', theClient)` during `define`.
 Read with `host.exports('retry$fast/client')`.
 
-The unqualified alias `retry/client` resolves to the **untagged**
-instance if one exists. If it does not, and exactly one tagged instance
-exports that key, it resolves to that one. If two do, it is
-`plugin_export_ambiguous` — deliberately diverging from seneca's silent
-last-wins, because with multi-instance as a headline feature, an
-ambiguous alias is a defect waiting for production.
+**The spec splits at the LAST `/`.** §4 permits `/` in a *name* —
+`@acme/store` is legal, and §10.2 resolves a scoped name verbatim — so
+splitting at the first one read `@acme/store/client` as the ref `@acme`
+with the key `store/client` and answered absent. A scoped definition had
+no spelling for its exports at all. The cost is stated rather than
+implied: **an export key may not contain `/`**. One separator cannot
+serve both, a name holds slashes because §4 says so, and a key held them
+only because nothing stopped it. `export/key#scoped` pins it.
+
+The unqualified alias `retry/client` resolves to the untagged instance
+**if that one exports the key**. The key filters the candidates before
+the tag does, so an untagged instance publishing something else does not
+shadow the tagged one publishing this. If no untagged instance exports
+it, and exactly one tagged instance does, it resolves to that one. If
+two do, it is `plugin_export_ambiguous` — deliberately diverging from
+seneca's silent last-wins, because with multi-instance as a headline
+feature, an ambiguous alias is a defect waiting for production.
 
 Exports of a `loaded` (not live) instance are **visible**. They are
 declared in `define`, they are data, and hiding them would make the

@@ -25,7 +25,7 @@ type Exported struct {
 }
 
 func ResolveExport(spec string, exported []Exported) (any, error) {
-	cut := strings.Index(spec, "/")
+	cut := strings.LastIndex(spec, "/")
 	if -1 == cut {
 		return nil, Fail("plugin_export_ambiguous", "export spec needs a key: "+spec,
 			map[string]any{"spec": spec})

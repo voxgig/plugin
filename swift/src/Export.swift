@@ -25,7 +25,7 @@ public enum Export {
     }
 
     public static func resolveExport(_ spec: String, _ exported: [Exported]) throws -> Value {
-        guard let cut = spec.firstIndex(of: "/") else {
+        guard let cut = spec.lastIndex(of: "/") else {
             throw Types.fail(
                 "plugin_export_ambiguous", "export spec needs a key: \(spec)",
                 ["spec": .str(spec)]

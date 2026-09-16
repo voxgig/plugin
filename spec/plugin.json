@@ -8176,6 +8176,98 @@
                 "result": "probe$a"
               }
             }
+          },
+          {
+            "doc": true,
+            "id": "export/key#scoped",
+            "in": [
+              {
+                "do": "define",
+                "name": "@acme/probe",
+                "probe": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "@acme/probe$a"
+              },
+              {
+                "do": "export",
+                "key": "@acme/probe$a/client"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "@acme/probe$a"
+              }
+            }
+          },
+          {
+            "id": "export/key#scoped-untagged",
+            "in": [
+              {
+                "do": "define",
+                "name": "@acme/probe",
+                "probe": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "@acme/probe"
+              },
+              {
+                "do": "export",
+                "key": "@acme/probe/client"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "@acme/probe"
+              }
+            }
+          },
+          {
+            "id": "export/key#scoped-alias",
+            "in": [
+              {
+                "do": "define",
+                "name": "@acme/probe",
+                "probe": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "@acme/probe$a"
+              },
+              {
+                "do": "export",
+                "key": "@acme/probe/client"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "@acme/probe$a"
+              }
+            }
+          },
+          {
+            "in": [
+              {
+                "do": "define",
+                "name": "@acme/probe",
+                "probe": "probe"
+              },
+              {
+                "do": "ready",
+                "ref": "@acme/probe$a"
+              },
+              {
+                "do": "export",
+                "key": "@acme/probe$a/nope"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
           }
         ]
       }

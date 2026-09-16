@@ -18,7 +18,7 @@ object Export {
   final case class Exported(ref: String, key: String, value: Value)
 
   def resolveExport(spec: String, exported: List[Exported]): Value = {
-    val cut = spec.indexOf('/')
+    val cut = spec.lastIndexOf('/')
     if (cut < 0) {
       Types.fail(
         "plugin_export_ambiguous", "export spec needs a key: " + spec,

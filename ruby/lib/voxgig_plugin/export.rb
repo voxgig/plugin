@@ -17,7 +17,7 @@ require_relative 'ref'
 
 module VoxgigPlugin
   def self.resolve_export(spec, exported)
-    cut = spec.index('/')
+    cut = spec.rindex('/')
     if cut.nil?
       fail_with('plugin_export_ambiguous', "export spec needs a key: #{spec}",
                 { 'spec' => spec })

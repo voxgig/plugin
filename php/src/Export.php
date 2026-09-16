@@ -24,7 +24,7 @@ namespace Voxgig\Plugin;
  */
 function resolve_export(string $spec, array $exported)
 {
-    $cut = strpos($spec, '/');
+    $cut = strrpos($spec, '/');
     if (false === $cut) {
         fail_with('plugin_export_ambiguous', 'export spec needs a key: ' . $spec,
                   ['spec' => $spec]);

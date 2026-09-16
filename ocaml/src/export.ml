@@ -15,7 +15,9 @@ module V = Value
    rather than a null Value. *)
 let resolveexport spec exported =
   let s = if V.is_str spec then V.as_str spec else "" in
-  match String.index_opt s '/' with
+  (* THE LAST `/`, not the first: a NAME may hold slashes (§4), a key
+     may not. *)
+  match String.rindex_opt s '/' with
   | None ->
     Types.fail "plugin_export_ambiguous"
       ("export spec needs a key: " ^ s)

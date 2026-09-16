@@ -34,7 +34,7 @@ namespace Voxgig.Plugin
 
         public static object ResolveExport(string spec, List<Exported> exported)
         {
-            var cut = spec.IndexOf('/');
+            var cut = spec.LastIndexOf('/');
             if (cut < 0)
             {
                 Types.Fail("plugin_export_ambiguous", "export spec needs a key: " + spec,

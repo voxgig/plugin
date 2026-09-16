@@ -22,7 +22,7 @@ our @EXPORT_OK = qw(resolve_export);
 
 sub resolve_export {
     my ($spec, $exported) = @_;
-    my $cut = index($spec, '/');
+    my $cut = rindex($spec, '/');
     fail_with('plugin_export_ambiguous', "export spec needs a key: $spec",
               { spec => $spec })
         if $cut < 0;

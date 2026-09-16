@@ -22,8 +22,12 @@ def resolveExport (spec exported : Value) : PluginM (Option Value) := do
   if !cs.contains '/' then
     raise "plugin_export_ambiguous" ("export spec needs a key: " ++ s)
       (details1 "spec" (.str s))
-  let head := String.mk (cs.takeWhile (· != '/'))
-  let key := String.mk ((cs.dropWhile (· != '/')).drop 1)
+  -- THE LAST `/`, not the first: a NAME may hold slashes (§4), a key may
+  -- not. `takeWhile` stops at the first, so the split is taken on the
+  -- REVERSED list and both halves are put back the right way round.
+  let rcs := cs.reverse
+  let head := String.mk ((rcs.dropWhile (· != '/')).drop 1).reverse
+  let key := String.mk (rcs.takeWhile (· != '/')).reverse
 
   -- A fully qualified ref: exactly one answer or none.
   --

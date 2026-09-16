@@ -20,8 +20,11 @@ defmodule Voxgig.Plugin.Export do
   never a corpus value, so it uses atom keys where the data does not.
   """
   def resolve_export(spec, exported) do
-    case :binary.match(spec, "/") do
-      :nomatch ->
+    # THE LAST `/`, not the first: a NAME may hold slashes (§4), a key may
+    # not. `:binary.matches` returns every hit, so the last one is the
+    # split; `:binary.match` returns only the first.
+    case List.last(:binary.matches(spec, "/")) do
+      nil ->
         Types.fail("plugin_export_ambiguous", "export spec needs a key: #{spec}",
                    %{"spec" => spec})
 

@@ -23,7 +23,7 @@ class Exported {
 }
 
 dynamic resolveExport(String spec, List<Exported> exported) {
-  final cut = spec.indexOf('/');
+  final cut = spec.lastIndexOf('/');
   if (cut < 0) {
     t.fail('plugin_export_ambiguous', 'export spec needs a key: $spec',
         {'spec': spec});
