@@ -213,7 +213,14 @@ function M.probes()
         i:export(k, exports[k])
       end
     end,
-    activate = function(i) i:acquire() end,
+    activate = function(i)
+      i:acquire()
+      -- WHICH provider this instance took, when the entry asks. See typescript/test/driver.ts.
+      local capof = T.getv(i:options(), 'capof')
+      if capof then
+        i:export('cap', i:capability(capof))
+      end
+    end,
   }
 
   out[#out + 1] = {

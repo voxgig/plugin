@@ -138,8 +138,16 @@ def probes():
         for key in sorted(i.options.get('exports') or {}):
             i.export(key, i.options['exports'][key])
 
+    def dep_activate(i):
+        i.acquire()
+        # WHICH provider this instance took, when the entry asks. See
+        # typescript/test/driver.ts: the host's own `capability` answers
+        # with the RANKING, not with this instance's choice.
+        if i.options.get('capof'):
+            i.export('cap', i.capability(i.options['capof']))
+
     dep = {'name': 'dep', 'define': dep_define,
-           'activate': lambda i: i.acquire()}
+           'activate': dep_activate}
 
     def provider_define(i):
         i.state['count'] = 0

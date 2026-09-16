@@ -207,7 +207,14 @@ object Driver {
         val exports = opt(i, "exports")
         exports.keys.foreach(k => i.`export`(k, exports.at(k)))
       },
-      activate = Some((i: Inst) => { i.acquire(); () })
+      activate = Some((i: Inst) => {
+        i.acquire()
+        // WHICH provider this instance took, when the entry asks. See typescript/test/driver.ts.
+        i.options.at("capof").asString.foreach { capof =>
+          i.`export`("cap", i.capability(capof).map(VStr(_)).getOrElse(VNull))
+        }
+        ()
+      })
     )
 
     val provider = Definition(

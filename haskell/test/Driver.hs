@@ -203,6 +203,16 @@ depDefine i = do
   exports <- opt i "exports"
   when (isMap exports) $ forM_ (vkeys exports) $ \k -> instExport i k (vget exports k)
 
+-- | WHICH provider this instance took, when the entry asks. See
+-- typescript/test/driver.ts.
+depActivate :: Inst -> IO ()
+depActivate i = do
+  _ <- instAcquire i
+  capof <- opt i "capof"
+  when (isStr capof) $ do
+    picked <- instCapability i (asStr capof)
+    instExport i "cap" (maybe VNull VStr picked)
+
 providerDefine :: Inst -> IO ()
 providerDefine i = do
   modifyIORef' (iState i) (\st -> vset st "count" (VNum 0))
@@ -240,7 +250,7 @@ probeDef name = case name of
       , dActivate = Just (\i -> greedyCapture i >> greedyBindAt i "activate")
       , dDeactivate = Just (`greedyBindAt` "deactivate")
       }
-  "dep" -> base {dDefine = Just depDefine}
+  "dep" -> base {dDefine = Just depDefine, dActivate = Just depActivate}
   "provider" -> base {dDefine = Just providerDefine}
   _ -> base
   where

@@ -211,6 +211,12 @@ class Driver
             },
             'activate' => static function (Inst $i): void {
                 $i->acquire();
+                // WHICH provider this instance took, when the entry asks.
+                // See typescript/test/driver.ts.
+                $capof = $i->options()['capof'] ?? null;
+                if (null !== $capof) {
+                    $i->export('cap', $i->capability($capof));
+                }
             },
         ];
 

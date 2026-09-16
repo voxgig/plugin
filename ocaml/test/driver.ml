@@ -205,6 +205,20 @@ let depdefine (i : inst) =
   if V.is_map exports then
     List.iter (fun k -> Host.exportvalue i k (V.get exports k)) (V.keys exports)
 
+(* WHICH provider this instance took, when the entry asks. See
+   typescript/test/driver.ts.
+
+   `dep` has no `acquire` in this port and gains none here: the entries
+   that read `cap` assert `result`, never `open`, so adding one would
+   change what every other `dep` entry sees for nothing. *)
+let depactivate (i : inst) =
+  let capof = opt i "capof" in
+  if V.is_str capof then
+    Host.exportvalue i "cap"
+      (match Host.instcapability i (V.as_str capof) with
+       | None -> V.vnull
+       | Some r -> V.vstr r)
+
 let providerdefine (i : inst) =
   V.set i.istate "count" (V.vnum 0.0);
   let point = opt i "point" in
@@ -269,7 +283,7 @@ and probedef name =
       define = Some greedydefine;
       activate = Some (fun i -> greedycapture i; greedybindat i "activate");
       deactivate = Some (fun i -> greedybindat i "deactivate") }
-  | "dep" -> { base with define = Some depdefine }
+  | "dep" -> { base with define = Some depdefine; activate = Some depactivate }
   | "provider" -> { base with define = Some providerdefine }
   | _ -> base
 

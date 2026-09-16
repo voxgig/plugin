@@ -134,7 +134,12 @@ module Driver
           i.export(k, i.options['exports'][k])
         end
       end,
-      'activate' => ->(i) { i.acquire }
+      'activate' => lambda do |i|
+        i.acquire
+        # WHICH provider this instance took, when the entry asks. See
+        # typescript/test/driver.ts.
+        i.export('cap', i.capability(i.options['capof'])) if i.options['capof']
+      end
     }
 
     provider = {

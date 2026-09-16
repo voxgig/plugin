@@ -159,7 +159,12 @@
               (declare-provides i)
               (let [exports (or (opt i "exports") {})]
                 (doseq [k (t/sorted-keys exports)] (h/export! i k (t/get exports k)))))
-   "activate" (fn [i] (h/acquire! i))})
+   "activate" (fn [i]
+                (h/acquire! i)
+                ;; WHICH provider this instance took, when the entry asks.
+                ;; See typescript/test/driver.ts.
+                (when-let [capof (opt i "capof")]
+                  (h/export! i "cap" (h/inst-capability i capof))))})
 
 (defn- provider []
   {"name" "provider"

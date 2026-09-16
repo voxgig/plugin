@@ -137,6 +137,25 @@ public final class Inst {
     entry.exports.put(key, value);
   }
 
+  /**
+   * WHICH provider this instance is bound to for {@code name} (§11.1), as
+   * a ref, or null when nothing provides it.
+   *
+   * <p>The host's own {@code capability} answers with the live providers
+   * RANKED, not with the one THIS instance took; §11.4's reluctant
+   * rebinding makes those differ. A REF, not the instance: every port can
+   * return a string and a corpus entry can assert on one. The selection
+   * is REMEMBERED, because this is the instance asking.
+   */
+  public String capability(String name) {
+    for (Object req : Depend.requirements(entry.options)) {
+      if (name.equals(Types.get(req, "name"))) {
+        return host.chosen(entry, req, true);
+      }
+    }
+    return null;
+  }
+
   /** What this instance can do for others (§11.1). */
   public void provides(Object prov) {
     entry.provides.add(prov);

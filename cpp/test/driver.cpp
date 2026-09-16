@@ -185,6 +185,18 @@ static void depdefine(Inst& i) {
   }
 }
 
+/* WHICH provider this instance took, when the entry asks. See
+ * typescript/test/driver.ts.
+ *
+ * `dep` has no `acquire` in this port and gains none here: the entries
+ * that read `cap` assert `result`, never `open`, so adding one would
+ * change what every other `dep` entry sees for nothing. */
+static void depactivate(Inst& i) {
+  V capof = opt(i, "capof");
+  if (!isstr(capof)) return;
+  i.exportvalue("cap", i.capability(asstr(capof)));
+}
+
 static void providerdefine(Inst& i) {
   set(i.state(), "count", vnum(0));
   Inst* self = &i;
@@ -236,6 +248,7 @@ static DefinitionPtr probedef(const std::string& name) {
   }
   else if ("dep" == name) {
     d->define = depdefine;
+    d->activate = depactivate;
   }
   else if ("provider" == name) {
     d->define = providerdefine;

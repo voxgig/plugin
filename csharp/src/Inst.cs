@@ -137,6 +137,25 @@ namespace Voxgig.Plugin
         }
 
         /// What this instance can do for others (§11.1).
+        /// <summary>WHICH provider this instance is bound to for
+        /// <c>name</c> (§11.1), as a ref, or null when nothing provides
+        /// it. The host's own Capability answers with the live providers
+        /// RANKED, not with the one THIS instance took; §11.4's
+        /// reluctant rebinding makes those differ. A REF, not the
+        /// instance. The selection is REMEMBERED, because this is the
+        /// instance asking.</summary>
+        public string Capability(string name)
+        {
+            foreach (var req in Depend.Requirements(entry.Options))
+            {
+                if (name == Types.Str(Types.Get(req, "name")))
+                {
+                    return HostRef.InstCapability(entry, req);
+                }
+            }
+            return null;
+        }
+
         public void Provides(object prov)
         {
             entry.Provides.Add(prov);

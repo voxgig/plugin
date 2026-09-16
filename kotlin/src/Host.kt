@@ -146,6 +146,22 @@ class Inst(val host: Host, private val entry: Entry) {
     }
 
     /** What this instance can do for others (section 11.1). */
+    /** WHICH provider this instance is bound to for [name] (§11.1), as a
+     * ref, or null when nothing provides it.
+     *
+     * The host's own `capability` answers with the live providers
+     * RANKED, not with the one THIS instance took; §11.4's reluctant
+     * rebinding makes those differ. A REF, not the instance. The
+     * selection is REMEMBERED, because this is the instance asking. */
+    fun capability(name: String): String? {
+        for (req in Depend.requirements(entry.options)) {
+            if (name == Types.get(req, "name")) {
+                return host.instcapability(entry, req)
+            }
+        }
+        return null
+    }
+
     fun provides(prov: Any?) {
         entry.provides.add(prov)
     }
@@ -622,6 +638,9 @@ class Host @JvmOverloads constructor(options: Any? = null) {
      * `remember` is false for the questions asked ABOUT an instance rather than
      * BY it: introspection must not create a binding.
      */
+    /** The instance api's way onto [chosen], which is private. */
+    internal fun instcapability(entry: Entry, req: Any?): String? = chosen(entry, req, true)
+
     private fun chosen(entry: Entry, req: Any?, remember: Boolean): String? {
         val cands = providersOf(req)
         if (cands.isEmpty()) return null

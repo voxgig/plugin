@@ -113,6 +113,7 @@ void inst_bind(Inst *i, const char *point, HookFn hook, ChainFn chain,
                void *ctx, Value *band);
 void inst_export(Inst *i, const char *key, Value *value);
 void inst_provides(Inst *i, Value *p);
+const char *inst_capability(Inst *i, const char *name);
 /* Returns a handle a plugin can hand back early. The scope still holds
  * the entry and unwinding it twice is a no-op — releasing early must
  * not make teardown wrong. */

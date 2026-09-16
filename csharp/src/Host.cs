@@ -646,6 +646,13 @@ namespace Voxgig.Plugin
         /// ABOUT an instance rather than BY it: introspection must not
         /// create a binding.
         /// </summary>
+        /// <summary>The instance api's way onto Chosen, which is
+        /// private.</summary>
+        internal string InstCapability(Entry entry, object req)
+        {
+            return Chosen(entry, req, true);
+        }
+
         private string Chosen(Entry entry, object req, bool remember)
         {
             var cands = ProvidersOf(req);

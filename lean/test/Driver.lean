@@ -149,6 +149,19 @@ def depDefine (i : InstApi) : PluginM Unit := do
   if exports.isMap then
     for k in exports.keys do i.exportValue k (exports.get k)
 
+/-- WHICH provider this instance took, when the entry asks. See
+typescript/test/driver.ts.
+
+`dep` has no `acquire` in this port and gains none here: the entries
+that read `cap` assert `result`, never `open`, so adding one would
+change what every other `dep` entry sees for nothing. -/
+def depActivate (i : InstApi) : PluginM Unit := do
+  let capof ← opt i "capof"
+  if !capof.isStr then return
+  match ← i.capability capof.asStr with
+  | some r => i.exportValue "cap" (.str r)
+  | none => i.exportValue "cap" .null
+
 def providerDefine (i : InstApi) : PluginM Unit := do
   i.setState ((← i.getState).set "count" (.num 0.0))
   let point ← opt i "point"
@@ -189,7 +202,8 @@ def probeDef (name : String) : Definition :=
       define := some greedyDefine
       activate := some (fun i => do greedyCapture i; greedyBindAt i "activate")
       deactivate := some (fun i => greedyBindAt i "deactivate") }
-  else if name == "dep" then { base with define := some depDefine }
+  else if name == "dep" then
+    { base with define := some depDefine, activate := some depActivate }
   else if name == "provider" then { base with define := some providerDefine }
   else base
 

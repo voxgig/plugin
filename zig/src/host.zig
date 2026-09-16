@@ -421,6 +421,22 @@ fn chosen(h: *Host, e: *Inst, req: ?*v.Value, remember: bool) ?[]const u8 {
     return first;
 }
 
+/// WHICH provider this instance is bound to for `name` (§11.1), as a
+/// ref, or null when nothing provides it.
+///
+/// The host's own `capability` answers with the live providers RANKED,
+/// not with the one THIS instance took; §11.4's reluctant rebinding
+/// makes those differ. A REF, not the instance. The selection is
+/// REMEMBERED, because this is the instance asking.
+pub fn instcapability(e: *Inst, name: []const u8) ?[]const u8 {
+    for (v.items(dep.requirements(e.options))) |r| {
+        const rn = v.get(r, "name");
+        if (!v.isStr(rn) or !std.mem.eql(u8, v.asStr(rn), name)) continue;
+        return chosen(e.owner, e, r, true);
+    }
+    return null;
+}
+
 /// The instance currently SELECTED for each of this one's
 /// restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
 /// capability (§11.1): the selected one going away restarts a `static`

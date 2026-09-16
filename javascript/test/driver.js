@@ -132,7 +132,14 @@ function probes() {
         for (const k of Object.keys(i.options.exports)) i.export(k, i.options.exports[k])
       }
     },
-    activate: (i) => { i.acquire() },
+    activate: (i) => {
+      i.acquire()
+      // WHICH provider this instance took, when the entry asks. See
+      // typescript/test/driver.ts.
+      if (i.options && i.options.capof) {
+        i.export('cap', i.capability(i.options.capof))
+      }
+    },
   }
 
   const provider = {

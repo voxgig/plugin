@@ -96,6 +96,7 @@ class Inst {
   void bindchain(const std::string& point, ChainFn chain, const V& band);
   void exportvalue(const std::string& key, const V& value);
   void provides(const V& p);
+  V capability(const std::string& name) const;
   /* Returns a handle a plugin can hand back early. The scope still
    * holds the entry and unwinding it twice is a no-op — releasing early
    * must not make teardown wrong. */

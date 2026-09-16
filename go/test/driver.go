@@ -229,7 +229,23 @@ func Probes() []plugin.Definition {
 			}
 			return nil
 		},
-		Activate: func(i *plugin.Inst) error { _, err := i.Acquire(); return err },
+		Activate: func(i *plugin.Inst) error {
+			if _, err := i.Acquire(); nil != err {
+				return err
+			}
+			// WHICH provider this instance took, when the entry asks.
+			// See typescript/test/driver.ts: the host's own Capability
+			// answers with the RANKING, not with this instance's choice.
+			// "" is absent, and the corpus asserts absent as null.
+			if name, ok := i.Options()["capof"].(string); ok {
+				if ref := i.Capability(name); "" == ref {
+					i.Export("cap", nil)
+				} else {
+					i.Export("cap", ref)
+				}
+			}
+			return nil
+		},
 	}
 
 	provider := plugin.Definition{

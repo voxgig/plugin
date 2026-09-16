@@ -3402,6 +3402,156 @@ primary: depend: {
   ]
 
 
+  # `inst.capability(name)` — WHICH provider this instance is bound to.
+  bound: set: [
+    # WHICH PROVIDER THIS INSTANCE TOOK (§11.1). The host's own
+    # `capability` answers with the live providers RANKED; this answers
+    # with the one THIS instance is bound to, which §11.4's reluctant
+    # rebinding makes a different question. `dep` exports the answer as
+    # `cap` when `capof` names one of its requirements.
+    {
+      id: 'depend/bound#selected', doc: true
+      in: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['clock'], capof: 'clock' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$p' } }
+    }
+    # RANK DECIDES WHICH ONE, and the answer is the instance's, not the
+    # first declared: `dep$hi` provides version 2 and wins over `dep$lo`
+    # at version 1 though it was declared second.
+    {
+      id: 'depend/bound#ranked'
+      in: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep'
+          options: { provides: [ { name: 'clock', version: '1.0.0' } ] } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep'
+          options: { provides: [ { name: 'clock', version: '2.0.0' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['clock'], capof: 'clock' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$hi' } }
+    }
+    # AN OPTIONAL REQUIREMENT WITH NOBODY PROVIDING IT is the case §11.3
+    # names: a plugin that works without metrics and uses metrics when
+    # it is there has to be able to ask, and gets absent rather than a
+    # refusal.
+    {
+      id: 'depend/bound#optional-absent'
+      in: [
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['metrics'], optional: ['metrics'], capof: 'metrics' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: '__NULL__' } }
+    }
+    # A NAME THIS INSTANCE DOES NOT REQUIRE is absent too, rather than
+    # answering with whoever happens to provide it: the question is what
+    # THIS instance is bound to.
+    {
+      id: 'depend/bound#not-required'
+      in: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['other'], optional: ['other'], capof: 'clock' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: '__NULL__' } }
+    }
+    # THE NAME IS READ, not assumed. An instance with TWO satisfied
+    # requirements is the only shape that can tell a lookup from a
+    # lookup-shaped `requirements[0]`, and every other entry here has
+    # exactly one — so the shortest wrong implementation passed the lot
+    # of them. Both directions, because taking the LAST is as wrong as
+    # taking the first and neither entry alone says so.
+    {
+      id: 'depend/bound#named-second'
+      in: [
+        { do: 'ready', ref: 'dep$o', definition: 'dep', options: { provides: [ { name: 'other' } ] } }
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['other', 'clock'], capof: 'clock' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$p' } }
+    }
+    {
+      id: 'depend/bound#named-first'
+      in: [
+        { do: 'ready', ref: 'dep$o', definition: 'dep', options: { provides: [ { name: 'other' } ] } }
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['clock', 'other'], capof: 'clock' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$p' } }
+    }
+    # A REF REQUIREMENT ANSWERS WITH THE REF (§11.1's "a ref satisfies
+    # too"), and this is the pair that makes the instance-side question
+    # a DIFFERENT question rather than a spelling of the host's. The
+    # next entry asks `host.capability` for the same name and gets
+    # NOTHING: a ref is not a declared capability, so the host has no
+    # provider record to rank. Answering this one by ranking, the
+    # shortest wrong implementation there is, passes every other entry
+    # in this group.
+    {
+      id: 'depend/bound#by-ref', doc: true
+      in: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['dep$p'], capof: 'dep$p' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$p' } }
+    }
+    {
+      id: 'depend/bound#by-ref-host-disagrees'
+      in: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep' }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['dep$p'], capof: 'dep$p' } }
+        { do: 'capability', name: 'dep$p' }
+      ]
+      match: { out: { result: [] } }
+    }
+    # AND THEY PART COMPANY THE OTHER WAY TOO, which is §11.4's
+    # reluctance seen from the outside: `dep$c` binds `dep$lo`, then
+    # `dep$hi` arrives outranking it, and `dep$c` is NOT re-bound — so
+    # what this instance took and what the host ranks first are two
+    # different refs at the same instant. The next entry is the same
+    # run, asking the host.
+    {
+      id: 'depend/bound#reluctant', doc: true
+      in: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep'
+          options: { provides: [ { name: 'clock', version: '1.0.0' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['clock'], capof: 'clock' } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep'
+          options: { provides: [ { name: 'clock', version: '2.0.0' } ] } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$lo' } }
+    }
+    {
+      id: 'depend/bound#reluctant-host-ranks'
+      in: [
+        { do: 'ready', ref: 'dep$lo', definition: 'dep'
+          options: { provides: [ { name: 'clock', version: '1.0.0' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['clock'], capof: 'clock' } }
+        { do: 'ready', ref: 'dep$hi', definition: 'dep'
+          options: { provides: [ { name: 'clock', version: '2.0.0' } ] } }
+        { do: 'capability', name: 'clock' }
+      ]
+      match: { out: { result: ['dep$hi', 'dep$lo'] } }
+    }
+  ]
+
+
   # A REF SATISFIES TOO (§11.1), AND THE COMPARISON IS CANONICAL
   # (§4 rule 5).
   #

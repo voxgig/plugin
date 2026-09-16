@@ -4930,6 +4930,434 @@
           }
         ]
       },
+      "bound": {
+        "set": [
+          {
+            "doc": true,
+            "id": "depend/bound#selected",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$p"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#ranked",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock",
+                      "version": "1.0.0"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock",
+                      "version": "2.0.0"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$hi"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#optional-absent",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "metrics",
+                  "optional": [
+                    "metrics"
+                  ],
+                  "requires": [
+                    "metrics"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#not-required",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "optional": [
+                    "other"
+                  ],
+                  "requires": [
+                    "other"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "__NULL__"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#named-second",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "other"
+                    }
+                  ]
+                },
+                "ref": "dep$o"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "other",
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$p"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#named-first",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "other"
+                    }
+                  ]
+                },
+                "ref": "dep$o"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "clock",
+                    "other"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$p"
+              }
+            }
+          },
+          {
+            "doc": true,
+            "id": "depend/bound#by-ref",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "dep$p",
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$p"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#by-ref-host-disagrees",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "dep$p",
+                  "requires": [
+                    "dep$p"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "capability",
+                "name": "dep$p"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": []
+              }
+            }
+          },
+          {
+            "doc": true,
+            "id": "depend/bound#reluctant",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock",
+                      "version": "1.0.0"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock",
+                      "version": "2.0.0"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "dep$lo"
+              }
+            }
+          },
+          {
+            "id": "depend/bound#reluctant-host-ranks",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock",
+                      "version": "1.0.0"
+                    }
+                  ]
+                },
+                "ref": "dep$lo"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock",
+                      "version": "2.0.0"
+                    }
+                  ]
+                },
+                "ref": "dep$hi"
+              },
+              {
+                "do": "capability",
+                "name": "clock"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": [
+                  "dep$hi",
+                  "dep$lo"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "byref": {
         "set": [
           {

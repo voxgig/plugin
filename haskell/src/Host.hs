@@ -389,6 +389,21 @@ chosen h e req remember = do
           when remember $ modifyIORef' (iSelected e) (\m -> vset m name (VStr first))
           return (Just first)
 
+-- | WHICH provider this instance is bound to for @name@ (§11.1), as a
+-- ref, or 'Nothing' when nothing provides it.
+--
+-- The host's own @capability@ answers with the live providers RANKED,
+-- not with the one THIS instance took; §11.4's reluctant rebinding
+-- makes those differ. A REF, not the instance. The selection is
+-- REMEMBERED, because this is the instance asking.
+instCapability :: Inst -> String -> IO (Maybe String)
+instCapability e name = do
+  opts <- readIORef (iOptions e)
+  let match r = isStr (vget r "name") && asStr (vget r "name") == name
+  case filter match (vitems (requirements opts)) of
+    [] -> return Nothing
+    (req : _) -> chosen (iOwner e) e req True
+
 -- | The instance currently SELECTED for each of this one's
 -- restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
 -- capability (§11.1): the selected one going away restarts a @static@

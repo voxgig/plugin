@@ -68,6 +68,7 @@ structure InstApi where
   bindChain : String → ((Value → PluginM Value) → Value → PluginM Value) → Value → PluginM Unit
   exportValue : String → Value → PluginM Unit
   provides : Value → PluginM Unit
+  capability : String → PluginM (Option String)
   /-- Answers a handle a plugin can hand back early. The scope still
   holds the entry and unwinding it twice is a no-op — releasing early
   must not make teardown wrong. -/

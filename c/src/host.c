@@ -418,6 +418,29 @@ void inst_export(Inst *e, const char *key, Value *value) {
 
 void inst_provides(Inst *e, Value *p) { vpush(e->provides, p); }
 
+/* Defined with the rest of §11.4's selection, below; `inst_capability`
+ * is the one caller that comes before it. */
+static const char *chosen(Host *h, Inst *e, Value *req, bool remember);
+
+/* WHICH provider this instance is bound to for `name` (§11.1), as a ref,
+ * or NULL when nothing provides it.
+ *
+ * The host's own `capability` answers with the live providers RANKED,
+ * not with the one THIS instance took; §11.4's reluctant rebinding makes
+ * those differ. A REF, not the instance. The selection is REMEMBERED,
+ * because this is the instance asking. */
+const char *inst_capability(Inst *e, const char *name) {
+  Value *reqs = requirements(e->options);
+  for (size_t i = 0; i < vlen(reqs); i++) {
+    Value *r = vat(reqs, i);
+    const char *rn = vasstr(vget(r, "name"));
+    if (NULL != rn && 0 == strcmp(rn, name)) {
+      return chosen(inst_host(e), e, r, true);
+    }
+  }
+  return NULL;
+}
+
 /* The scope entry carries the inner host as its context — C's stand-in
  * for the closure every other port writes here. */
 static void closeinner(void *ctx) { host_close((Host *)ctx); }

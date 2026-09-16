@@ -160,7 +160,15 @@ defmodule Driver do
         exports = opt(i, "exports") || %{}
         Enum.each(Types.keys(exports), &Inst.export(i, &1, Types.get(exports, &1)))
       end,
-      "activate" => fn i -> Inst.acquire(i) end}
+      "activate" => fn i ->
+        Inst.acquire(i)
+        # WHICH provider this instance took, when the entry asks. See
+        # typescript/test/driver.ts.
+        case opt(i, "capof") do
+          nil -> :ok
+          capof -> Inst.export(i, "cap", Inst.capability(i, capof))
+        end
+      end}
   end
 
   defp provider do

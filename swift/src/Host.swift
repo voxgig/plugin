@@ -167,6 +167,21 @@ public final class Inst {
         entry.exports[key] = value
     }
 
+    /// WHICH provider this instance is bound to for `name` (section
+    /// 11.1), as a ref, or nil when nothing provides it.
+    ///
+    /// The host's own `capability` answers with the live providers
+    /// RANKED, not with the one THIS instance took; section 11.4's
+    /// reluctant rebinding makes those differ. A REF, not the instance.
+    /// The selection is REMEMBERED, because this is the instance asking.
+    public func capability(_ name: String) -> String? {
+        for req in Depend.requirements(entry.options)
+        where req.at("name").asString == name {
+            return host.chosen(entry, req, true)
+        }
+        return nil
+    }
+
     /// What this instance can do for others (section 11.1).
     public func provides(_ prov: Value) {
         entry.provides.append(prov)

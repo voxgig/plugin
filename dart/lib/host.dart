@@ -146,6 +146,22 @@ class Inst {
   void export(String key, dynamic value) => _entry.exports[key] = value;
 
   /// What this instance can do for others (section 11.1).
+  /// WHICH provider this instance is bound to for [name] (§11.1), as a
+  /// ref, or null when nothing provides it.
+  ///
+  /// The host's own `capability` answers with the live providers RANKED,
+  /// not with the one THIS instance took; §11.4's reluctant rebinding
+  /// makes those differ. A REF, not the instance. The selection is
+  /// REMEMBERED, because this is the instance asking.
+  String? capability(String name) {
+    for (final req in dep.requirements(_entry.options)) {
+      if (name == req['name']) {
+        return host.instcapability(_entry, req);
+      }
+    }
+    return null;
+  }
+
   void provides(dynamic prov) => _entry.provides.add(prov);
 
   /// Where this binding landed (section 6.6) - the plugin-side counterpart
@@ -582,6 +598,9 @@ class Host {
   ///
   /// `remember` is false for the questions asked ABOUT an instance rather
   /// than BY it: introspection must not create a binding.
+  /// The instance api's way onto [_chosen], which is private.
+  String? instcapability(Entry entry, dynamic req) => _chosen(entry, req, true);
+
   String? _chosen(Entry entry, dynamic req, bool remember) {
     final cands = _providersOf(req);
     if (cands.isEmpty) return null;

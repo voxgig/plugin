@@ -232,6 +232,21 @@ def chosen (h : HostState) (e : InstState) (req : Value) (remember : Bool)
   if remember then e.selected.set ((← e.selected.get).set name (.str first))
   return some first
 
+/-- WHICH provider this instance is bound to for `name` (§11.1), as a
+ref, or `none` when nothing provides it.
+
+The host's own `capability` answers with the live providers RANKED, not
+with the one THIS instance took; §11.4's reluctant rebinding makes those
+differ. A REF, not the instance. The selection is REMEMBERED, because
+this is the instance asking. -/
+def instCapability (h : HostState) (e : InstState) (name : String)
+    : PluginM (Option String) := do
+  for r in (requirements (← e.options.get)).items do
+    let rn := r.get "name"
+    if !rn.isStr || rn.asStr != name then continue
+    return ← chosen h e r true
+  return none
+
 /-- The instance currently SELECTED for each of this one's
 restart-causing requirements. A BINDING IS TO AN INSTANCE, not to a
 capability (§11.1): the selected one going away restarts a `static`

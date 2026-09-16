@@ -215,6 +215,18 @@ pub fn probes() -> Vec<Definition> {
     }));
     dep.activate = Some(Rc::new(|i: &Inst| {
         i.acquire()?;
+        // WHICH provider this instance took, when the entry asks. See
+        // typescript/test/driver.ts.
+        let capof = i.options().get("capof");
+        if let Some(name) = capof.as_str() {
+            i.export(
+                "cap",
+                match i.capability(name) {
+                    Some(r) => Value::str(&r),
+                    None => Value::Null,
+                },
+            );
+        }
         Ok(())
     }));
     out.push(dep);

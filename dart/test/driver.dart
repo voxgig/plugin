@@ -199,7 +199,15 @@ List<dynamic> probes() {
         i.export(k, p.get(exports, k));
       }
     },
-    'activate': (p.Inst i) => i.acquire(),
+    'activate': (p.Inst i) {
+      i.acquire();
+      // WHICH provider this instance took, when the entry asks. See
+      // typescript/test/driver.ts.
+      final capof = _opt(i, 'capof');
+      if (capof is String) {
+        i.export('cap', i.capability(capof));
+      }
+    },
   };
 
   final provider = {

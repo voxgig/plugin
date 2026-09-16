@@ -211,7 +211,18 @@ enum Driver {
                 let exports = opt(i, "exports")
                 for k in exports.keys { i.export(k, exports.at(k)) }
             },
-            activate: { i in _ = try i.acquire() }
+            activate: { i in
+                _ = try i.acquire()
+                // WHICH provider this instance took, when the entry asks.
+                // See typescript/test/driver.ts.
+                if let capof = opt(i, "capof").asString {
+                    if let picked = i.capability(capof) {
+                        i.export("cap", .str(picked))
+                    } else {
+                        i.export("cap", .null)
+                    }
+                }
+            }
         )
 
         let provider = Definition(

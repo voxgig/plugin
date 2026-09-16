@@ -213,7 +213,16 @@ namespace Voxgig.Plugin.Test
                     i.Export(k, Types.Get(exports, k));
                 }
             };
-            dep.Activate = i => i.Acquire();
+            dep.Activate = i =>
+            {
+                i.Acquire();
+                // WHICH provider this instance took, when the entry asks. See typescript/test/driver.ts.
+                var capof = Types.Get(i.Options(), "capof") as string;
+                if (null != capof)
+                {
+                    i.Export("cap", i.Capability(capof));
+                }
+            };
             out_.Add(dep);
 
             var provider = new Definition("provider");

@@ -102,6 +102,19 @@ defmodule Voxgig.Plugin.Inst do
     Host.entry_update(host, ref, &Map.put(&1, "exports", Map.put(&1["exports"], key, value)))
   end
 
+  @doc """
+  WHICH provider this instance is bound to for `name` (section 11.1), as
+  a ref, or nil when nothing provides it.
+
+  The host's own `capability` answers with the live providers RANKED, not
+  with the one THIS instance took; section 11.4's reluctant rebinding
+  makes those differ. A REF, not the instance. The selection is
+  REMEMBERED, because this is the instance asking.
+  """
+  def capability(%__MODULE__{host: host, ref: ref}, name) do
+    Host.instcapability(host, ref, name)
+  end
+
   @doc "What this instance can do for others (section 11.1)."
   def provides(%__MODULE__{host: host, ref: ref}, prov) do
     Host.entry_update(host, ref, &Map.put(&1, "provides", &1["provides"] ++ [prov]))

@@ -176,7 +176,15 @@ sub probes {
             $i->export($_, $exports->{$_}) for sortedkeys($exports);
             return;
         },
-        activate => sub { $_[0]->acquire; return },
+        activate => sub {
+            my ($i) = @_;
+            $i->acquire;
+            # WHICH provider this instance took, when the entry asks.
+            # See typescript/test/driver.ts.
+            my $capof = $i->options->{capof};
+            $i->export('cap', $i->capability($capof)) if defined $capof;
+            return;
+        },
     };
 
     my $provider = {

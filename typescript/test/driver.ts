@@ -150,7 +150,22 @@ export function probes(): Definition[] {
         for (const k of Object.keys(i.options.exports)) i.export(k, i.options.exports[k])
       }
     },
-    activate: (i: any) => { i.acquire() },
+    activate: (i: any) => {
+      i.acquire()
+      // WHICH provider this instance took, when the entry asks for it.
+      // `options.capof` names one of this instance's requirements and
+      // the answer is exported as `cap`, which is the only way a corpus
+      // entry can see `inst.capability` at all: the host's own
+      // `capability` answers with the RANKING, not with the choice this
+      // instance made, and §11.4 makes those differ.
+      //
+      // From `activate` rather than `define`, because the selection is
+      // made at activation — and so a deactivate/reactivate cycle
+      // re-exports whatever the second activation chose.
+      if (i.options && i.options.capof) {
+        i.export('cap', i.capability(i.options.capof))
+      }
+    },
   }
 
   const provider: Definition = {

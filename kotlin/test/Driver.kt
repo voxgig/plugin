@@ -214,7 +214,14 @@ object Driver {
                 val exports = opt(i, "exports")
                 for (k in Types.keys(exports)) i.export(k, Types.get(exports, k))
             },
-            "activate" to { i: Inst -> i.acquire() }
+            "activate" to { i: Inst ->
+                i.acquire()
+                // WHICH provider this instance took, when the entry asks. See typescript/test/driver.ts.
+                val capof = Types.get(i.options, "capof") as? String
+                if (null != capof) {
+                    i.export("cap", i.capability(capof))
+                }
+            }
         )
 
         val provider = mapOf(

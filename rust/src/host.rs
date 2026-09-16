@@ -1527,6 +1527,28 @@ impl Inst {
             .insert(key.to_string(), value);
     }
 
+    /// WHICH provider this instance is bound to for `name` (§11.1), as a
+    /// ref, or None when nothing provides it.
+    ///
+    /// The host's own `capability` answers with the live providers
+    /// RANKED, not with the one THIS instance took; §11.4's reluctant
+    /// rebinding makes those differ. A REF, not the instance: every port
+    /// can return a string and a corpus entry can assert on one. The
+    /// selection is REMEMBERED, because this is the instance asking.
+    pub fn capability(&self, name: &str) -> Option<String> {
+        // THE BORROW ENDS BEFORE `chosen` DOES. `chosen` remembers the
+        // selection, which takes `borrow_mut` on the same entry -- so
+        // reading the requirements inline held a shared borrow across it
+        // and panicked at the write. Rust is the only port that says so.
+        let reqs = requirements(&self.entry.borrow().options);
+        for req in reqs {
+            if req.get("name").as_str() == Some(name) {
+                return self.host.chosen(&self.entry, &req, true);
+            }
+        }
+        None
+    }
+
     /// What this instance can do for others (§11.1).
     pub fn provides(&self, prov: Value) {
         self.entry.borrow_mut().provides.push(prov);

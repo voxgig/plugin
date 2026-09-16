@@ -270,6 +270,21 @@
   (entry-update! (.host i) (.ref i) #(assoc-in % ["exports" k] v))
   nil)
 
+(defn inst-capability
+  "WHICH provider this instance is bound to for `nm` (section 11.1), as a
+  ref, or nil when nothing provides it.
+
+  The host's own `capability` answers with the live providers RANKED, not
+  with the one THIS instance took; section 11.4's reluctant rebinding
+  makes those differ. A REF, not the instance. The selection is
+  REMEMBERED, because this is the instance asking."
+  [^Instance i nm]
+  (let [h (.host i)
+        ref (.ref i)
+        req (first (filter #(= nm (t/get % "name"))
+                           (dep/requirements (field h ref "options"))))]
+    (when (some? req) (chosen h ref req true))))
+
 (defn provides!
   "What this instance can do for others (section 11.1)."
   [^Instance i prov]
