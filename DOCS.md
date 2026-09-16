@@ -218,19 +218,20 @@ export whose value only means something while the instance is live is
 the plugin's to signal, and the convention is a getter closing over
 `inst.state`.
 
-Export for the **application**; provide a **capability** (above) for
-another plugin. The difference is not enforced and is worth keeping
-anyway: a capability is a dependency the host resolves, orders and can
-restart a consumer over, while an export is a value someone asks for by
-name. Reaching for an export to avoid declaring a dependency gets a
-reference the lifecycle knows nothing about.
+Export for the **application**; provide a **capability** (*Depend on
+something*, preceding) for another plugin. The difference is not
+enforced and is worth keeping anyway: a capability is a dependency the
+host resolves, orders, and can restart a consumer over, while an export
+is a value someone asks for by name. Reaching for an export to avoid
+declaring a dependency gets a reference the lifecycle knows nothing
+about.
 
 The worked example is
 [sekreto](https://github.com/voxgig/sekreto)'s mini vault, where each
 provider kind is a definition and the vault is the one that is written
 to as well as read: it exports `provider` for the chain and `vault` for
 the application, and ships a one-line `vaultof(secrets)` over the
-alias rule above.
+preceding alias rule.
 
 ### Hold a resource
 
