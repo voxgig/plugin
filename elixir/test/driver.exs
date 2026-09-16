@@ -62,6 +62,8 @@ defmodule Driver do
         # backwards and make every chain expectation read wrong.
         Inst.bind(i, "c", fn next, v -> "#{opt(i, "wrap") || ":"}#{next.(v)}" end, band)
         Inst.export(i, "client", Inst.ref(i))
+        # A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        Inst.export(i, "mark", "marked")
         # The instance api itself, so the driver's `stray` command can call
         # `release` from OUTSIDE a lifecycle callback.
         Inst.export(i, "inst", i)

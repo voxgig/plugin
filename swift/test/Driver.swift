@@ -113,6 +113,8 @@ enum Driver {
                     return .str(wrap + (inner.asString ?? inner.json))
                 }, band)
                 i.export("client", .str(i.ref))
+                // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+                i.export("mark", .str("marked"))
                 // The instance api itself, so the driver's `stray` command can
                 // call `release` from OUTSIDE a lifecycle callback.
                 i.export("inst", .opaque(i))

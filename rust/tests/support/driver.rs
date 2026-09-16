@@ -73,6 +73,8 @@ pub fn probes() -> Vec<Definition> {
         i.bind("c", chainfn, &band)?;
 
         i.export("client", Value::str(&i.eref));
+        // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        i.export("mark", Value::str("marked"));
         // The instance api itself, so the driver's `stray` command can
         // call `release` from OUTSIDE a lifecycle callback.
         i.export("inst", Value::Opaque(Rc::new(i.clone())));

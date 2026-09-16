@@ -38,6 +38,8 @@ module Driver
         # spell it backwards and make every chain expectation read wrong.
         i.bind('c', ->(nxt, v) { "#{i.options['wrap'] || ':'}#{nxt.call(v)}" }, band)
         i.export('client', i.ref)
+        # A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        i.export('mark', 'marked')
         # The instance api itself, so the driver's `stray` command can
         # call `release` from OUTSIDE a lifecycle callback.
         i.export('inst', i)

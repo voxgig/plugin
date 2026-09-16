@@ -110,6 +110,8 @@ static void probe_define(Inst *i) {
   inst_bind(i, "p", probe_hook, NULL, i, band);
   inst_bind(i, "c", NULL, probe_chain, i, band);
   inst_export(i, "client", vstr(inst_ref(i)));
+  /* A SECOND SCALAR KEY; see typescript/test/driver.ts. */
+  inst_export(i, "mark", vstr("marked"));
   /* The instance api itself, so the driver's `stray` command can call
    * `release` from OUTSIDE a lifecycle callback — which is the only way
    * to exercise §8.3's scope guard. C cannot put a pointer in a Value,

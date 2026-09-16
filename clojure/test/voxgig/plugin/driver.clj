@@ -81,6 +81,8 @@
        ;; backwards and make every chain expectation read wrong.
        (h/bind! i "c" (fn [nxt v] (str (or (opt i "wrap") ":") (nxt v))) band))
      (h/export! i "client" (h/inst-ref i))
+     ;; A SECOND SCALAR KEY; see typescript/test/driver.ts.
+     (h/export! i "mark" "marked")
      ;; The instance api itself, so the driver's `stray` command can call
      ;; `release` from OUTSIDE a lifecycle callback.
      (h/export! i "inst" i)

@@ -65,6 +65,8 @@ func Probes() []plugin.Definition {
 				return err
 			}
 			i.Export("client", i.Ref())
+			// A SECOND SCALAR KEY; see typescript/test/driver.ts.
+			i.Export("mark", "marked")
 			// The instance api itself, so the driver's `stray` command
 			// can call Release from OUTSIDE a lifecycle callback.
 			i.Export("inst", i)

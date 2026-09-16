@@ -91,6 +91,8 @@ static void probedefine(Inst& i) {
   boom(i, "define");
   bindprobe(i);
   i.exportvalue("client", vstr(i.ref()));
+  // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+  i.exportvalue("mark", vstr("marked"));
   /* The instance api itself, so the driver's `stray` command can call
    * `release` from OUTSIDE a lifecycle callback — which is the only way
    * to exercise §8.3's scope guard. The driver looks the instance up by

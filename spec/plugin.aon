@@ -3222,6 +3222,43 @@ primary: export: {
       match: { out: { result: 'probe$a' } }
     }
 
+    # A SECOND KEY OFF ONE INSTANCE, which is what makes the map a MAP.
+    #
+    # Every other entry here reads `client`, so a port whose `exports`
+    # ignored the key and answered with the instance's first export
+    # passed all of them. `probe` exports `client` (its ref), `mark` (a
+    # constant) and `inst` (its own api) -- and `inst` cannot close this,
+    # because it is shaped differently in every port and no entry can
+    # assert on it. A constant can.
+    {
+      id: 'export/key#second-key', doc: true
+      in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe$a/mark' } ]
+      match: { out: { result: 'marked' } }
+    }
+    # BOTH ORDERS, because one of them is what a first-export-wins port
+    # would pass: reading `client` then `mark` must answer `marked`...
+    {
+      id: 'export/key#two-keys'
+      in: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'export', key: 'probe$a/client' }
+        { do: 'export', key: 'probe$a/mark' }
+      ]
+      match: { out: { result: 'marked' } }
+    }
+    # ...and reading `mark` then `client` must answer the ref. A port
+    # answering from position rather than from the key fails one of these
+    # whichever position it picks.
+    {
+      id: 'export/key#two-keys-reversed'
+      in: [
+        { do: 'ready', ref: 'probe$a' }
+        { do: 'export', key: 'probe$a/mark' }
+        { do: 'export', key: 'probe$a/client' }
+      ]
+      match: { out: { result: 'probe$a' } }
+    }
+
     # A SCOPED DEFINITION NAME, and the reason the spec splits at the
     # LAST `/`. §4's `checkname` permits `/` in a NAME — `@acme/store` is
     # legal, and §10.2 resolves a scoped name verbatim — so splitting at
@@ -3292,6 +3329,13 @@ primary: export: {
     {
       in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/client' } ]
       match: { out: { result: 'probe$a' } }
+    }
+    # ...and the alias keys the same way the qualified form does, which
+    # is a second branch and so a second place to get it wrong.
+    {
+      id: 'export/alias#second-key'
+      in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/mark' } ]
+      match: { out: { result: 'marked' } }
     }
     # Two tagged and no untagged: ERROR, not last-wins.
     {

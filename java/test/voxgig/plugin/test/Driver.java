@@ -79,6 +79,8 @@ public final class Driver {
               },
               band);
           i.export("client", i.ref);
+          // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+          i.export("mark", "marked");
           // The instance api itself, so the driver's `stray` command can
           // call `release` from OUTSIDE a lifecycle callback.
           i.export("inst", i);

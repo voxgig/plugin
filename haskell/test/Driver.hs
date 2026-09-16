@@ -127,6 +127,8 @@ probeDefine i = do
   boom i "define"
   bindProbe i
   instExport i "client" (VStr (iRef i))
+  -- A SECOND SCALAR KEY; see typescript/test/driver.ts.
+  instExport i "mark" (VStr "marked")
   -- The instance api itself, so the driver's @stray@ command can call
   -- @release@ from OUTSIDE a lifecycle callback — which is the only way
   -- to exercise §8.3's scope guard. The driver looks the instance up by

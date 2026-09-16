@@ -111,6 +111,8 @@ object Driver {
           VStr(wrap + inner.asString.getOrElse(inner.json))
         }, band)
         i.`export`("client", VStr(i.ref))
+        // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+        i.`export`("mark", VStr("marked"))
         // The instance api itself, so the driver's `stray` command can call
         // `release` from OUTSIDE a lifecycle callback.
         i.`export`("inst", VOpaque(i))

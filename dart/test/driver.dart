@@ -96,6 +96,8 @@ List<dynamic> probes() {
       // backwards and make every chain expectation read wrong.
       i.bind('c', (next, v) => '${_opt(i, 'wrap') ?? ':'}${next(v)}', band);
       i.export('client', i.ref);
+      // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+      i.export('mark', 'marked');
       // The instance api itself, so the driver's `stray` command can call
       // `release` from OUTSIDE a lifecycle callback.
       i.export('inst', i);

@@ -224,14 +224,14 @@ table is the summary, that file is the authority. Neither blocks P1.
   `resolvecandidates` handles) has no spelling for its exports. Row
   **6.9**: §11.1 says `inst.capability(name)` returns the bound provider
   and the canonical instance api has no such method, so a capability
-  carries no callable value. And row **6.7**: **every `export` entry reads the
-  key `client`**. The `probe` definition exports two keys, but nothing
-  reads the second, so a port whose `export` overwrote rather than keyed
-  could stay green depending on write order. Closing it needs `probe` to
-  export a second SCALAR key — its `inst` export is an instance api and no
-  entry can assert on it — and a probe-catalog change is a 23-port change
-  set. No port is known to be wrong; this is the same class as gaps 2 and
-  3, which also needed no port change.
+  carries no callable value. And row **6.7**: no `export` entry read a
+  SECOND key off one instance. **All three are now closed**, and 6.7's
+  first description was overstated: a port that ignored the key outright
+  was already caught by the absent-key entry, because ignoring the key
+  makes a missing key present. What nothing could distinguish is a lookup
+  that checks the key is present and then answers with the instance's
+  first export. Mutated that way, the alias branch left the whole suite
+  green. Measuring the gap is what corrected the claim about it.
 
 - **The scala and kotlin ports are built under both their compilers** —
   #29 and #30 made the ports accept two major versions each, and #31

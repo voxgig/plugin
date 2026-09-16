@@ -67,6 +67,8 @@ namespace Voxgig.Plugin.Test
                     return wrap + Text(inner);
                 }, band);
                 i.Export("client", i.Ref);
+                // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+                i.Export("mark", "marked");
                 // The instance api itself, so the driver's `stray` command
                 // can call `release` from OUTSIDE a lifecycle callback.
                 i.Export("inst", i);

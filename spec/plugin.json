@@ -8075,6 +8075,24 @@
             }
           },
           {
+            "id": "export/alias#second-key",
+            "in": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe/mark"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "marked"
+              }
+            }
+          },
+          {
             "err": true,
             "id": "export/alias#ambiguous",
             "in": [
@@ -8165,6 +8183,69 @@
               {
                 "do": "load",
                 "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/client"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "probe$a"
+              }
+            }
+          },
+          {
+            "doc": true,
+            "id": "export/key#second-key",
+            "in": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/mark"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "marked"
+              }
+            }
+          },
+          {
+            "id": "export/key#two-keys",
+            "in": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/client"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/mark"
+              }
+            ],
+            "match": {
+              "out": {
+                "result": "marked"
+              }
+            }
+          },
+          {
+            "id": "export/key#two-keys-reversed",
+            "in": [
+              {
+                "do": "ready",
+                "ref": "probe$a"
+              },
+              {
+                "do": "export",
+                "key": "probe$a/mark"
               },
               {
                 "do": "export",

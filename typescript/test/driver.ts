@@ -31,6 +31,12 @@ export function probes(): Definition[] {
       i.bind('c', (next: any, v: any) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
         i.options && i.options.band)
       i.export('client', i.ref)
+      // A SECOND SCALAR KEY. Every `export` entry used to read
+      // `client`, so a port whose `exports` ignored the key and
+      // answered with the instance's first export passed all of them.
+      // `inst` below cannot close that: it is an instance api, shaped
+      // differently in every port, and no entry can assert on it.
+      i.export('mark', 'marked')
       // The instance api itself, so the driver's `stray` command can
       // call `release` from OUTSIDE a lifecycle callback — which is the
       // only way to exercise §8.3's scope guard, and which the command

@@ -113,6 +113,8 @@ fn probeDefine(i: *Inst) t.Err!void {
     try host.bind(i, "p", probeHook, null, i, band);
     try host.bind(i, "c", null, probeChain, i, band);
     host.exportvalue(i, "client", v.vstr(i.ref));
+    // A SECOND SCALAR KEY; see typescript/test/driver.ts.
+    host.exportvalue(i, "mark", v.vstr("marked"));
     // The instance api itself, so the driver's `stray` command can call
     // `release` from OUTSIDE a lifecycle callback — which is the only
     // way to exercise §8.3's scope guard. The driver looks the instance
