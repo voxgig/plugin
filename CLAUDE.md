@@ -24,7 +24,7 @@ Quick reminders (the full rationale is in `AGENTS.md`):
   Two gates enforce it, `vale` and `python3 tools/check_prose.py`;
   `make scan-prose` runs both.
 
-**Status: P6 COMPLETE — six of six.** The corpus is 590 entries across
+**Status: P6 COMPLETE — six of six.** The corpus is 591 entries across
 19 sections, and **twenty-three implementations pass every one of
 them** — `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,

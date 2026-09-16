@@ -237,12 +237,10 @@ static void dep_define(Inst *i) {
 }
 
 /* WHICH provider this instance took, when the entry asks. See
- * typescript/test/driver.ts.
- *
- * `dep` has no `acquire` in this port and gains none here: the entries
- * that read `cap` assert `result`, never `open`, so adding one would
- * change what every other `dep` entry sees for nothing. */
+ * typescript/test/driver.ts. The `acquire` is the canonical `dep`'s,
+ * and this port did not have it: `dep` had no `activate` at all. */
 static void dep_activate(Inst *i) {
+  inst_acquire(i);
   Value *capof = opt(i, "capof");
   if (!visstr(capof)) return;
   const char *picked = inst_capability(i, vasstr(capof));

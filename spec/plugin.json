@@ -5303,6 +5303,44 @@
             }
           },
           {
+            "id": "depend/bound#dep-holds",
+            "in": [
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "provides": [
+                    {
+                      "name": "clock"
+                    }
+                  ]
+                },
+                "ref": "dep$p"
+              },
+              {
+                "definition": "dep",
+                "do": "ready",
+                "options": {
+                  "capof": "clock",
+                  "requires": [
+                    "clock"
+                  ]
+                },
+                "ref": "dep$c"
+              },
+              {
+                "do": "export",
+                "key": "dep$c/cap"
+              }
+            ],
+            "match": {
+              "out": {
+                "open": 2,
+                "result": "dep$p"
+              }
+            }
+          },
+          {
             "id": "depend/bound#reluctant-host-ranks",
             "in": [
               {

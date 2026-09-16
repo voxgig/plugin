@@ -15,7 +15,7 @@ a wrong status file is worse than none.**
 
 **Nothing. P6 is complete — six of six — and no port work remains on
 the plan.** `c`, `cpp`, `ocaml`, `haskell`, `zig` and `lean` all landed,
-so **twenty-three implementations pass all 590 corpus entries** and
+so **twenty-three implementations pass all 591 corpus entries** and
 `make check` runs every one of them.
 
 **The six tier-4 ports are deliberately not one port six times**, and

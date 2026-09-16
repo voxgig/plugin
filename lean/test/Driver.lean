@@ -150,12 +150,10 @@ def depDefine (i : InstApi) : PluginM Unit := do
     for k in exports.keys do i.exportValue k (exports.get k)
 
 /-- WHICH provider this instance took, when the entry asks. See
-typescript/test/driver.ts.
-
-`dep` has no `acquire` in this port and gains none here: the entries
-that read `cap` assert `result`, never `open`, so adding one would
-change what every other `dep` entry sees for nothing. -/
+typescript/test/driver.ts. The `acquire` is the canonical `dep`'s, and
+this port did not have it: `dep` had no `activate` at all. -/
 def depActivate (i : InstApi) : PluginM Unit := do
+  let _ ← i.acquire
   let capof ← opt i "capof"
   if !capof.isStr then return
   match ← i.capability capof.asStr with

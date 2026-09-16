@@ -5,7 +5,7 @@ Read this before changing anything. The design is
 below (§n) are to it.
 
 **Status: P6 COMPLETE — six of six. Every planned port exists.** All
-**19 corpus sections** exist — 590 entries — with the driver contract
+**19 corpus sections** exist — 591 entries — with the driver contract
 in `DOCS.md` §4, and **twenty-three implementations pass every one of
 them**: `typescript/` (canonical), `go/`, `python/`, `javascript/`, `ruby/`, `php/`,
 `perl/`, `rust/`, `java/`, `lua/`, `csharp/`, `elixir/`, `clojure/`,
@@ -283,7 +283,7 @@ decide, and `handover.md` §19 says what the six of them found.
 
 **All three corpus gaps §18 of the handover records are CLOSED** — gap
 1 by `declare/shape` and `declare/register`, gap 2 by `depend/byref`,
-gap 3 by `nest/open`. The corpus is 590 entries and every one of them
+gap 3 by `nest/open`. The corpus is 591 entries and every one of them
 is mutation-checked against the behaviour it names.
 
 **Gap 1 was the expensive one, and §18's "cheap" was wrong about it.** Nothing carried a

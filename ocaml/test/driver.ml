@@ -206,12 +206,10 @@ let depdefine (i : inst) =
     List.iter (fun k -> Host.exportvalue i k (V.get exports k)) (V.keys exports)
 
 (* WHICH provider this instance took, when the entry asks. See
-   typescript/test/driver.ts.
-
-   `dep` has no `acquire` in this port and gains none here: the entries
-   that read `cap` assert `result`, never `open`, so adding one would
-   change what every other `dep` entry sees for nothing. *)
+   typescript/test/driver.ts. The `acquire` is the canonical `dep`'s,
+   and this port did not have it: `dep` had no `activate` at all. *)
 let depactivate (i : inst) =
+  ignore (Host.acquire i);
   let capof = opt i "capof" in
   if V.is_str capof then
     Host.exportvalue i "cap"

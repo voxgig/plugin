@@ -3536,6 +3536,21 @@ primary: depend: {
       ]
       match: { out: { result: 'dep$lo' } }
     }
+    # AND `dep` HOLDS ONE RESOURCE PER ACTIVATION, like every other
+    # probe. Nothing said so: five ports gave `dep` no `activate` at
+    # all, and the corpus could not tell, because no entry with a live
+    # `dep` had ever asserted `open`. That is the probe catalog
+    # diverging silently, which is what DOCS.md §4.3 exists to stop.
+    {
+      id: 'depend/bound#dep-holds'
+      in: [
+        { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
+        { do: 'ready', ref: 'dep$c', definition: 'dep'
+          options: { requires: ['clock'], capof: 'clock' } }
+        { do: 'export', key: 'dep$c/cap' }
+      ]
+      match: { out: { result: 'dep$p', open: 2 } }
+    }
     {
       id: 'depend/bound#reluctant-host-ranks'
       in: [
