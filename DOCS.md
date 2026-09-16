@@ -179,6 +179,59 @@ holders. It guards *ad-hoc* deactivation only: `close()` and an `apply`
 plan removing the holders too are coordinated teardowns and proceed,
 consumers first.
 
+### Expose a programmatic API
+
+A plugin can offer the application more than the host's own vocabulary.
+**Export it.** `inst.export(key, value)` during `define` publishes a
+value; `host.exports('<ref>/<key>')` reads it back.
+
+```ts
+define: (inst) => {
+  const store = openstore(inst.options)
+  inst.export('provider', { read: store.read })   // what the host wires up
+  inst.export('admin', store)                     // what the application calls
+}
+```
+```ts
+const admin = host.exports('store$main/admin')
+admin.write('api.token', 'tok01')
+```
+
+**A definition may publish as many as it likes**, and the host treats
+them identically. Two is the usual shape: one the host or its framework
+consumes, one the application does. A definition that publishes only
+what the framework wants leaves an application with no way to reach
+anything else the plugin can do.
+
+**The unqualified alias is what makes this pleasant to call.**
+`store/admin` resolves to the untagged instance if there is one; if not,
+and exactly one tagged instance exports that key, it resolves to that
+one; if two do, it is `plugin_export_ambiguous`, naming both. So a
+library can offer `adminof(host)` and have it work whether the store was
+configured as `store` or as `store$main` — and say so rather than pick
+one when there are two of them.
+
+**Exports of a `loaded` instance are visible**, before activation and
+after deactivation. They are declared in `define`, they are data, and
+hiding them would make the loaded state useless for introspection. An
+export whose value only means something while the instance is live is
+the plugin's to signal, and the convention is a getter closing over
+`inst.state`.
+
+Export for the **application**; provide a **capability** (above) for
+another plugin. The difference is not enforced and is worth keeping
+anyway: a capability is a dependency the host resolves, orders and can
+restart a consumer over, while an export is a value someone asks for by
+name. Reaching for an export to avoid declaring a dependency gets a
+reference the lifecycle knows nothing about.
+
+The worked example is
+[sekreto](https://github.com/voxgig/sekreto)'s mini vault, where each
+provider kind is a definition and the vault is the one that is written
+to as well as read: it exports `provider` for the chain and `vault` for
+the application, and ships a one-line `vaultof(secrets)` over the
+alias rule above.
+
 ### Hold a resource
 
 Acquire in `activate` and forget about it:

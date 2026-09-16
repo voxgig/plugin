@@ -206,6 +206,27 @@ table is the summary, that file is the authority. Neither blocks P1.
 
 ## Recently settled
 
+- **"Can a plugin expose a programmatic API?" is answered, and the
+  answer needed no code.** It is §11's exports: `inst.export(key, value)`
+  in `define`, `host.exports('<ref>/<key>')` to read it back, and the
+  unqualified alias so a library can offer a one-line accessor that works
+  whether the instance is tagged or not. The mechanism was documented for
+  plugin-to-plugin use and the application-facing half was not written
+  down, so DOCS.md §2 now carries **Expose a programmatic API**, including
+  when to export and when to provide a capability instead. The asker was
+  sekreto, whose mini vault publishes `provider` for the chain and `vault`
+  for the application from one `define`.
+
+- **A fourth corpus gap, found while writing that** and recorded as
+  register row 6.7 rather than closed: **every `export` entry reads the
+  key `client`**. The `probe` definition exports two keys, but nothing
+  reads the second, so a port whose `export` overwrote rather than keyed
+  could stay green depending on write order. Closing it needs `probe` to
+  export a second SCALAR key — its `inst` export is an instance api and no
+  entry can assert on it — and a probe-catalog change is a 23-port change
+  set. No port is known to be wrong; this is the same class as gaps 2 and
+  3, which also needed no port change.
+
 - **The scala and kotlin ports are built under both their compilers** —
   #29 and #30 made the ports accept two major versions each, and #31
   delivered the CI job that builds the newer one, applied as `7c7e437`
