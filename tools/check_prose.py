@@ -82,7 +82,7 @@ EXTRA_PAGES = ()
 # reader-facing page. It predates this gate, which is why the gate had
 # never met one and called it a twenty-fourth port.
 PORT_DIRS = True
-NOT_PORTS = ("doc", "docs", "patch", "spec", "test", "tools", "node_modules")
+NOT_PORTS = ("doc", "docs", "spec", "test", "tools", "node_modules")
 PORT_PAGES = ("README.md",)
 
 # Where "we" is allowed: the tutorial. There is no tutorial PAGE here;

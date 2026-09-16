@@ -232,10 +232,15 @@ jobs:
       # The asset is `.tar.zst`; ubuntu-latest ships zstd, and the
       # explicit `--use-compress-program` says so rather than relying on
       # tar's suffix detection.
+      #
+      # THE VERSION HERE MUST MATCH `lean/lean-toolchain`. When they
+      # drifted the job failed on `make build-lean`, compiling the
+      # port's sources with an older compiler — which reads as a port
+      # failure and is not one.
       - if: matrix.port == 'lean'
         run: |
           curl -fsSL -o /tmp/lean.tar.zst \
-            https://github.com/leanprover/lean4/releases/download/v4.15.0/lean-4.15.0-linux.tar.zst
+            https://github.com/leanprover/lean4/releases/download/v4.32.1/lean-4.32.1-linux.tar.zst
           sudo mkdir -p /opt/lean
           sudo tar --use-compress-program=unzstd -xf /tmp/lean.tar.zst \
             -C /opt/lean --strip-components=1
