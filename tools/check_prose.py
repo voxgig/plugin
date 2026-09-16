@@ -74,8 +74,15 @@ EXTRA_PAGES = ()
 # Multi-port layout: one directory per language, each carrying its own
 # README.md. Every other top-level directory is listed here so that a
 # directory holding a README.md is a port and nothing else is.
+#
+# `patch` is a TRANSIENT delivery folder for a change this repository's
+# own AGENTS.md says a session cannot push (a workflow), and its README
+# is a working document addressed to whoever applies it -- an apply
+# command, a diff table, a list of what was checked. It is not a
+# reader-facing page. It predates this gate, which is why the gate had
+# never met one and called it a twenty-fourth port.
 PORT_DIRS = True
-NOT_PORTS = ("doc", "docs", "spec", "test", "tools", "node_modules")
+NOT_PORTS = ("doc", "docs", "patch", "spec", "test", "tools", "node_modules")
 PORT_PAGES = ("README.md",)
 
 # Where "we" is allowed: the tutorial. There is no tutorial PAGE here;

@@ -1,0 +1,51 @@
+From 2933087df413a3dfa21b13f2dda6aee8bb29b0c1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 16 Sep 2026 10:26:45 +0000
+Subject: [PATCH] ci: build the lean port with the compiler it pins
+
+`lean/lean-toolchain` moved to v4.32.1 in 48392f5, for the reason that
+commit gives: voxgig/struct's lean port and the sdkgen scaffold both pin
+it, and four repositories vendored together as one checkpoint cannot be
+compiled side by side on three different pins.
+
+This file still fetched v4.15.0, so CI compiled 4.32.1 sources with a
+compiler that predates the `String.Slice` changes 48392f5 was written
+for. `make build-lean` has failed on every run since, on `main` as well
+as on every branch, and it reads as a port failure rather than a
+toolchain mismatch.
+
+An agent session cannot write `.github/workflows/`, which is why the
+port's bump landed without this. The comment now says the two must move
+together, so the next bump has one place to look.
+
+Verified: the v4.32.1 linux asset resolves at the URL this builds.
+---
+ .github/workflows/ci.yml | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 9994820..36ec2c2 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -232,10 +232,17 @@ jobs:
+       # The asset is `.tar.zst`; ubuntu-latest ships zstd, and the
+       # explicit `--use-compress-program` says so rather than relying on
+       # tar's suffix detection.
++      #
++      # THE VERSION HERE MUST MATCH `lean/lean-toolchain`, and an agent
++      # session cannot edit this file, so the two move in separate
++      # changes and the port's own bump lands first. When they drifted
++      # the job failed on `make build-lean` with the port's sources and
++      # the workflow's older compiler, which reads as a port failure and
++      # is not one.
+       - if: matrix.port == 'lean'
+         run: |
+           curl -fsSL -o /tmp/lean.tar.zst \
+-            https://github.com/leanprover/lean4/releases/download/v4.15.0/lean-4.15.0-linux.tar.zst
++            https://github.com/leanprover/lean4/releases/download/v4.32.1/lean-4.32.1-linux.tar.zst
+           sudo mkdir -p /opt/lean
+           sudo tar --use-compress-program=unzstd -xf /tmp/lean.tar.zst \
+             -C /opt/lean --strip-components=1
+-- 
+2.43.0
+

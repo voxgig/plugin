@@ -160,7 +160,7 @@ exists and passes; see above.
 
 **If a new port is ever added**, the toolchain notes are worth keeping:
 gcc/g++ 13.3.0 ship in the image; **ghc 9.4.7 and ocaml 4.14.1 come
-from apt**; **zig 0.13.0 from a ziglang.org tarball**; **lean 4.15.0
+from apt**; **zig 0.13.0 from a ziglang.org tarball**; **lean 4.32.1
 from a pinned GitHub *release asset*** — release assets download fine
 through the proxy, while `api.github.com` answers 403, so a
 version-discovery call fails where the asset URL does not. Read the six
