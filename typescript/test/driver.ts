@@ -7,9 +7,6 @@
 import { makehost, makecatalog } from '../dist/index'
 import type { Definition } from '../dist/index'
 
-/** §4.3's six probes. Their behaviour is as much the contract as the
- * runner is — this is where twenty implementations of `noisy` are made
- * to fail at the same callback in the same way. */
 export function probes(): Definition[] {
   const record = (name: string): Definition => ({
     name,
@@ -21,8 +18,6 @@ export function probes(): Definition[] {
     name: 'probe',
     define: (i: any) => {
       i.state.count = i.state.count || 0
-      // One hook binding (`p`) and one chain wrap (`c`) — the workhorse
-      // shape DOCS.md §4.3 specifies.
       i.bind('p', () => { i.state.count = (i.state.count || 0) + 1 },
         i.options && i.options.band)
       // Wrap AFTER next, so the result spells the nesting left to right:
@@ -31,11 +26,6 @@ export function probes(): Definition[] {
       i.bind('c', (next: any, v: any) => (i.options && i.options.wrap ? i.options.wrap : ':') + next(v),
         i.options && i.options.band)
       i.export('client', i.ref)
-      // A SECOND SCALAR KEY. Every `export` entry used to read
-      // `client`, so a port whose `exports` ignored the key and
-      // answered with the instance's first export passed all of them.
-      // `inst` below cannot close that: it is an instance api, shaped
-      // differently in every port, and no entry can assert on it.
       i.export('mark', 'marked')
       // The instance api itself, so the driver's `stray` command can
       // call `release` from OUTSIDE a lifecycle callback — which is the
@@ -66,9 +56,6 @@ export function probes(): Definition[] {
       boom(i, 'define')
     },
     activate: (i: any) => {
-      // Acquire BEFORE the raise, so a failing activate has something
-      // to leak if the scope does not unwind — which is the whole point
-      // of the entry that asserts open === 0 afterwards.
       i.acquire()
       reenter(i, 'activate')
       boom(i, 'activate')
@@ -81,12 +68,6 @@ export function probes(): Definition[] {
     name: 'greedy',
     define: (i: any) => {
       i.state.count = 0
-      // §8.1 puts resource capture in `activate`. `early` reaches for it
-      // in `define`, where the scope does not exist yet — a `loaded`
-      // instance is not supposed to hold anything, and `unload` on one
-      // never unwinds. It NAMES the call, because `acquire` and
-      // `release` carry the guard separately and an entry that exercised
-      // only one would leave the other's mutation alive.
       if (i.options && 'acquire' === i.options.early) i.acquire()
       if (i.options && 'release' === i.options.early) i.release(() => undefined)
     },
@@ -95,36 +76,14 @@ export function probes(): Definition[] {
       const rel = i.options.release || 0
       const handles: (() => void)[] = []
       for (let k = 0; k < n; k++) handles.push(i.acquire())
-      // Release some explicitly; the DIFFERENCE is what the instance
-      // scope must unwind by itself (§8.3), and that difference is the
-      // whole test.
       for (let k = 0; k < rel; k++) handles[k]()
 
-      // `mark` registers N FOREIGN releases — §8.3's `release`, the
-      // half `acquire` cannot exercise — each recording its own index
-      // as it runs.
-      //
-      // THE RECORDED LIST IS THE ONLY THING THAT DISTINGUISHES A
-      // REVERSE UNWIND FROM A FORWARD ONE. `acquire`'s handles are
-      // idempotent counter decrements, so running them in either
-      // direction leaves the same `open`, and a port unwinding forwards
-      // passed every other entry in this section.
-      // `bind` is `early`'s counterpart for §8.1's OTHER half. Binding
-      // declaration belongs in `define`; this names the callback that
-      // tries it from somewhere else, because §12 has carried
-      // `plugin_bind_scope` since before anything raised it and a
-      // binding added in `activate` went live without being part of the
-      // loaded definition.
       if ('activate' === i.options.bind) i.bind('p', () => undefined)
 
       const mark = i.options.mark || 0
       i.state.unwound = []
       for (let k = 0; k < mark; k++) {
         i.release(() => {
-          // `markfail` makes the release RAISE. §8.3 says every entry
-          // still runs, the errors are collected, and the instance ends
-          // in `failed` — none of which any entry exercised while every
-          // release was infallible.
           if (i.options.markfail) throw new Error('release failed at ' + k)
           i.state.unwound.push(k)
         })
@@ -132,9 +91,6 @@ export function probes(): Definition[] {
     },
   }
 
-  // `deactivate` completes the pair: the guard is on the phase, not on
-  // "not define", and an entry exercising only one leaves the other's
-  // mutation alive.
   greedy.deactivate = (i: any) => {
     if (i.options && 'deactivate' === i.options.bind) i.bind('p', () => undefined)
   }
@@ -152,16 +108,6 @@ export function probes(): Definition[] {
     },
     activate: (i: any) => {
       i.acquire()
-      // WHICH provider this instance took, when the entry asks for it.
-      // `options.capof` names one of this instance's requirements and
-      // the answer is exported as `cap`, which is the only way a corpus
-      // entry can see `inst.capability` at all: the host's own
-      // `capability` answers with the RANKING, not with the choice this
-      // instance made, and §11.4 makes those differ.
-      //
-      // From `activate` rather than `define`, because the selection is
-      // made at activation — and so a deactivate/reactivate cycle
-      // re-exports whatever the second activation chose.
       if (i.options && i.options.capof) {
         i.export('cap', i.capability(i.options.capof))
       }
@@ -201,20 +147,12 @@ function boom(i: any, cb: string): void {
 
 function reenter(i: any, cb: string): void {
   if (i.options && cb === i.options.reenter) {
-    // A transition from inside a lifecycle callback (§5.2).
     i.host().activate(i.ref)
   }
 }
 
 export type Cmd = { do: string, [k: string]: any }
 
-/** Run a command list and return §4.5's observable. Stops at the first
- * raise; the entry's `err` matches its code. */
-/** The points every driver host declares. DOCS.md §4.3 defines `probe`
- * as binding one hook point (`p`) and wrapping one chain point (`c`), so
- * a host without them cannot load the probe at all — they are part of
- * the contract's baseline rather than a fixture convenience. `v` is the
- * provider point the `provider` probe defaults to. */
 const BASEPOINTS: { [k: string]: any } = {
   p: { kind: 'hook' },
   c: { kind: 'chain', base: (v: any) => v },
@@ -225,9 +163,6 @@ function withpoints(extra?: { [k: string]: any }): { [k: string]: any } {
   const out: { [k: string]: any } = {}
   for (const k of Object.keys(BASEPOINTS)) out[k] = BASEPOINTS[k]
   for (const k of Object.keys(extra || {})) {
-    // A `host` command REPLACES a base point rather than merging into
-    // it, so an entry can redeclare `c` with its own base or `v` as
-    // exclusive without inheriting the default's shape.
     out[k] = (extra as any)[k]
   }
   return out
@@ -258,19 +193,6 @@ export function drive(cmds: Cmd[]): any {
         })
         break
       case 'define': {
-        // §10.1's static registration: the definition ENTERS THE CATALOG
-        // here, and registration is where its option shape is validated
-        // (§9.4) — before any load, so a malformed shape fails at one
-        // moment in every host rather than whenever a document happens
-        // to exercise the key.
-        //
-        // §4.2's three keys, all of them live. `probe` names the PROBE
-        // whose callbacks back the definition and `name` is what the
-        // definition is called — two keys that ten entries passed as
-        // equal strings, so a driver ignoring `probe` passed them all.
-        // `shape` is the option shape, and its arrival is what makes
-        // this command more than a re-registration of the pre-seeded
-        // probe set.
         const from = undefined === c.probe ? c.name : c.probe
         let def: any = { name: c.name }
         for (const d of probes()) if (from === d.name) def = { ...d, name: c.name }
@@ -282,9 +204,6 @@ export function drive(cmds: Cmd[]): any {
         host.load(c.ref, { options: c.options, order: c.order, definition: c.definition })
         break
       case 'ready':
-        // declare FIRST, so the ordering block and definition reach the
-        // instance — `ready` walks the staircase, it does not carry
-        // configuration of its own.
         host.declare(c.ref, { options: c.options, order: c.order, definition: c.definition })
         host.ready(c.ref)
         break
@@ -303,8 +222,6 @@ export function drive(cmds: Cmd[]): any {
       case 'capability': last = host.capability(c.name); break
       case 'trace': last = host.trace(); break
       case 'hostdeclare':
-        // §9.1's host-owned path: the embedding host installing the
-        // instance whose name it reserved.
         last = (host as any).hostdeclare(c.ref, {
           tag: c.tag, options: c.options, order: c.order, definition: c.definition,
         }).ref
@@ -335,20 +252,10 @@ export function drive(cmds: Cmd[]): any {
         if ('count' === c.method) { last = e.state.count || 0; break }
         if ('unwound' === c.method) { last = e.state.unwound || []; break }
         if ('position' === c.method) {
-          // Reached through the instance api, which is where §6.6 puts
-          // it — a plugin asks about itself.
           last = (host as any).positionof(c.ref, c.point)
           break
         }
         if ('stray' === c.method) {
-          // A release from OUTSIDE a lifecycle callback. The scope
-          // belongs to the activation; a call from anywhere else has no
-          // scope to belong to, so it raises.
-          //
-          // THIS BRANCH USED TO DO NOTHING, and its corpus row stayed
-          // green whatever `release` did with its guard. The probe
-          // exports its own instance api precisely so the call can be
-          // made from here.
           const strayapi: any = host.exports(c.ref + '/inst')
           strayapi.release(() => undefined)
           break
@@ -360,9 +267,6 @@ export function drive(cmds: Cmd[]): any {
     }
     }
     catch (err: any) {
-      // §4.1: `catch` records the raise and lets the run continue, which
-      // is the only way to observe a `failed` instance — §5.2's whole
-      // claim is that it stays registered and inspectable.
       if (true !== c.catch) throw err
     }
   }

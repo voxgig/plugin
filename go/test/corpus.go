@@ -1,21 +1,3 @@
-/* The corpus runner.
- *
- * Reads spec/plugin.json — the COMMITTED artifact, not the aontu source
- * — exactly as every other port's runner does. No port needs a Node
- * toolchain to run its tests, and this one does not get a private door
- * into the source either.
- *
- * A group name selects the subject. That is the whole dispatch, and it
- * is deliberately dumb: a runner that inferred the subject from the
- * entry's shape would silently run the wrong function when an entry was
- * mistyped.
- *
- * COMPARISON RUNS OVER JSON-NORMALIZED VALUES. A typed port's result is
- * a struct; the corpus's expectation is decoded JSON. Marshalling the
- * result and decoding it back puts both on the same footing — and it is
- * also the honest test, because a field the port forgot to tag is a
- * field a caller cannot see either. */
-
 package plugintest
 
 import (
@@ -40,9 +22,7 @@ type Entry struct {
 	Out   any
 	Err   any
 	Match any
-	// raw keeps PRESENCE, which the three legal field combinations turn
-	// on: `out: null` is an assertion and an absent `out` is not.
-	raw map[string]any
+	raw   map[string]any
 }
 
 func (e Entry) has(key string) bool { _, ok := e.raw[key]; return ok }
@@ -186,14 +166,6 @@ func Equal(a any, b any) bool {
 	return a == b
 }
 
-/* Matches is a partial match: every key the expectation names must
- * agree, and keys it does not name are ignored. `__EXISTS__` asserts
- * presence without pinning a value; `/re/` matches a string as a regular
- * expression.
- *
- * `present` carries what JavaScript gets from `undefined` for free: a
- * key that is absent and a key holding JSON `null` are different, and a
- * Go map lookup collapses them. */
 func Matches(expect any, actual any, present bool) bool {
 	if s, ok := expect.(string); ok {
 		switch s {
@@ -247,12 +219,6 @@ func Matches(expect any, actual any, present bool) bool {
 	return expect == actual
 }
 
-/* Check runs one entry against a subject and reports the disagreement,
- * if any.
- *
- * The three combinations the spec format allows are enforced here as
- * well as at build time, because a runner that quietly accepted `err`
- * beside `out` would let a contradictory entry pass. */
 func Check(e Entry, subject func(Entry) (any, error)) string {
 	if e.has("err") && e.has("out") {
 		return "entry has both err and out"
@@ -265,9 +231,6 @@ func Check(e Entry, subject func(Entry) (any, error)) string {
 			return "expected a raise, got: " + jsonof(value)
 		}
 		if want, ok := e.Err.(string); ok {
-			// Errors compare by CODE (§12). Message wording is a port's
-			// own business, and pinning it would make every translation
-			// a corpus change.
 			if got := plugin.CodeOf(raised); got != want {
 				return "expected code " + want + ", got " + got + " (" + raised.Error() + ")"
 			}

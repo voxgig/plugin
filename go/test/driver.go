@@ -1,15 +1,3 @@
-/* The driver (DOCS.md §4).
- *
- * Every port implements this same small thing and nothing else is
- * port-specific: the probe catalog, the command interpreter, and the
- * canonical observable.
- *
- * THE ONE GO-SHAPED DIFFERENCE is that a probe cannot throw. §12's
- * errors are RETURNED here, from the callback and from every host verb,
- * and the interpreter propagates instead of unwinding. `catch: true`
- * still means "record the raise and let the run continue", which is the
- * only way to observe a `failed` instance. */
-
 package plugintest
 
 import (
@@ -19,9 +7,6 @@ import (
 	plugin "github.com/voxgig/plugin/go/plugin"
 )
 
-// Probes are §4.3's six probes. Their behaviour is as much the contract
-// as the runner is — this is where twenty implementations of `noisy` are
-// made to fail at the same callback in the same way.
 func Probes() []plugin.Definition {
 	record := func(name string) plugin.Definition {
 		return plugin.Definition{
@@ -42,8 +27,6 @@ func Probes() []plugin.Definition {
 		Define: func(i *plugin.Inst) error {
 			i.State()["count"] = countof(i)
 			band := intopt(i, "band")
-			// One hook binding (`p`) and one chain wrap (`c`) — the
-			// workhorse shape DOCS.md §4.3 specifies.
 			if err := i.Bind("p", func(args ...any) any {
 				i.State()["count"] = countof(i) + 1
 				return nil
@@ -109,10 +92,6 @@ func Probes() []plugin.Definition {
 			return boom(i, "define")
 		},
 		Activate: func(i *plugin.Inst) error {
-			// Acquire BEFORE the raise, so a failing activate has
-			// something to leak if the scope does not unwind — which is
-			// the whole point of the entry that asserts open === 0
-			// afterwards.
 			if _, err := i.Acquire(); nil != err {
 				return err
 			}
@@ -129,9 +108,6 @@ func Probes() []plugin.Definition {
 		Name: "greedy",
 		Define: func(i *plugin.Inst) error {
 			i.State()["count"] = 0
-			// §8.1 puts resource capture in `activate`. `early` NAMES the
-			// call that reaches for it in `define`, because Acquire and
-			// Release carry the guard separately.
 			if "acquire" == tostr(i.Options()["early"]) {
 				if _, err := i.Acquire(); nil != err {
 					return err
@@ -162,19 +138,6 @@ func Probes() []plugin.Definition {
 				handles[k]()
 			}
 
-			// `mark` registers N FOREIGN releases — §8.3's `release`,
-			// the half `acquire` cannot exercise — each recording its
-			// own index as it runs.
-			//
-			// THE RECORDED LIST IS THE ONLY THING THAT DISTINGUISHES A
-			// REVERSE UNWIND FROM A FORWARD ONE. An acquired handle is
-			// an idempotent counter decrement, so running the handles in
-			// either direction leaves the same `open`, and a port
-			// unwinding forwards passed every other entry in this
-			// section.
-			// `bind` is `early`'s counterpart for §8.1's OTHER half.
-			// Binding declaration belongs in `define`; this names the
-			// callback that tries it from somewhere else.
 			if "activate" == tostr(i.Options()["bind"]) {
 				if err := i.Bind("p", func(args ...any) any { return nil }, 0); nil != err {
 					return err
@@ -345,12 +308,6 @@ func tostr(v any) string {
 	return fmt.Sprint(v)
 }
 
-/* BASEPOINTS are the points every driver host declares. DOCS.md §4.3
- * defines `probe` as binding one hook point (`p`) and wrapping one chain
- * point (`c`), so a host without them cannot load the probe at all —
- * they are part of the contract's baseline rather than a fixture
- * convenience. `v` is the provider point the `provider` probe defaults
- * to. */
 func basepoints() map[string]plugin.Spec {
 	return map[string]plugin.Spec{
 		"p": {Kind: plugin.KindHook},
@@ -451,23 +408,7 @@ func docmd(host *plugin.Host, c map[string]any) (*plugin.Host, *produced, error)
 		}), nil, nil
 
 	case "define":
-		// §10.1's static registration: the definition ENTERS THE CATALOG
-		// here, and registration is where its option shape is validated
-		// (§9.4) — before any load, so a malformed shape fails at one
-		// moment in every host rather than whenever a document happens
-		// to exercise the key.
-		//
-		// The catalog is pre-seeded with the probe set, so re-registering
-		// a probe by name is the identity this command has always been;
-		// `shape` is what makes it do work. A name the probe set does not
-		// hold registers a bare definition — enough to reach the catalog,
-		// and never loaded.
 		{
-			// §4.2's three keys, all of them live. `probe` names the
-			// PROBE whose callbacks back the definition and `name` is
-			// what the definition is called — two keys that ten entries
-			// passed as equal strings, so a driver ignoring `probe`
-			// passed them all.
 			name := tostr(c["name"])
 			source := name
 			if p, ok := c["probe"]; ok {
@@ -643,14 +584,9 @@ func docall(host *plugin.Host, c map[string]any, ref string, point string) (*plu
 		}
 		return nil, &produced{[]any{}}, nil
 	case "position":
-		// Reached through the instance api, which is where §6.6 puts it
-		// — a plugin asks about itself.
 		p, err := host.PositionOf(ref, point)
 		return nil, &produced{p}, err
 	case "stray":
-		// A release from OUTSIDE a lifecycle callback. THIS BRANCH USED
-		// TO DO NOTHING, and its corpus row stayed green whatever
-		// Release did with its guard.
 		raw, err := host.Exports(ref + "/inst")
 		if nil != err {
 			return nil, nil, err

@@ -1,9 +1,3 @@
-//! The corpus runner.
-//!
-//! Reads spec/plugin.json - the COMMITTED artifact, not the aontu source -
-//! exactly as every other port's runner does. No port needs a Node
-//! toolchain to run its tests, and this one does not get a private door
-//! into the source either.
 
 pub mod driver;
 
@@ -51,13 +45,6 @@ pub enum Got {
     Present(Value),
 }
 
-/// Deep equality over spec values. Key order never matters; list order
-/// always does.
-///
-/// AGENTS.md section 1: "The plugin library must never be used to implement
-/// its own tests." A shared comparison lets a broken implementation and its
-/// oracle be wrong together and stay green, so the corpus's equality is
-/// written here rather than imported.
 pub fn same(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Null, Value::Null) => true,
@@ -137,14 +124,6 @@ pub fn matches(expect: &Value, actual: &Got) -> bool {
     same(expect, &actual)
 }
 
-/// A LITERAL-WITH-ANCHORS MATCHER, NOT A REGEX ENGINE.
-///
-/// The standard library has no regex and §16 permits no crate to supply
-/// one. Every pattern the corpus writes is a literal, optionally anchored:
-/// `/^plugin\/plugin_not_loaded: /`, `/cycle=\[/`, `/retry\$fast/`. So
-/// this unescapes and compares - and PANICS on any unescaped
-/// metacharacter, because the one thing a hand-rolled matcher must never
-/// do is quietly report a mismatch it could not evaluate.
 pub fn regex_lite(pattern: &str, text: &str) -> bool {
     let chars: Vec<char> = pattern.chars().collect();
     let mut literal = String::new();
@@ -188,11 +167,6 @@ pub fn regex_lite(pattern: &str, text: &str) -> bool {
     }
 }
 
-/// Run one entry against a subject and report the disagreement, if any.
-///
-/// The three combinations the spec format allows are enforced here as well
-/// as at build time, because a runner that quietly accepted `err` beside
-/// `out` would let a contradictory entry pass.
 pub fn check<F>(entry: &Value, subject: F) -> Option<String>
 where
     F: FnOnce(&Value) -> Result<Value, PluginError>,
@@ -211,9 +185,6 @@ where
 
         let want = entry.get("err");
         if !matches!(want, Value::Bool(true)) {
-            // Errors compare by CODE (§12). Message wording is a port's
-            // own business, and pinning it would make every translation a
-            // corpus change.
             let got = codeof(&raised);
             if Some(got) != want.as_str() {
                 return Some(format!(

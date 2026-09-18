@@ -1,13 +1,3 @@
-/* The handful of helpers the port needs that the canonical gets from
- * JavaScript for free: sorted map keys (Object.keys(x).sort()), a
- * JSON.stringify-equivalent marshal, and deep clone.
- *
- * `each(...) in sorted-key order` is a house rule across voxgig
- * because it makes output BYTE-STABLE. Go's map iteration is
- * deliberately randomized, so every traversal here goes through
- * sortedkeys — an unsorted `for k := range m` is a bug that passes its
- * own tests most of the time. */
-
 package plugin
 
 import (

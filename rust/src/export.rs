@@ -1,14 +1,3 @@
-//! Exports (§11).
-//!
-//! An instance publishes values for other plugins and for the application.
-//! Read with `host.exports("retry$fast/client")`.
-//!
-//! THE UNQUALIFIED ALIAS IS THE INTERESTING PART. `retry/client` resolves
-//! to the UNTAGGED instance if one exists; if not, and exactly one tagged
-//! instance exports that key, it resolves to that one; if two do, it is
-//! `plugin_export_ambiguous` - deliberately diverging from seneca's silent
-//! last-wins, because with multi-instance as a headline feature an
-//! ambiguous alias is a defect waiting for production.
 
 use crate::refs::{canon, parse_ref, refname};
 use crate::types::{details, fail, PluginError};

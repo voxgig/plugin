@@ -1,21 +1,3 @@
-/* THE TWO THINGS THE CORPUS STRUCTURALLY CANNOT SEE.
- *
- * Every other test in this directory is corpus-driven, and that is the
- * rule: the corpus is the contract, and a port-local test is a way to
- * disagree with it quietly. These two are the exception the rule needs,
- * because neither claim is EXPRESSIBLE in a language-neutral JSON
- * corpus:
- *
- *   - the corpus decodes every number as `float64`, so it cannot ask
- *     what happens when a Go host writes an `int`; and
- *   - the corpus is single-threaded, so it cannot ask what two
- *     goroutines do.
- *
- * Both were found by review rather than by a failing entry, which is
- * exactly why they are written down here. Neither adds a rule; each
- * pins a rule the model already states, in the one dimension Go has
- * and the corpus does not. */
-
 package plugintest
 
 import (
@@ -25,16 +7,11 @@ import (
 	plugin "github.com/voxgig/plugin/go/plugin"
 )
 
-// A Go host declares attributes in Go, not in JSON — so `5` is an `int`
-// while the requirement it must satisfy, read from a document, is a
-// `float64`. The model has ONE number type; matching across Go's
-// spellings of it is not leniency, it is the model.
 func TestCapabilityMatchesAcrossNumberTypes(t *testing.T) {
 	cands := []plugin.Candidate{{
 		Ref: "store$a", Pos: 0,
 		Provides: plugin.Provided{
 			Name: "store", Version: "1.0.0",
-			// int, uint and float32 — three spellings of one value.
 			Attrs: map[string]any{"max": 5, "min": uint(1), "rate": float32(2)},
 		},
 	}}
@@ -70,13 +47,6 @@ func TestCapabilityMatchesAcrossNumberTypes(t *testing.T) {
 	}
 }
 
-// §5.2 makes transitions SEQUENTIAL. `intransition` alone could not
-// deliver that — it is set inside `run`, so two goroutines both passed
-// the guard — and the damage was to the registry itself: `Declare`
-// reads `len(h.inst)` for `Pos` and `h.seqn` for `Seq`, so an
-// interleaved pair produced two instances sharing both.
-//
-// -race is what makes this test worth having; `make test` runs it.
 func TestConcurrentDeclaresAreSequential(t *testing.T) {
 	host := plugin.MakeHost(plugin.HostOptions{
 		Catalog: withprobes(), Points: withpoints(nil)})

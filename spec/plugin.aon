@@ -1,137 +1,21 @@
 
-# The plugin conformance corpus — SOURCE OF TRUTH.
-#
-# plugin.json beside this file is a COMMITTED build artifact compiled from
-# here by tools/build-spec.js (@voxgig/model). Every port's test runner
-# reads that JSON directly, so no port needs a Node toolchain to run its
-# tests. Edit this file, run `npm run build-spec` in tools/, and commit
-# both. Never hand-edit the JSON (§16, prime directive 5).
-#
-# STATUS: P5 complete. The corpus is COMPLETE against §15.3 — all
-# nineteen sections, 572 entries (417 at P2, when this line was first
-# written), every one running green against the canonical TypeScript
-# port AND the sixteen ports of it.
-#
-# P0 built the machinery and proved it turns over on an EMPTY corpus,
-# which was its exit criterion: `make spec` compiles this file and
-# `make spec-check` proves the committed JSON matches it. Both worked
-# before there was anything to compile, because a corpus pipeline first
-# exercised on real data is one whose failures arrive mixed up with the
-# data's.
-#
-# P1 fills it in, and the order is an obligation rather than a preference
-# (see station's station-and-plugin-plan.md §3):
-#
-#   C1 — WRITTEN. Owed before station's Stage 2, earlier than P1's exit:
-#     ref      name/tag grammar, parse, format, canonicalization,
-#              auto-tag, `pos` vs `seq` across a redeclaration
-#     config   document normalization, array/map forms, the `default`
-#              map, the ten-level precedence ladder, profile overlay,
-#              defaults-after-merge, shape-declared merge depth,
-#              list-replace
-#
-#   C2 — WRITTEN, with the driver contract in DOCS.md §4. Owed before
-#   P1's exit, together with that contract in
-#   DOCS.md (§15.2 — probes, command vocabulary, canonical observable),
-#   because these two are DRIVER sections and a port cannot run them from
-#   corpus files alone:
-#     lifecycle  the state machine, idempotence, illegal transitions,
-#                failure paths
-#     order      topological sort, bands, ties, vacuous constraints,
-#                recomputation
-#
-# P2's PURE sections are now written too — env, version, capability,
-# graph, resolve. Nine sections, and every one runs against the canonical
-# with no driver where §15.3 marks it pure.
-#
-# ALL NINETEEN SECTIONS §15.3 NAMES NOW EXIST — none missing, none
-# extra. A guard in the typescript suite asserts every corpus group has
-# a subject, so a section added here without a runner is a failure
-# rather than a silence.
-#
-# Adding a section here is not enough on its own — §15.3's table records
-# whether it is pure data or driver-based, and a driver section without
-# its contract in DOCS.md is a suite no port but this one can implement.
 
 
-# Spec format version. Version 1 turns on strict entry validation in every
-# runner: unknown fields, multiple argument sources, `err` beside `out`,
-# and empty sets all fail rather than passing silently.
 PLUGIN: version: 1
 
-# The omni spec-format version. `primary`, the group `set` lists and every
-# entry field here are omni's, so this corpus is readable by omni's runner
-# in any of its twenty-four ports; version 1 turns on its strict entry
-# validation (unknown fields, several argument sources, `err` beside
-# `out`, an empty `set`).
 OMNI: version: 1
 
 
-# ---------------------------------------------------------------------------
-# ref — name/tag identity. THE FIRST SECTION A PORT PASSES.
-#
-# Pure (§15.3): every entry calls one of the four pure functions, so a port
-# runs this with no host and no driver contract. That is what makes it
-# deliverable to station ahead of its Stage 2 (C1) — see doc/plan/contracts.md.
-#
-# The group name selects the subject:
-#   parse / parsebad   parseref(str)      -> {name, tag}
-#   format / formatbad formatref(name,tag)-> str        (positional args)
-#   canon              formatref(parseref(str))         -> str
-#   name               checkname(str)     -> boolean
-#   tag                checktag(str)      -> boolean
-#   bound              the 1024-character limit, both functions
-#
-# GRAMMAR (§4), and the asymmetry between the two is deliberate:
-#   name  ^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$   max 1024
-#   tag   ^[a-zA-Z0-9.~_-]+$              max 1024, or empty
-# A tag may START WITH A DIGIT and a name may not, because auto-tagging
-# assigns integer tags (stripe$1). A tag admits neither `@` nor `/`, because
-# a name is a package specifier and a tag is not.
-#
-# TWO THINGS THIS SECTION PINS THAT THE PROSE DOES NOT STATE:
-#
-# 1. `a$b$c` splits on the FIRST `$`, giving name `a` and tag `b$c`, so it
-#    fails as plugin_bad_tag rather than plugin_bad_name. Splitting on the
-#    last `$` would be equally consistent with §4 and would blame the name.
-#    Neither reading is derivable from the grammar — `$` is in neither
-#    character class — so the corpus is the arbiter (§4 rule 5), and it
-#    chooses the error that names the part actually at fault.
-#
-# 2. The empty string is plugin_bad_name, not a name with an empty tag.
-#
-# WHAT THIS SECTION DOES NOT PIN, and where those things now live.
-# An earlier §15.3 assigned **auto-tag** and **`pos` vs `seq`** to `ref`
-# as well, and marked the section pure. Nothing in the pure surface —
-# parseref, formatref, checkname, checktag — can reach any of them, so
-# §15.3 was corrected rather than this section stretched:
-#
-#   pos        `config`, assigned by document normalization  (pure)
-#   seq        `declare`, a counter the host holds           (driver)
-#   auto-tag   `declare`, since it must know what is already
-#              declared                                      (driver)
-#   pos STABILITY across a redeclaration — `order`'s tie group, which
-#              is where getting it wrong actually shows      (driver)
-#
-# Keeping them here would have made a section marked `pure` require a
-# driver, putting C1 behind C2 and inverting the ordering station's
-# Stage 2 depends on. See doc/plan/handover.md §5.
-# ---------------------------------------------------------------------------
 
 primary: ref: {
 
-  # The pair, from the written form. The tag is '' when absent — never null,
-  # never missing, because a port that returns three shapes for two states
-  # makes every downstream comparison a special case.
   parse: set: [
     { id: 'ref/parse#bare', doc: true, in: 'stripe', out: { name: 'stripe', tag: '' } }
     { in: 'stripe$test', out: { name: 'stripe', tag: 'test' } }
     { in: 'retry$fast', out: { name: 'retry', tag: 'fast' } }
 
-    # Canonicalization: a trailing `$` is an empty tag written out loud.
     { in: 'stripe$', out: { name: 'stripe', tag: '' } }
 
-    # A name is a package specifier, so it carries @ / . - _ ~
     { in: '@voxgig/plugin-retry', out: { name: '@voxgig/plugin-retry', tag: '' } }
     { in: '@voxgig/plugin-retry$eu', out: { name: '@voxgig/plugin-retry', tag: 'eu' } }
     { in: 'a.b.c', out: { name: 'a.b.c', tag: '' } }
@@ -150,8 +34,6 @@ primary: ref: {
   ]
 
 
-  # Grammar violations. The code says which HALF is wrong, which is the
-  # whole reason there are two codes rather than one plugin_bad_ref.
   parsebad: set: [
     { id: 'ref/parsebad#empty', doc: true, in: '', err: true, match: { err: { code: 'plugin_bad_name' } } }
     { in: '$test', err: true, match: { err: { code: 'plugin_bad_name' } } }
@@ -170,24 +52,17 @@ primary: ref: {
     { id: 'ref/parsebad#trailing-newline', in: "abc\n", err: true, match: { err: { code: 'plugin_bad_name' } } }
     { in: "a$b\n", err: true, match: { err: { code: 'plugin_bad_tag' } } }
 
-    # Splits on the FIRST `$`, so the name is `a` and the tag is `b$c`.
-    # See the header note: this is a corpus decision, not a grammar one.
     { in: 'a$b$c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
     { in: 'a$b/c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
     { in: 'a$@b', err: true, match: { err: { code: 'plugin_bad_tag' } } }
     { in: 'a$b c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
     { in: 'a$b!c', err: true, match: { err: { code: 'plugin_bad_tag' } } }
 
-    # The 1024 maximum applies to the PUBLIC REFERENCE OPERATIONS, not
-    # only to the predicates. A port implementing checkname/checktag
-    # separately from parseref would otherwise pass `bound` while its
-    # parser happily accepted a 1025-character component.
     { id: 'ref/parsebad#name-overlong', in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', err: true, match: { err: { code: 'plugin_bad_name' } } }
     { id: 'ref/parsebad#tag-overlong', in: 'x$ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', err: true, match: { err: { code: 'plugin_bad_tag' } } }
   ]
 
 
-  # The written form, from the pair. Positional args: [name, tag].
   format: set: [
     { id: 'ref/format#bare', doc: true, args: ['stripe', ''], out: 'stripe' }
     { args: ['stripe', 'test'], out: 'stripe$test' }
@@ -256,16 +131,6 @@ primary: ref: {
     { in: '/a', out: false }
     { in: 'a$b', out: false }
     { in: 'a b', out: false }
-    # A TRAILING NEWLINE IS NOT A NAME, and this entry exists because
-    # four languages' regex idioms disagree about that. `^` and `$` in
-    # the grammar mean STRING start and end. Python's `$` also matches
-    # BEFORE a trailing newline, so `^...$` there admits "abc\n"; ruby's
-    # `^`/`$` match at every LINE boundary, so they admit worse. Both
-    # need `\A`/`\Z` (or `fullmatch`), and neither is caught by any
-    # other entry in this section.
-    #
-    # Found while writing the ruby port; the python port had shipped
-    # with the hole (P5, handover.md §15).
     { id: 'ref/name#trailing-newline', in: "abc\n", out: false }
     { in: 'a!b', out: false }
     { in: 'a%b', out: false }
@@ -286,7 +151,6 @@ primary: ref: {
     { in: 'a~b', out: true }
     { in: 'A1._~-', out: true }
 
-    # A tag is not a package specifier: no @, no /.
     { in: '@x', out: false }
     { in: 'a/b', out: false }
     { in: 'a$b', out: false }
@@ -299,15 +163,6 @@ primary: ref: {
   ]
 
 
-  # The 1024-character bound, pinned at the boundary in both directions.
-  # A bound stated in prose and absent from the corpus is not a contract,
-  # and off-by-one at a length limit is the classic per-port divergence.
-  #
-  # THESE TWO GROUPS ARE NOT THE WHOLE BOUND. They exercise the
-  # predicates; `parsebad` and `formatbad` carry the matching over-limit
-  # cases for the public reference operations, because a port may
-  # implement the four functions independently and only the predicates
-  # would be constrained here.
   bound: set: [
     { id: 'ref/bound#name-max', doc: true, in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', out: true }
     { in: 'abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', out: false }
@@ -323,60 +178,6 @@ primary: ref: {
 }
 
 
-# ---------------------------------------------------------------------------
-# config — the declarative document, and the precedence ladder.
-#
-# Pure (§15.3): normalization is a pure function of the document, and option
-# resolution is a pure function of its layers. No host, no driver. The other
-# half of C1 — see doc/plan/contracts.md.
-#
-# TWO SUBJECTS, selected by group prefix, and BOTH TAKE ONE NAMED-LAYER MAP
-# as `in`:
-#
-#   norm*   normalizeconfig({ doc, profile?, keys?, reserved? })
-#             -> { instance, order, default, ... }
-#           `order` is the load order: array position for the array form,
-#           sorted refs for the map form.
-#
-#           NORMALIZATION DOES NOT MERGE OPTIONS. It merges the ENTRY
-#           keys (`active`, `start`, `order`) across base and profile,
-#           because §9.3's defaults-after-merge rule is about those; it
-#           leaves option data as `optionlayers`, the levels 3-6 that are
-#           present, IN LADDER ORDER.
-#
-#           That split is forced rather than chosen. §9.4 makes merge
-#           behaviour a property of the definition's option SHAPE, which
-#           normalization has never seen — a normalizer that flattened
-#           the layers would make `$MERGE: append` unimplementable at
-#           load time, since the layers it needed to concatenate are
-#           already collapsed. Preserving them is what keeps
-#           normalize-then-resolve equivalent to resolve-on-raw.
-#
-#   opt*    resolveoptions({ ref, shape?, hostdefaults?, doc?, profile?,
-#                            env?, hostoptions?, loadoptions?, patch? })
-#             -> the resolved option map
-#
-#           mapping onto §9.3's levels 1-10 as
-#             shape(1) hostdefaults(2) doc.default(3) doc.instance(4)
-#             doc.profile.<p>.default(5) doc.profile.<p>.instance(6)
-#             env(7) hostoptions(8) loadoptions(9) patch(10).
-#
-# An entry supplies only the layers it exercises, so the ladder is visible in
-# the test data rather than implied by call order.
-#
-# THE INPUT SHAPE IS A CORPUS DECISION. §9.3 fixes the ORDER of the ten
-# levels and §9.2 the API's existence, but not how a caller hands them over.
-# One named map keeps every entry self-describing, lets a port implement
-# resolveoptions without also implementing a host, and keeps the host
-# settings (`keys`, `reserved`, `profile`) inside `in` where inputs belong —
-# the shared Entry shape is CLOSED and stays omni's, because a second
-# description of one format is a second thing to drift.
-#
-# ONE AONTU CONSTRAINT WORTH KNOWING: a bare key cannot contain `$`, so
-# every ref used as a map key here is quoted ('stripe$test': …), as is
-# '$MERGE'. Unquoted, it is a parse error rather than a subtly different
-# key, so this is a build-time failure and not a silent one.
-# ---------------------------------------------------------------------------
 
 primary: config: {
 
@@ -392,10 +193,6 @@ primary: config: {
       in: { doc: { plugin: 1, instance: { 'stripe$test': {}, stripe: {}, 'stripe$eu': {} } } }
       match: { out: { order: ['stripe', 'stripe$eu', 'stripe$test'] } }
     }
-    # BYTEWISE, not locale-aware and not case-folded. All-lowercase
-    # cases pass under all three comparators, so they pin nothing; refs
-    # admit uppercase and `@`, and those are where the three disagree.
-    # '@' is 0x40, uppercase 0x41-0x5A, lowercase 0x61-0x7A.
     {
       id: 'config/normmap#bytewise'
       in: { doc: { plugin: 1, instance: { a: {}, A: {}, '@scope/x': {}, B: {}, b: {} } } }
@@ -420,30 +217,12 @@ primary: config: {
   ]
 
 
-  # The normalized instance's ORDER BLOCK, which nothing else asserts.
-  #
-  # Every other section reads `order` for its EFFECT on the sort. These
-  # pin the block's own SHAPE in the normalized document, and that gap is
-  # exactly what let a port rewrite the block while staying green: three
-  # separate parity breaks reached review because no entry could see one.
-  # Normalization does not interpret the block (§9.1) — it carries the
-  # authored value through — so whatever spelling was written must come
-  # back unchanged, in every port.
-  #
-  # Every ABSENT key is asserted `__UNDEF__` rather than left out. `match`
-  # is partial, so an omitted key is an UNCHECKED key: without this a port
-  # could materialize its zero value — `band: 0`, an empty `before` — and
-  # still pass every entry here while handing back a block nobody wrote.
-  # Synthesizing a key is the same defect as dropping one.
   normorder: set: [
     {
       id: 'config/normorder#scalar', doc: true
       in: { doc: { plugin: 1, instance: { retry: {}, alpha: { order: { after: 'retry' } } } } }
       match: { out: { instance: { alpha: { order: { after: 'retry', before: '__UNDEF__', band: '__UNDEF__' } } } } }
     }
-    # A ONE-ELEMENT LIST IS NOT THE SCALAR FORM. A port that keeps both
-    # as a list and re-emits the scalar collapses these two documents
-    # into one, so this entry and the one above must disagree.
     {
       id: 'config/normorder#one-element-list'
       in: { doc: { plugin: 1, instance: { retry: {}, alpha: { order: { after: ['retry'] } } } } }
@@ -454,9 +233,6 @@ primary: config: {
       in: { doc: { plugin: 1, instance: { retry: {}, zeta: {}, alpha: { order: { after: ['retry', 'zeta'] } } } } }
       match: { out: { instance: { alpha: { order: { after: ['retry', 'zeta'], before: '__UNDEF__', band: '__UNDEF__' } } } } }
     }
-    # An AUTHORED EMPTY LIST constrains nothing, but it is not the same
-    # document as an absent key and must survive as written. Length alone
-    # cannot tell a typed port which of the two it holds.
     {
       id: 'config/normorder#empty-list-survives'
       in: { doc: { plugin: 1, instance: { alpha: { order: { after: [] } } } } }
@@ -494,15 +270,10 @@ primary: config: {
       in: { doc: { plugin: 1, instance: [ { ref: 'retry', options: { retries: 3 } } ] } }
       match: { out: { instance: { retry: { optionlayers: [ { retries: 3 } ] } } } }
     }
-    # The ref is canonicalized on the way in, exactly as §4 rule 5 requires.
     {
       in: { doc: { plugin: 1, instance: [ { ref: 'stripe$' } ] } }
       match: { out: { order: ['stripe'] } }
     }
-    # `pos` in the ARRAY form is the array INDEX, a different rule from
-    # the map form's sorted index — a port implementing one and reusing
-    # it for the other gets this backwards, and the two entries disagree
-    # by construction: the same three refs, opposite orders.
     {
       id: 'config/normarray#pos'
       in: { doc: { plugin: 1, instance: [ { ref: 'zeta' }, { ref: 'alpha' }, { ref: 'retry' } ] } }
@@ -536,7 +307,6 @@ primary: config: {
       }
       match: { out: { order: ['zeta', 'alpha', 'retry'] } }
     }
-    # Nothing is dropped: the instance map still carries all three.
     {
       in: {
         profile: 'dev'
@@ -589,10 +359,6 @@ primary: config: {
   # A safety rule, not a tidiness one, and the first entry is the case
   # station supplied that shows why.
   normdefaults: set: [
-    # A base that BARS an instance, and an overlay that only moves a URL.
-    # If the overlay had its defaults filled in before merging it would
-    # carry a synthesized active:true and overwrite the base's false —
-    # silently re-enabling a deliberately disabled integration in prod.
     {
       id: 'config/normdefaults#bar', doc: true
       in: {
@@ -606,28 +372,14 @@ primary: config: {
       match: { out: { instance: { 'pad$a': { active: false
                                              optionlayers: [ { base: 'https://prod.example' } ] } } } }
     }
-    # The defaults themselves, on a merged entry that states neither.
     {
       in: { doc: { plugin: 1, instance: { retry: {} } } }
       match: { out: { instance: { retry: { active: true, start: 'eager' } } } }
     }
-    # An authored value is never overwritten by its own default.
     {
       in: { doc: { plugin: 1, instance: { retry: { active: false, start: 'lazy' } } } }
       match: { out: { instance: { retry: { active: false, start: 'lazy' } } } }
     }
-    # The same rule one level down, for a host nesting an instance map
-    # inside an option (§6.5) — the identical defect with a different key.
-    #
-    # NOTE WHAT THIS ASSERTS AND WHAT IT CANNOT. normalizeconfig does not
-    # merge options, so it does not apply the rule to the NESTED map —
-    # the nested host does, when it normalizes that map in turn. What
-    # this pins is that the information the nested host needs SURVIVES:
-    # both layers present, in ladder order, with the base's `active:
-    # false` intact and the overlay carrying only what it authored. A
-    # normalizer that flattened them here would hand the nested host a
-    # single pre-merged map and the one-level-down defect would be
-    # unavoidable rather than merely possible.
     {
       in: {
         profile: 'prod'
@@ -645,8 +397,6 @@ primary: config: {
   ]
 
 
-  # Host key renaming (§9.1). Applied at TWO PLACES AND NO OTHERS: the
-  # document root, and every profile.<name> overlay root. Neither recurses.
   normkeys: set: [
     {
       id: 'config/normkeys#root', doc: true
@@ -681,9 +431,6 @@ primary: config: {
       }
       match: { out: { instance: { retry: { optionlayers: [ { t: 1 }, { t: 2 } ] } } } }
     }
-    # It does NOT recurse: option data belongs to the definition, and a
-    # host's key map has no business rewriting keys inside it. An option
-    # literally named `sdk` survives untouched.
     {
       in: {
         keys: { instance: 'sdk', default: 'api' }
@@ -711,8 +458,6 @@ primary: config: {
       in: { reserved: ['station'], doc: { plugin: 1, default: { station: {} } } }
       err: true, match: { err: { code: 'plugin_ref_reserved' } }
     }
-    # In a profile overlay too — §9.1 lists every input layer, and a
-    # guarantee that holds only at the root is trivially bypassable.
     {
       in: {
         reserved: ['station'], profile: 'prod'
@@ -720,7 +465,6 @@ primary: config: {
       }
       err: true, match: { err: { code: 'plugin_ref_reserved' } }
     }
-    # A name that merely starts with the reserved one is NOT reserved.
     {
       in: { reserved: ['station'], doc: { plugin: 1, instance: { stationary: {} } } }
       match: { out: { order: ['stationary'] } }
@@ -728,19 +472,12 @@ primary: config: {
   ]
 
 
-  # `default` DECLARES NOTHING (§9.3), and only normalizeconfig can show
-  # it. The optdefault group calls resolveoptions, which verifies
-  # inheritance but cannot observe that no instance was created — a
-  # normalizer that copied `default.stripe` into `instance.stripe` would
-  # pass every one of those and silently manufacture an integration from
-  # a defaults-only document.
   normdefaultmap: set: [
     {
       id: 'config/normdefaultmap#inert', doc: true
       in: { doc: { plugin: 1, default: { stripe: { options: { t: 5000 } } } } }
       match: { out: { order: [], instance: {} } }
     }
-    # The default itself survives normalization — inert is not dropped.
     {
       in: { doc: { plugin: 1, default: { stripe: { options: { t: 5000 } } } } }
       match: { out: { default: { stripe: { options: { t: 5000 } } } } }
@@ -762,8 +499,6 @@ primary: config: {
   ]
 
 
-  # §9.3's ten levels, lowest to highest. Each entry adds one level on top
-  # of the one below and expects it to win.
   optladder: set: [
     { id: 'config/optladder#1', doc: true
       in: { ref: 'r', shape: { t: 1 } }, out: { t: 1 } }
@@ -783,13 +518,6 @@ primary: config: {
     { in: { ref: 'r', hostoptions: { t: 8 }, loadoptions: { t: 9 } }, out: { t: 9 } }
     { in: { ref: 'r', loadoptions: { t: 9 }, patch: { t: 10 } }, out: { t: 10 } }
 
-    # ADJACENT PAIRS ALONE DO NOT PIN A TOTAL ORDER. The chain above
-    # constrains 1<2<3<...<10 only if the relation is known transitive,
-    # and a resolver that applies the layers in the wrong sequence can
-    # satisfy every adjacent pair while inverting a non-adjacent one.
-    # The env/profile boundary is the one that actually bites: a
-    # resolver merging `env` BEFORE the profile overlay passes the
-    # level-7 case above, because that case only compares env with 4.
     { id: 'config/optladder#7-beats-6'
       in: { ref: 'r', profile: 'p'
             doc: { profile: { p: { instance: { r: { options: { t: 6 } } } } } }
@@ -797,7 +525,6 @@ primary: config: {
     { in: { ref: 'r', profile: 'p'
             doc: { profile: { p: { default: { r: { options: { t: 5 } } } } } }
             env: { t: 7 } }, out: { t: 7 } }
-    # Sparse non-adjacent pairs across the whole ladder.
     { in: { ref: 'r', shape: { t: 1 }, patch: { t: 10 } }, out: { t: 10 } }
     { in: { ref: 'r', hostdefaults: { t: 2 }, hostoptions: { t: 8 } }, out: { t: 8 } }
     { in: { ref: 'r', doc: { default: { r: { options: { t: 3 } } } }, loadoptions: { t: 9 } }, out: { t: 9 } }
@@ -805,7 +532,6 @@ primary: config: {
             doc: { default: { r: { options: { t: 3 } } }
                    profile: { p: { instance: { r: { options: { t: 6 } } } } } } }, out: { t: 6 } }
     { in: { ref: 'r', shape: { t: 1 }, env: { t: 7 } }, out: { t: 7 } }
-    # All ten at once: the highest present wins, whatever else is set.
     { id: 'config/optladder#all-ten'
       in: { ref: 'r', profile: 'p'
             shape: { t: 1 }, hostdefaults: { t: 2 }
@@ -815,8 +541,6 @@ primary: config: {
                                    instance: { r: { options: { t: 6 } } } } } }
             env: { t: 7 }, hostoptions: { t: 8 }, loadoptions: { t: 9 }, patch: { t: 10 } }
       out: { t: 10 } }
-    # And with the top layer removed, level 9 wins — proving the stack
-    # is ordered rather than "patch always wins".
     { in: { ref: 'r', profile: 'p'
             shape: { t: 1 }, hostdefaults: { t: 2 }
             doc: { default: { r: { options: { t: 3 } } }
@@ -831,9 +555,6 @@ primary: config: {
   # Levels 3-6 are ONE ordered merge, and the order is the point (§9.3):
   # PROFILE SPECIFICITY OUTRANKS DEFINITION SPECIFICITY.
   optprofile: set: [
-    # A prod per-definition default BEATS a base instance value — that is
-    # what an environment overlay is for. Collapsing the two namespaces
-    # and composing them afterwards would invert this.
     {
       id: 'config/optprofile#specificity', doc: true
       in: { ref: 'stripe$test', profile: 'prod'
@@ -849,14 +570,12 @@ primary: config: {
                                       instance: { 'stripe$test': { options: { t: 'prod-instance' } } } } } } }
       out: { t: 'prod-instance' }
     }
-    # With no `default` entries it degenerates to base then overlay.
     {
       in: { ref: 'r', profile: 'p'
             doc: { instance: { r: { options: { a: 1, b: 1 } } }
                    profile: { p: { instance: { r: { options: { b: 2 } } } } } } }
       out: { a: 1, b: 2 }
     }
-    # An unselected profile contributes nothing.
     {
       in: { ref: 'r'
             doc: { instance: { r: { options: { t: 1 } } }
@@ -866,9 +585,7 @@ primary: config: {
   ]
 
 
-  # `default` is keyed by NAME and declares nothing (§9.3).
   optdefault: set: [
-    # A base for every instance of that definition.
     {
       id: 'config/optdefault#byname', doc: true
       in: { ref: 'stripe$eu', doc: { default: { stripe: { options: { t: 5000 } } } } }
@@ -876,13 +593,8 @@ primary: config: {
     }
     { in: { ref: 'stripe$test', doc: { default: { stripe: { options: { t: 5000 } } } } }, out: { t: 5000 } }
     { in: { ref: 'stripe', doc: { default: { stripe: { options: { t: 5000 } } } } }, out: { t: 5000 } }
-    # It does not reach a DIFFERENT definition.
     { in: { ref: 'other', doc: { default: { stripe: { options: { t: 5000 } } } } }, out: {} }
 
-    # THE TWO MAPS ARE SEPARATE NAMESPACES, NOT SEPARATE SPELLINGS. An
-    # untagged ref IS a bare name, so `default.stripe` and
-    # `instance.stripe` are the same key string in two maps; the map
-    # decides the meaning. Both may exist for one name.
     {
       in: { ref: 'stripe', doc: { default: { stripe: { options: { a: 'from-default', b: 1 } } }
                                   instance: { stripe: { options: { a: 'from-instance' } } } } }
@@ -899,9 +611,6 @@ primary: config: {
   ]
 
 
-  # A LIST REPLACES (§9.4). struct.merge is element-wise by index, which
-  # for option maps is nearly always wrong: ["a"] over ["x","y","z"]
-  # yielding ["a","y","z"] is the defect station hit on secrets.providers.
   optlist: set: [
     {
       id: 'config/optlist#replace', doc: true
@@ -910,8 +619,6 @@ primary: config: {
       out: { p: ['a'] }
     }
     { in: { ref: 'r', doc: { instance: { r: { options: { p: ['x', 'y'] } } } }, patch: { p: [] } }, out: { p: [] } }
-    # A map next to it still deep-merges: the rule is about lists, not
-    # about turning every merge into a replace.
     {
       in: { ref: 'r', doc: { default: { r: { options: { p: ['x'], m: { a: 1 } } } }
                              instance: { r: { options: { p: ['a'], m: { b: 2 } } } } } }
@@ -925,8 +632,6 @@ primary: config: {
   # the one place the question is answered, and it travels with the
   # definition rather than living as a table in the host.
   optmerge: set: [
-    # replace — station declares `policy` this way to keep an egress
-    # allowlist from silently widening because two levels merged.
     {
       id: 'config/optmerge#replace', doc: true
       in: { ref: 'r', shape: { policy: { '$MERGE': 'replace' } }
@@ -934,7 +639,6 @@ primary: config: {
                    instance: { r: { options: { policy: { hosts: ['b.example'] } } } } } }
       out: { policy: { hosts: ['b.example'] } }
     }
-    # append — concatenates, and is the ONLY way to get list append.
     {
       in: { ref: 'r', shape: { p: { '$MERGE': 'append' } }
             doc: { default: { r: { options: { p: ['x'] } } }
@@ -952,7 +656,6 @@ primary: config: {
                    instance: { r: { options: { feature: { retry: { headers: { c: 3 } } } } } } } }
       out: { feature: { retry: { n: 3, headers: { c: 3 } } } }
     }
-    # deep:1 merges one level and replaces below it.
     {
       in: { ref: 'r', shape: { m: { '$MERGE': { deep: 1 } } }
             doc: { default: { r: { options: { m: { a: { x: 1 }, b: 2 } } } }
@@ -967,17 +670,6 @@ primary: config: {
       out: { m: { a: { x: 1, y: 2 }, b: 2 } }
     }
 
-    # THE DIRECTIVE HOLDS AT EVERY PRECEDENCE LEVEL, not only between
-    # document levels 3 and 4. §9.4 makes it a property of the shape,
-    # which does not know which layer a value arrived from — so a port
-    # honouring `replace` in the document while deep-merging `patch`,
-    # `env`, `hostoptions` or `loadoptions` is wrong, and every case
-    # above would still pass it.
-    #
-    # This is the one that bites in production: patching `policy` with a
-    # new host list must REPLACE it, not retain `strict` from below. An
-    # egress allowlist that silently widens because the top of the ladder
-    # merged is exactly the failure `replace` exists to prevent.
     {
       id: 'config/optmerge#replace-at-patch'
       in: { ref: 'r', shape: { policy: { '$MERGE': 'replace' } }
@@ -1003,42 +695,16 @@ primary: config: {
             doc: { instance: { r: { options: { p: ['x'] } } } }
             patch: { p: ['y'] } }
       out: { p: ['x', 'y'] } }
-    # and deep: N, which must count levels the same way wherever the
-    # overlay came from.
     { in: { ref: 'r', shape: { feature: { '$MERGE': { deep: 2 } } }
             doc: { instance: { r: { options: { feature: { retry: { n: 3, headers: { a: 1 } } } } } } }
             patch: { feature: { retry: { headers: { c: 3 } } } } }
       out: { feature: { retry: { n: 3, headers: { c: 3 } } } } }
-    # The bare list-replace default likewise, at the top of the ladder.
     { in: { ref: 'r', doc: { instance: { r: { options: { p: ['x', 'y', 'z'] } } } }
             patch: { p: ['a'] } }
       out: { p: ['a'] } }
   ]
 
 
-  # N IS AN INTEGER OF AT LEAST 1, AND EVERYTHING ELSE IS AN ERROR (§9.4).
-  #
-  # WHAT THIS GROUP PINS AND WHAT IT DOES NOT. It pins the DOMAIN — which
-  # values are rejected — and nothing about WHEN. §9.4 also requires the
-  # raise to happen when the shape ENTERS THE CATALOG rather than when a
-  # document happens to exercise the key, so that a malformed shape fails
-  # once and in the same place everywhere. Every entry here calls
-  # resolveoptions with the shape already in hand, so a port that accepts
-  # an invalid shape into its catalog and raises only at resolution time
-  # passes all of them.
-  #
-  # That timing is a CATALOG behaviour and needs a driver to observe.
-  # `declare/shape` is where it lives, and it is written the other way
-  # round: every entry there stops at `define`, so a port that defers the
-  # check raises nothing and fails. The two groups are the domain and the
-  # moment, and neither implies the other.
-  #
-  # Stating the domain is not pedantry: without it each port picks its own
-  # reading of {"deep": 0} — reject, replace, unlimited merge, or clamp to
-  # 1 — and the same document resolves differently per language. deep:0 is
-  # rejected DESPITE having an obvious reading, because "replace at this
-  # key" already has a spelling and two spellings for one behaviour is the
-  # defect class this repo exists to avoid.
   optmergebad: set: [
     { id: 'config/optmergebad#zero', doc: true
       in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
@@ -1050,11 +716,6 @@ primary: config: {
     { in: { ref: 'r', shape: { m: { '$MERGE': 'REPLACE' } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
     { in: { ref: 'r', shape: { m: { '$MERGE': true } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
     { in: { ref: 'r', shape: { m: { '$MERGE': {} } } }, err: true, match: { err: { code: 'plugin_shape_invalid' } } }
-    # The error names the key AND the directive (§9.4), so a shape with
-    # two problems is diagnosable without bisecting it. `/m/` alone
-    # would accept "invalid shape at m", which never mentions $MERGE and
-    # leaves a reader guessing which of the key's rules was broken — so
-    # both halves are asserted, separately.
     { id: 'config/optmergebad#names-key'
       in: { ref: 'r', shape: { m: { '$MERGE': { deep: 0 } } } }
       err: true, match: { err: { message: '/m/' } } }
@@ -1065,17 +726,6 @@ primary: config: {
 }
 
 
-# ---------------------------------------------------------------------------
-# lifecycle — the state machine (§5).
-#
-# DRIVER section (§15.3): entries carry `cmd`, and a port needs DOCS.md §4
-# to run them — the probe catalog, the command vocabulary, and the canonical
-# observable {status, open, log, result}. Corpus files alone are not enough,
-# which is why C2 ships both together (doc/plan/contracts.md).
-#
-# `log` order IS the assertion. A set would pass a port that unwinds in the
-# wrong direction, which is the one thing §8.3 exists to guarantee.
-# ---------------------------------------------------------------------------
 
 primary: lifecycle: {
 
@@ -1097,7 +747,6 @@ primary: lifecycle: {
       in: [ { do: 'define', name: 'probe' }, { do: 'load', ref: 'probe$a' } ]
       out: { status: { 'probe$a': 'loaded' }, open: 0, log: ['probe$a:define'], result: null }
     }
-    # `ready` walks the whole staircase in one call (§5.1).
     {
       in: [ { do: 'define', name: 'probe' }, { do: 'ready', ref: 'probe$a' } ]
       match: { out: { status: { 'probe$a': 'live' }, open: 1 } }
@@ -1159,7 +808,6 @@ primary: lifecycle: {
       out: { status: { 'probe$a': 'live' }, open: 1
              log: ['probe$a:define', 'probe$a:activate'], result: null }
     }
-    # Likewise load on a loaded instance: `define` fires once.
     {
       in: [
         { do: 'define', name: 'probe' }
@@ -1168,7 +816,6 @@ primary: lifecycle: {
       ]
       out: { status: { 'probe$a': 'loaded' }, open: 0, log: ['probe$a:define'], result: null }
     }
-    # And deactivate on a loaded instance.
     {
       in: [
         { do: 'define', name: 'probe' }
@@ -1224,12 +871,6 @@ primary: lifecycle: {
   # There is no second, softer failure state: the point of `failed` is
   # that it is not trustworthy.
   fail: set: [
-    # `catch: true` (DOCS.md §4.1) records the raise and lets the run
-    # continue. Without it this whole group is unwritable: §5.2's claim
-    # is that a failed instance REMAINS REGISTERED AND INSPECTABLE, and
-    # a run that stops at the raise can never see it. The corpus could
-    # pin that activation raises, or that the instance survives, but not
-    # both — and it is the pair that matters.
     {
       id: 'lifecycle/fail#activate', doc: true
       in: [
@@ -1239,7 +880,6 @@ primary: lifecycle: {
       ]
       match: { out: { status: { 'noisy$a': 'failed' } } }
     }
-    # The raise itself, uncaught, so the code is pinned too.
     {
       in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
@@ -1259,7 +899,6 @@ primary: lifecycle: {
       ]
       match: { out: { result: { 'noisy$a': 'failed' } } }
     }
-    # It accepts ONLY unload. Any other transition raises.
     {
       in: [
         { do: 'define', name: 'noisy', probe: 'noisy' }
@@ -1304,15 +943,6 @@ primary: lifecycle: {
   ]
 
 
-  # A FAILING `deactivate`, which nothing exercised until the go port
-  # went looking. §5.2: "Any failure during a transition — a lifecycle
-  # callback raising, or a ledger entry raising — lands the instance in
-  # `failed`", with the scope still FULLY unwound.
-  #
-  # The `unload` case is the one that was actually broken in the
-  # canonical: the raise propagated straight out, leaving the instance
-  # `live`, its scope untouched and its bindings still live — reporting
-  # a failure while leaking exactly the resources the failure was about.
   faildown: set: [
     {
       id: 'lifecycle/faildown#deactivate', doc: true
@@ -1329,11 +959,6 @@ primary: lifecycle: {
       ]
       err: true, match: { err: { code: 'probe_boom' } }
     }
-    # ...and through `unload`, which §5.2 defines as "deactivate first,
-    # then close". The deactivate half failing is still a transition
-    # failure, so the same three things hold — INCLUDING that the
-    # instance stays registered, because `failed` is a state an operator
-    # has to be able to see.
     {
       id: 'lifecycle/faildown#unload'
       in: [
@@ -1367,25 +992,6 @@ primary: lifecycle: {
   ]
 
 
-  # §12's `plugin_<phase>_failed` codes are "a callback raised; wraps the
-  # cause" - and nothing wrapped anything, because every probe raise
-  # carried a code of its own. An ORDINARY error escaping a callback (a
-  # socket that would not open, a library that threw) reached the caller
-  # with no code at all, so it took part in no cross-port error contract.
-  #
-  # AN ERROR THAT ALREADY CARRIES A CODE KEEPS IT: the code is the
-  # error's identity, and a plugin raising `store_unreachable` must not
-  # have it rewritten. Only the code-less case is wrapped.
-  # `slow` is the sixth probe DOCS.md §4.3 names, and until this entry
-  # NOTHING IN THE CORPUS EVER LOADED IT. `check_probes.py` asserted the
-  # definition exists; no run ever asked it to do anything, so a port
-  # could ship a `slow` that raised on activate and stay green.
-  #
-  # It behaves as `probe` does, deliberately: §18 makes the host
-  # synchronous, so a yielding callback would not "complete later", it
-  # would abandon everything past its first suspension point. The open
-  # question - whether a host should ever await - is recorded in
-  # DOCS.md §4.3 rather than guessed at here.
   slow: set: [
     {
       id: 'lifecycle/slow#is-a-probe', doc: true
@@ -1429,7 +1035,6 @@ primary: lifecycle: {
       ]
       err: true, match: { err: { code: 'plugin_deactivate_failed' } }
     }
-    # ...and the instance still lands in `failed`, wrapped or not.
     {
       in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate', bare: true } }
@@ -1437,7 +1042,6 @@ primary: lifecycle: {
       ]
       match: { out: { status: { 'noisy$a': 'failed' }, open: 0 } }
     }
-    # A code the plugin chose survives untouched.
     {
       id: 'lifecycle/wrap#own-code-kept'
       in: [
@@ -1449,11 +1053,6 @@ primary: lifecycle: {
   ]
 
 
-  # `failed` HAS ONE EXIT, AND IT IS `unload` (§5.2). `deactivate` fell
-  # through its state checks, ran the definition's `deactivate` on an
-  # instance that never completed activation, and - if that callback
-  # happened to succeed - returned it to `loaded`, from where it could be
-  # activated again. Found by review of the go port.
   failedexit: set: [
     {
       id: 'lifecycle/failedexit#deactivate', doc: true
@@ -1464,7 +1063,6 @@ primary: lifecycle: {
       ]
       err: true, match: { err: { code: 'plugin_bad_state' } }
     }
-    # ...and it stays `failed` rather than being quietly rehabilitated.
     {
       in: [
         { do: 'load', ref: 'noisy$a', options: { fail: 'activate' } }
@@ -1499,14 +1097,10 @@ primary: lifecycle: {
       ]
       err: true, match: { err: { code: 'plugin_ref_duplicate' } }
     }
-    # An unknown definition, distinct from an unknown ref.
     { in: [ { do: 'load', ref: 'nosuch$a' } ], err: true, match: { err: { code: 'plugin_unknown_definition' } } }
   ]
 
 
-  # INTROSPECTION NEVER ADVANCES THE STATE (§5.2). A status page must not
-  # be a way to accidentally import twenty packages, so `list` over a
-  # `declared` instance leaves it `declared` and fires no callback.
   introspect: set: [
     {
       id: 'lifecycle/introspect#free', doc: true
@@ -1518,8 +1112,6 @@ primary: lifecycle: {
       out: { status: { 'probe$a': 'declared' }, open: 0, log: []
              result: { 'probe$a': 'declared' } }
     }
-    # `declared` costs nothing: twenty lazy instances are twenty map
-    # entries and no executed code, which is the property station needs.
     {
       in: [
         { do: 'define', name: 'probe' }
@@ -1547,15 +1139,6 @@ primary: lifecycle: {
   ]
 
 
-  # The synthetic resource counter is the whole test for §8.3's unwind.
-  # `greedy` acquires N and releases some explicitly; the difference is
-  # what the instance scope must unwind by itself.
-  # §12 has carried `plugin_bind_scope` - "binding declared outside
-  # `define`" - since before anything raised it. §8.1 puts binding
-  # DECLARATION in `define` and INSERTION at a successful activate; the
-  # guard was the half nobody wrote, so a binding added from `activate`
-  # went live without being part of the loaded definition and every
-  # deactivate/activate cycle appended another copy.
   bindscope: set: [
     {
       id: 'lifecycle/bindscope#activate', doc: true
@@ -1640,25 +1223,9 @@ primary: lifecycle: {
 }
 
 
-# ---------------------------------------------------------------------------
-# order — the resolved order of bindings on a point (§7).
-#
-# DRIVER section: needs DOCS.md §4, and §4.4's ordering block in particular.
-#
-# ONE RULE, ONE PLACE. sdkgen grew two special cases in makeOptions (`test`,
-# then `station`) and the third was not far off; this sort is the whole
-# replacement. Three tiers, in this order:
-#
-#   1 constraints   before/after edges, matched by ref or by name
-#   2 bands         integer, lower first, default 0
-#   3 declaration   ties break by `pos`, NOT by load order and NOT by `seq`
-#
-# `result` is the ref list from an `order` command.
-# ---------------------------------------------------------------------------
 
 primary: order: {
 
-  # Constraints are edges, and they win over everything below them.
   constraint: set: [
     {
       id: 'order/constraint#after', doc: true
@@ -1681,8 +1248,6 @@ primary: order: {
       ]
       match: { out: { result: ['probe$b', 'probe$a'] } }
     }
-    # Matching BY NAME orders behind every instance of that definition
-    # (§7), which is the whole reason the two spellings exist.
     {
       in: [
         { do: 'define', name: 'probe' }
@@ -1768,14 +1333,6 @@ primary: order: {
   ]
 
 
-  # `before`/`after` take ONE spelling or a LIST of them. plugin typed this
-  # as a bare string and matched with `===`, so a list matched nothing and
-  # was SILENTLY DROPPED - the sort came out as if no constraint had been
-  # declared, with nothing raised. station has declared and validated the
-  # list form since Stage 3b, so the two levels of one rule disagreed about
-  # what the rule accepts. Every entry here carries a band that CONTRADICTS
-  # the constraint: without one, `pos` alone would produce the wanted order
-  # and the entry would pass whether or not the list was read.
   list: set: [
     {
       id: 'order/list#after-one', doc: true
@@ -1787,7 +1344,6 @@ primary: order: {
       ]
       match: { out: { result: ['probe$a', 'probe$b'] } }
     }
-    # A list means after ALL of them, not after the first one read.
     {
       id: 'order/list#after-many', doc: true
       in: [
@@ -1799,7 +1355,6 @@ primary: order: {
       ]
       match: { out: { result: ['probe$a', 'probe$c', 'probe$b'] } }
     }
-    # The `before` spelling takes a list on the same terms.
     {
       id: 'order/list#before-many', doc: true
       in: [
@@ -1824,14 +1379,6 @@ primary: order: {
       ]
       match: { out: { result: ['probe$b', 'probe$a'] } }
     }
-    # A list may name the same instance twice - once by NAME, once by REF.
-    # That is one edge, not two, and must not deadlock or double-count.
-    #
-    # The declaring instance is deliberately a DIFFERENT definition. A bare
-    # name fans out to every instance of that definition, so a member naming
-    # the declarer's own definition would include the declarer itself - a
-    # self-edge, which is a cycle of one and correctly raises. That is §7
-    # working, not a list defect, and it cost this entry one rewrite.
     {
       id: 'order/list#name-and-ref-are-one-edge', doc: true
       in: [
@@ -1858,19 +1405,6 @@ primary: order: {
   ]
 
 
-  # TIES BREAK BY `pos` — the instance's position in the DECLARATION
-  # order — not by the order instances happened to load, and not by the
-  # incarnation counter `seq` (§4 rule 4). Both distinctions are
-  # load-bearing.
-  # §7 breaks a tie by `pos` - and TWO INSTANCES CAN SHARE ONE. `declare`
-  # defaults `pos` to the registry size, so unloading one and declaring
-  # another reuses a surviving instance's position. Past that the
-  # canonical fell through to its map's insertion order, which a language
-  # whose maps have none cannot reproduce: go ordered by ref and got the
-  # opposite answer from the same corpus.
-  #
-  # DECLARATION SEQUENCE is that order made explicit. Found by review of
-  # the go port.
   seqtie: set: [
     {
       id: 'order/seqtie#shared-pos', doc: true
@@ -1881,15 +1415,6 @@ primary: order: {
         { do: 'ready', ref: 'probe$a' }
         { do: 'order', point: 'p' }
       ]
-      # `probe$b` has pos 1 and `probe$a` re-used pos 1; `b` was declared
-      # first, so it runs first. A port breaking the tie by REF would
-      # answer ['probe$a', 'probe$b'].
-      #
-      # Like `pinorder`, this bites only where maps have no order. A
-      # delete-then-insert moves a key to the END of an insertion-ordered
-      # map, which is also where its new `seq` puts it, so registry order
-      # and `seq` order coincide there and cannot be told apart. go is
-      # what this entry is for.
       match: { out: { result: ['probe$b', 'probe$a'] } }
     }
   ]
@@ -1997,7 +1522,6 @@ primary: order: {
       ]
       match: { out: { result: ['probe$a', 'probe$b'] } }
     }
-    # An empty live set is an empty order, not an error.
     {
       in: [ { do: 'define', name: 'probe' }, { do: 'order', point: 'p' } ]
       match: { out: { result: [] } }
@@ -2040,23 +1564,6 @@ primary: order: {
   ]
 
 
-  # A PIN IS NOT A CONSTRAINT (§7). Constraints and bands are negotiable
-  # by definition — they are what plugins and documents say they WANT,
-  # and the sort's job is to satisfy them all. A pin is the host stating
-  # a structural invariant of its own architecture, so an ordering that
-  # would move it is REJECTED rather than honoured.
-  #
-  # The vocabulary is POSITIONAL, not ordinal: §6.2 composes
-  # b1(b2(b3(base))) with the FIRST binding outermost, so `first` and
-  # `innermost` are opposites. A pin spelled in sort terms would be read
-  # backwards by exactly the people it exists to protect.
-  # A PIN MAP IS DATA, AND ITS ITERATION ORDER IS PART OF THE ANSWER.
-  # Two names pinned to the same end are order-sensitive:
-  # `{b:'first', a:'first'}` and `{a:'first', b:'first'}` give different
-  # results. JavaScript's `Object.keys` is insertion order and a go map
-  # has none at all, so leaving it unstated made the same declaration
-  # mean different things per port. SORTED is the one order every
-  # language agrees on. Found by review of the go port.
   pinorder: set: [
     {
       id: 'order/pinorder#two-names', doc: true
@@ -2066,19 +1573,6 @@ primary: order: {
         { do: 'ready', ref: 'noisy$b' }
         { do: 'order', point: 'p' }
       ]
-      # Each pinned name is moved to the front in turn, so the one
-      # applied LAST ends up outermost: sorted order applies `noisy` then
-      # `probe`, leaving `probe` outermost.
-      #
-      # THIS ENTRY CAN ONLY FAIL IN A PORT WHOSE MAPS HAVE NO ORDER -
-      # go, and every port whose map type is a hash. `make spec` emits
-      # the JSON with SORTED KEYS, so a decoder that preserves file order
-      # (JavaScript, Python, Ruby) hands the implementation a sorted map
-      # whatever it then does, and the two readings coincide. That is a
-      # limit of the corpus, not of the rule: an embedding host builds
-      # its pin map in code, in any order it likes, which is why every
-      # port sorts explicitly. Recorded in doc/plan/handover.md so the
-      # next port does not read the green as coverage.
       match: { out: { result: ['probe$a', 'noisy$b'] } }
     }
   ]
@@ -2128,43 +1622,23 @@ primary: order: {
 }
 
 
-# ---------------------------------------------------------------------------
-# env — VOXGIG_PLUGIN_* parsing (§9.5).
-#
-# PURE: a function over a string map and a ref set, so the corpus tests it
-# without touching a real environment.
-#
-#   in: { env: {...}, refs?: [...], reserved?: [...] }
-#     -> { profile?, options: {ref -> map}, active: [], inactive: [] }
-#
-# THE REF SET IS NOT OPTIONAL DECORATION. The encoding is LOSSY — `$` -> `__`
-# and `.` -> `_`, case-folded — so RETRY__FAST_MIN cannot be split into ref
-# and path without knowing which refs exist. A port that guesses at the
-# split will guess differently from the next one.
-# ---------------------------------------------------------------------------
 
 primary: env: {
 
-  # One option, on one ref.
   option: set: [
     {
       id: 'env/option#simple', doc: true
       in: { refs: ['retry'], env: { VOXGIG_PLUGIN_RETRY_RETRIES: '3' } }
       out: { options: { retry: { retries: 3 } }, active: [], inactive: [] }
     }
-    # A tag: `$` encodes as `__`.
     {
       in: { refs: ['retry$fast'], env: { VOXGIG_PLUGIN_RETRY__FAST_RETRIES: '3' } }
       match: { out: { options: { 'retry$fast': { retries: 3 } } } }
     }
-    # A dotted path: `.` encodes as `_`, and nests.
     {
       in: { refs: ['retry'], env: { VOXGIG_PLUGIN_RETRY_MIN_DELAY: '500' } }
       match: { out: { options: { retry: { min: { delay: 500 } } } } }
     }
-    # LONGEST ENCODED REF WINS. With both `retry` and `retry$fast` held,
-    # RETRY__FAST_MIN belongs to the tagged one — shortest-first would
-    # read `__fast` as part of the path and write it to the wrong ref.
     {
       id: 'env/option#longest'
       in: { refs: ['retry', 'retry$fast'], env: { VOXGIG_PLUGIN_RETRY__FAST_MIN: '1' } }
@@ -2176,7 +1650,6 @@ primary: env: {
       in: { refs: ['retry'], env: { VOXGIG_PLUGIN_OTHER_X: '1' } }
       out: { options: {}, active: [], inactive: [] }
     }
-    # Keys without the prefix are not ours.
     {
       in: { refs: ['retry'], env: { PATH: '/usr/bin', HOME: '/root' } }
       out: { options: {}, active: [], inactive: [] }
@@ -2204,11 +1677,6 @@ primary: env: {
     { in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: 'null' } }
       match: { out: { options: { r: { n: '__NULL__' } } } } }
 
-    # `NaN` and `Infinity` ARE NOT JSON. `JSON.parse` rejects them and
-    # the documented fallback keeps the string - but python's
-    # `json.loads` accepts them as floats, silently changing the option's
-    # type to a value strict JSON serializers cannot represent. Found by
-    # review of the python port.
     { id: 'env/value#not-json-constants'
       in: { refs: ['r'], env: { VOXGIG_PLUGIN_R_N: 'NaN' } }
       match: { out: { options: { r: { n: 'NaN' } } } } }
@@ -2227,19 +1695,15 @@ primary: env: {
       match: { out: { active: ['a', 'b'] } } }
     { in: { refs: ['a'], env: { VOXGIG_PLUGIN_INACTIVE: 'a' } }
       match: { out: { inactive: ['a'] } } }
-    # Whitespace around a comma is an operator typing a list, not an error.
     { in: { refs: ['a', 'b'], env: { VOXGIG_PLUGIN_ACTIVE: ' a , b ' } }
       match: { out: { active: ['a', 'b'] } } }
-    # Refs canonicalize here as everywhere (§4 rule 5).
     { in: { refs: ['a'], env: { VOXGIG_PLUGIN_INACTIVE: 'a$' } }
       match: { out: { inactive: ['a'] } } }
-    # An empty value yields nothing rather than one empty ref.
     { in: { refs: ['a'], env: { VOXGIG_PLUGIN_ACTIVE: '' } }
       match: { out: { active: [] } } }
   ]
 
 
-  # THE PROFILE, which selects the overlay §9.3's levels 5 and 6 come from.
   profile: set: [
     { id: 'env/profile#set', doc: true
       in: { refs: [], env: { VOXGIG_PLUGIN_PROFILE: 'prod' } }
@@ -2247,38 +1711,21 @@ primary: env: {
   ]
 
 
-  # THE COLLISION IS DETECTED, NOT AVOIDED (§9.5). `_` is legal in a name
-  # and in a tag and the mapping folds case, so several distinct refs can
-  # encode to one key. Rather than restrict a grammar the rest of the
-  # stack already uses, the host encodes every ref it holds and refuses a
-  # key two of them claim, NAMING BOTH.
-  #
-  # Reported from the REF SET ALONE — no environment variable need
-  # exercise it. A latent ambiguity is still an ambiguity, and finding it
-  # at deploy time is the failure this exists to prevent.
   ambiguous: set: [
     { id: 'env/ambiguous#tag-vs-underscore', doc: true
       in: { refs: ['retry$fast', 'retry__fast'], env: {} }
       err: true, match: { err: { code: 'plugin_env_ambiguous' } } }
-    # Case folding collides too.
     { in: { refs: ['retry$fast', 'Retry$fast'], env: {} }, err: true, match: { err: { code: 'plugin_env_ambiguous' } } }
     { in: { refs: ['retry$fast', 'retry$Fast'], env: {} }, err: true, match: { err: { code: 'plugin_env_ambiguous' } } }
-    # The message names BOTH refs — one name leaves the reader bisecting.
     { in: { refs: ['retry$fast', 'retry__fast'], env: {} }
       err: true, match: { err: { message: '/retry\\$fast/' } } }
     { in: { refs: ['retry$fast', 'retry__fast'], env: {} }
       err: true, match: { err: { message: '/retry__fast/' } } }
-    # Refs that do NOT collide are fine, including near-misses.
     { in: { refs: ['retry', 'retry$fast', 'other'], env: {} }
       match: { out: { options: {} } } }
   ]
 
 
-  # Reserved refs are barred HERE TOO (§9.1). Stating the guard for
-  # documents alone would leave the guarantee trivially bypassable:
-  # VOXGIG_PLUGIN_INACTIVE=station is easier to set than editing a config
-  # file, and INACTIVE has the final word — so the one lever this
-  # mechanism exists to deny would have been the one left open.
   reserved: set: [
     { id: 'env/reserved#inactive', doc: true
       in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'station' } }
@@ -2289,27 +1736,16 @@ primary: env: {
       err: true, match: { err: { code: 'plugin_ref_reserved' } } }
     { in: { refs: ['station'], reserved: ['station'], env: { VOXGIG_PLUGIN_STATION_X: '1' } }
       err: true, match: { err: { code: 'plugin_ref_reserved' } } }
-    # A name merely starting with the reserved one is not reserved.
     { in: { refs: ['stationary'], reserved: ['station'], env: { VOXGIG_PLUGIN_INACTIVE: 'stationary' } }
       match: { out: { inactive: ['stationary'] } } }
   ]
 }
 
 
-# ---------------------------------------------------------------------------
-# version — the range grammar and the ONE satisfaction predicate (§11.2).
-#
-#   satisfies: in: { version, range } -> boolean
-#   range:     in: <string>           -> { lo, hi }
-# ---------------------------------------------------------------------------
 
 primary: version: {
 
-  # TWO FORMS AND NO MORE.
-  #   '2.1'   >= 2.1.0 and < 3.0.0
-  #   '~2.1'  >= 2.1.0 and < 2.2.0
   range: set: [
-    # ...and the boundary itself is admitted, in both directions.
     { id: 'version/range#component-max'
       in: '2147483647', out: { lo: [2147483647, 0, 0], hi: [2147483648, 0, 0] } }
     { id: 'version/range#caret', doc: true, in: '2.1', out: { lo: [2, 1, 0], hi: [3, 0, 0] } }
@@ -2331,22 +1767,7 @@ primary: version: {
     { in: '2.1.3.4', err: true, match: { err: { code: 'plugin_bad_range' } } }
     { in: '~', err: true, match: { err: { code: 'plugin_bad_range' } } }
     { in: '-1', err: true, match: { err: { code: 'plugin_bad_range' } } }
-    # THE SAME ANCHOR TRAP AS THE REF GRAMMAR, in the one other place
-    # this library holds a regex. Python's `$` matches before a trailing
-    # newline and ruby's matches at every line boundary, so `^...$`
-    # accepts "2.1\n" as a range in both. Its own entry because a port
-    # that fixed the ref grammar and left the version grammar alone
-    # would pass the whole `ref` section.
     { id: 'version/rangebad#trailing-newline', in: "2.1\n", err: true, match: { err: { code: 'plugin_bad_range' } } }
-    # A COMPONENT IS BOUNDED, like a ref is (§4's 1024). The grammar
-    # admits an unbounded digit sequence and every language then
-    # disagrees past its integer range: JS silently loses precision,
-    # go's Atoi errors (and a port ignoring that gets 0), C overflows,
-    # python is exact. `satisfies('0', '9223372036854775808')` was false
-    # in the canonical and TRUE in go, from this same corpus.
-    #
-    # 2^31-1, because every port has a signed 32-bit integer and no real
-    # version has ever needed more. Found by review of the go port.
     { id: 'version/rangebad#component-bound', in: '9223372036854775808', err: true, match: { err: { code: 'plugin_bad_range' } } }
     { in: '2147483648', err: true, match: { err: { code: 'plugin_bad_range' } } }
     { in: '1.2147483648', err: true, match: { err: { code: 'plugin_bad_range' } } }
@@ -2354,10 +1775,6 @@ primary: version: {
   ]
 
 
-  # THE WHOLE RULE: the provider's `version` falls inside the
-  # requirement's `range`. There is no third field and no second
-  # comparison — an earlier draft added a provider-side `compat` range
-  # and left three defensible readings of one declaration.
   satisfies: set: [
     { id: 'version/satisfies#in', doc: true, in: { version: '2.3', range: '2.1' }, out: true }
     { in: { version: '2.1', range: '2.1' }, out: true }
@@ -2374,7 +1791,6 @@ primary: version: {
     { in: { version: '2.2.0', range: '~2.1' }, out: false }
     { in: { version: '2.2', range: '2.1' }, out: true }
 
-    # Boundaries, both inclusive-low and exclusive-high.
     { id: 'version/satisfies#lo-inclusive', in: { version: '2.1.0', range: '~2.1' }, out: true }
     { in: { version: '2.0.99', range: '~2.1' }, out: false }
     { in: { version: '3.0.0', range: '2.1' }, out: false }
@@ -2382,22 +1798,9 @@ primary: version: {
 }
 
 
-# ---------------------------------------------------------------------------
-# capability — provides/requires matching and the SELECTION RANK (§11.1).
-#
-#   in: { req: {...}, candidates: [ { ref, pos, provides } ] }
-#     -> the matching candidates, BEST FIRST
-#
-# WITHOUT A TOTAL RANK, "any provider satisfies" is true of the GRAPH and
-# useless to the PLUGIN: two ports could bind different `store` instances,
-# both resolve green, and behave differently — precisely the divergence a
-# shared corpus exists to catch. So the rank is pinned, not left to
-# whichever order a language's sort happens to produce.
-# ---------------------------------------------------------------------------
 
 primary: capability: {
 
-  # Matching: name, then range, then `match` against `attrs`.
   match: set: [
     {
       id: 'capability/match#name', doc: true
@@ -2409,10 +1812,6 @@ primary: capability: {
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store' } } ] }
       out: [] }
 
-    # `match` is checked KEY BY KEY against the provider's attrs, and a
-    # key the provider never declared is a MISS. A requirement asking
-    # for `transactional: true` must not be satisfied by a provider that
-    # never said whether it is.
     {
       id: 'capability/match#attrs'
       in: { req: { name: 'store', match: { transactional: true } }
@@ -2428,21 +1827,10 @@ primary: capability: {
     { in: { req: { name: 'store', match: { transactional: true } }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store' } } ] }
       out: [] }
-    # Every key must pass, not merely one.
     { in: { req: { name: 'store', match: { a: 1, b: 2 } }
             candidates: [ { ref: 'x', pos: 0, provides: { name: 'store', attrs: { a: 1, b: 3 } } } ] }
       out: [] }
 
-    # EQUALITY IS BY JSON TYPE AS WELL AS VALUE, and this is the entry
-    # that says so. The canonical compares with `===`, under which `true`
-    # and `1` are different values — but half the ports are written in
-    # languages where the default comparison says they are the same
-    # (python's `True == 1`, php's `==`, perl, lua), so a port taking its
-    # language's `==` passes every other entry in this section and
-    # silently satisfies a requirement no one asked for.
-    #
-    # Found by the python port (§18, P4): a mutation deleting its
-    # bool/int guard survived the whole suite.
     { in: { req: { name: 'store', match: { transactional: true } }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: 1 } } } ] }
       out: [] }
@@ -2454,9 +1842,6 @@ primary: capability: {
     { in: { req: { name: 'store', match: { transactional: false } }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: 0 } } } ] }
       out: [] }
-    # ...and the STRING/NUMBER half, which is the one php's `==`, perl's
-    # `==`/`eq` split and lua's automatic coercion each get wrong in
-    # their own way. `1` is not `"1"`.
     { in: { req: { name: 'store', match: { n: 1 } }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { n: '1' } } } ] }
       out: [] }
@@ -2469,34 +1854,18 @@ primary: capability: {
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', attrs: { transactional: true, n: 1 } } } ] }
       match: { out: [ { ref: 'a' } ] } }
 
-    # The range participates in matching, not only in diagnosis.
     { in: { req: { name: 'store', range: '2.1' }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', version: '2.3' } } ] }
       match: { out: [ { ref: 'a' } ] } }
     { in: { req: { name: 'store', range: '2.1' }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store', version: '3.0' } } ] }
       out: [] }
-    # A requirement with a range is not satisfied by a provider with no
-    # version: "unversioned" is not "any version".
     { in: { req: { name: 'store', range: '2.1' }
             candidates: [ { ref: 'a', pos: 0, provides: { name: 'store' } } ] }
       out: [] }
   ]
 
 
-  # `match` IS A PARTIAL MATCH AND IT RECURSES (§11.1): "every leaf in
-  # the requirement must be present and equal in the capability, keys not
-  # mentioned are not checked" — struct's and omni's `match`, not a flat
-  # key-by-key comparison of top-level values.
-  #
-  # THE DISTINCTION IS INVISIBLE WHILE EVERY ENTRY IS SCALAR, which is
-  # exactly how the canonical came to implement the flat reading: it
-  # compared `attrs[k] !== req.match[k]`, and in JavaScript that is
-  # REFERENCE identity for a map. A requirement and a capability are
-  # written in different places and are never the same object, so
-  # `match: { limits: { max: 5 } }` matched NOTHING — including a
-  # provider declaring exactly that. Found by the go port (§18, P4), and
-  # fixed in the canonical rather than worked around there.
   nested: set: [
     {
       id: 'capability/nested#leaf', doc: true
@@ -2518,17 +1887,11 @@ primary: capability: {
             candidates: [ { ref: 'a', pos: 0
                             provides: { name: 'store', attrs: { limits: {} } } } ] }
       out: [] }
-    # ...and a scalar where the requirement wants a map does not match,
-    # rather than being coerced into one.
     { in: { req: { name: 'store', match: { limits: { max: 5 } } }
             candidates: [ { ref: 'a', pos: 0
                             provides: { name: 'store', attrs: { limits: 5 } } } ] }
       out: [] }
 
-    # A LIST IS COMPARED LEAF-WISE AT THE SAME LENGTH, NOT AS A SUBSET.
-    # "the first two of your three regions" is not something `match` can
-    # say, and giving it a spelling would be inventing the filter
-    # language §11.1 explicitly declines to add.
     { in: { req: { name: 'store', match: { regions: ['eu', 'us'] } }
             candidates: [ { ref: 'a', pos: 0
                             provides: { name: 'store', attrs: { regions: ['eu', 'us'] } } } ] }
@@ -2537,7 +1900,6 @@ primary: capability: {
             candidates: [ { ref: 'a', pos: 0
                             provides: { name: 'store', attrs: { regions: ['eu', 'us'] } } } ] }
       out: [] }
-    # Order is part of a list, here as everywhere else in the corpus.
     { in: { req: { name: 'store', match: { regions: ['us', 'eu'] } }
             candidates: [ { ref: 'a', pos: 0
                             provides: { name: 'store', attrs: { regions: ['eu', 'us'] } } } ] }
@@ -2556,8 +1918,6 @@ primary: capability: {
       ] }
       match: { out: [ { ref: 'hi' }, { ref: 'lo' } ] }
     }
-    # `priority` breaks a version tie, and LOWER wins — the opposite of
-    # what the word suggests to most readers, which is why it is pinned.
     {
       id: 'capability/rank#priority'
       in: { req: { name: 's' }, candidates: [
@@ -2566,7 +1926,6 @@ primary: capability: {
       ] }
       match: { out: [ { ref: 'a' }, { ref: 'b' } ] }
     }
-    # Default priority is 0, so an unset one beats an explicit 1.
     {
       in: { req: { name: 's' }, candidates: [
         { ref: 'set', pos: 0, provides: { name: 's', version: '2.1', priority: 1 } }
@@ -2574,8 +1933,6 @@ primary: capability: {
       ] }
       match: { out: [ { ref: 'unset' }, { ref: 'set' } ] }
     }
-    # `pos` breaks the remaining tie — declaration order, the same
-    # number §7 uses, so ordering and selection cannot disagree.
     {
       in: { req: { name: 's' }, candidates: [
         { ref: 'second', pos: 1, provides: { name: 's', version: '2.1' } }
@@ -2593,7 +1950,6 @@ primary: capability: {
       ] }
       match: { out: [ { ref: 'newer' }, { ref: 'older' } ] }
     }
-    # And PRIORITY OUTRANKS pos, likewise.
     {
       in: { req: { name: 's' }, candidates: [
         { ref: 'late', pos: 9, provides: { name: 's', version: '2.0', priority: 0 } }
@@ -2605,43 +1961,24 @@ primary: capability: {
 }
 
 
-# ---------------------------------------------------------------------------
-# graph — whole-graph resolution (§11.4).
-#
-#   in: [ { ref, pos, provides?, requires? } ]
-#     -> { resolved: [refs], blocked: [ { ref, unmet, why } ] }
-#
-# PURE: no callbacks run, no state changes, nothing is touched.
-#
-# THE `why` IS PART OF THE CONTRACT, not a nicety. The failure being
-# designed against is famous: OSGi's resolver is correct and its
-# diagnostics are legendarily unusable. A resolver that says "blocked"
-# without saying WHY has moved the problem rather than solved it — and
-# twenty ports each inventing their own explanation is the same problem
-# again, twenty times.
-# ---------------------------------------------------------------------------
 
 primary: graph: {
 
   resolve: set: [
-    # Nothing required: everything resolves.
     {
       id: 'graph/resolve#trivial', doc: true
       in: [ { ref: 'a', pos: 0 }, { ref: 'b', pos: 1 } ]
       out: { resolved: ['a', 'b'], blocked: [] }
     }
-    # A satisfied requirement.
     {
       in: [ { ref: 'p', pos: 0, provides: [ { name: 'clock' } ] }
             { ref: 'c', pos: 1, requires: [ { name: 'clock' } ] } ]
       out: { resolved: ['c', 'p'], blocked: [] }
     }
-    # An OPTIONAL requirement never blocks.
     {
       in: [ { ref: 'c', pos: 0, requires: [ { name: 'clock', optional: true } ] } ]
       out: { resolved: ['c'], blocked: [] }
     }
-    # A chain resolves to a fixed point rather than in one pass.
     {
       id: 'graph/resolve#chain'
       in: [ { ref: 'c', pos: 0, requires: [ { name: 'b' } ] }
@@ -2649,19 +1986,12 @@ primary: graph: {
             { ref: 'a', pos: 2, provides: [ { name: 'a' } ] } ]
       out: { resolved: ['a', 'b', 'c'], blocked: [] }
     }
-    # A REF SATISFIES HERE TOO (§11.1), and it did not until this entry.
-    # `resolve()` considered only DECLARED CAPABILITIES, so it answered
-    # `absent` about a provider the runtime activates against — §11.4's
-    # whole job is explaining the graph the runtime reconciles, and it
-    # was explaining a different one. `depend/byref` pins the runtime
-    # half; without this the two disagree.
     {
       id: 'graph/resolve#byref'
       in: [ { ref: 'p', pos: 0 }
             { ref: 'c', pos: 1, requires: [ { name: 'p' } ] } ]
       out: { resolved: ['c', 'p'], blocked: [] }
     }
-    # ...canonically (§4 rule 5), same as everywhere else.
     {
       id: 'graph/resolve#byref-canonical'
       in: [ { ref: 'p', pos: 0 }
@@ -2681,11 +2011,7 @@ primary: graph: {
   ]
 
 
-  # ONE BLOCKED INSTANCE, AND THE SPECIFIC REASON. Apply twenty
-  # instances against a registry missing one thing and the answer must
-  # be that one thing — not nineteen pending rows.
   blocked: set: [
-    # No provider at all.
     {
       id: 'graph/blocked#absent', doc: true
       in: [ { ref: 'c', pos: 0, requires: [ { name: 'clock' } ] } ]
@@ -2708,7 +2034,6 @@ primary: graph: {
       out: { resolved: ['p'], blocked: [
         { ref: 'c', unmet: 's', why: { kind: 'version', range: '2.1', found: ['1.0'] } } ] }
     }
-    # A provider whose attributes fail the match — WITH THE FAILING LEAF.
     {
       id: 'graph/blocked#match'
       in: [ { ref: 'p', pos: 0, provides: [ { name: 's', attrs: { transactional: false } } ] }
@@ -2717,13 +2042,6 @@ primary: graph: {
         { ref: 'c', unmet: 's'
           why: { kind: 'match', failing: 'transactional', want: true, found: false } } ] }
     }
-    # A missing attribute reports `found: null` rather than omitting the
-    # key — "the provider does not say" is an answer, and a port that
-    # drops the field makes the two cases indistinguishable.
-    #
-    # A REAL null, not the `__NULL__` marker: this is an `out` comparison
-    # and the value genuinely is null. The marker belongs to `match`,
-    # where it means "no value" rather than "the value null".
     {
       in: [ { ref: 'p', pos: 0, provides: [ { name: 's' } ] }
             { ref: 'c', pos: 1, requires: [ { name: 's', match: { transactional: true } } ] } ]
@@ -2731,10 +2049,6 @@ primary: graph: {
         { ref: 'c', unmet: 's'
           why: { kind: 'match', failing: 'transactional', want: true, found: null } } ] }
     }
-    # A NESTED requirement reports the TOP-LEVEL key that failed, and
-    # `found` is the whole value the provider declared under it — the
-    # reader needs to see what is actually there, not the one leaf the
-    # comparison happened to stop at.
     {
       id: 'graph/blocked#match-nested'
       in: [ { ref: 'p', pos: 0, provides: [ { name: 's', attrs: { limits: { max: 9 } } } ] }
@@ -2767,17 +2081,6 @@ primary: graph: {
 }
 
 
-# ---------------------------------------------------------------------------
-# resolve — name to candidate module ids (§10.2).
-#
-#   in: { name, sources? } -> [ids]
-#
-# PURE, and deliberately so: it returns the ids a host WOULD try, in
-# order, and loads nothing. That separation is what lets the corpus pin
-# resolution in every language INCLUDING those with no dynamic loading at
-# all, and it is why §15.4 puts real module loading in per-port
-# integration tests rather than here.
-# ---------------------------------------------------------------------------
 
 primary: resolve: {
 
@@ -2800,7 +2103,6 @@ primary: resolve: {
     }
     { in: { name: 'r', sources: [ { kind: 'path', dir: './plugin' } ] }, out: ['./plugin/r'] }
     { in: { name: 'r', sources: [ { kind: 'path', dir: './plugin/' } ] }, out: ['./plugin/r'] }
-    # Several sources concatenate in declared order.
     {
       in: { name: 'r', sources: [ { kind: 'path', dir: './p' }, { kind: 'module', prefix: ['m-'] } ] }
       out: ['./p/r', 'm-r']
@@ -2811,12 +2113,6 @@ primary: resolve: {
       in: { name: 'r', sources: [ { kind: 'module', prefix: ['a-', 'a-'] } ] }
       out: ['a-r']
     }
-    # A SCOPED NAME RESOLVES VERBATIM ONLY (§10.2), whatever the
-    # sources say — it is already a package id, and prefixing it
-    # produces `@voxgig/plugin-@acme/thing`, which is not a thing that
-    # can exist. The default sources are the case that matters: a port
-    # honouring this only when the prefix list happens to be empty
-    # passes the second entry and fails the first.
     {
       id: 'resolve/candidates#scoped-verbatim'
       in: { name: '@acme/thing' }
@@ -2833,12 +2129,6 @@ primary: resolve: {
   ]
 
 
-  # `from` BYPASSES CANDIDATE GENERATION ENTIRELY (§10.2). A MODULE PATH
-  # IS NOT A NAME: the ref grammar starts a name with a letter or `@`,
-  # so `./local/thing` is not a ref and never reaches this function at
-  # all. seneca allows a path where a plugin name goes; this design
-  # deliberately does not, because a ref is an ADDRESS WITHIN A HOST and
-  # a path is a LOCATION ON A DISK.
   from: set: [
     { id: 'resolve/from#verbatim', doc: true, in: './local/thing', out: ['./local/thing'] }
     { in: '/abs/path', out: ['/abs/path'] }
@@ -2847,15 +2137,6 @@ primary: resolve: {
 }
 
 
-# ---------------------------------------------------------------------------
-# point — the three kinds, the four hook modes, composition, shadowing
-# and exclusivity (§6).
-#
-# DRIVER. A PLUGIN NEVER MUTATES THE HOST — that inversion is what makes
-# deactivation possible, and every entry here is really a test of it:
-# sdkgen's `utility.fetcher = wrapped` is not undoable, but "this instance
-# holds slot 3 of the request chain" is undoable in O(1).
-# ---------------------------------------------------------------------------
 
 primary: point: {
 
@@ -2888,7 +2169,6 @@ primary: point: {
       ]
       match: { out: { result: 0 } }
     }
-    # An unknown point is an error, not a silent no-op.
     {
       in: [ { do: 'host', points: {} }, { do: 'emit', point: 'nope' } ]
       err: true, match: { err: { code: 'plugin_point_unknown' } }
@@ -2919,7 +2199,6 @@ primary: point: {
       ]
       match: { out: { result: 'A' } }
     }
-    # With no bindings, nothing is returned — absent, not an error.
     {
       in: [
         { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
@@ -2927,13 +2206,6 @@ primary: point: {
       ]
       match: { out: { result: '__NULL__' } }
     }
-    # A NULL RETURN DECLINES, and the next binding gets its turn.
-    #
-    # §6.1: JavaScript can tell `null` from `undefined` and almost
-    # nothing else in the target set can, so a canonical that stopped on
-    # `null` had a rule go, python and ruby could not implement - and
-    # each of them had already, silently, implemented the other one. This
-    # entry is what makes the two readings disagree out loud.
     {
       id: 'point/bail#null-declines', doc: true
       in: [
@@ -2944,9 +2216,6 @@ primary: point: {
       ]
       match: { out: { result: 'B' } }
     }
-    # ...and a FALSE is a value. The rule is about absence, not about
-    # falsiness, which is where a port reaching for its own truthiness
-    # would land.
     {
       in: [
         { do: 'host', points: { v: { kind: 'hook', mode: 'bail' } } }
@@ -2973,8 +2242,6 @@ primary: point: {
       ]
       match: { out: { result: 'ABx' } }
     }
-    # Band order decides nesting: lower band is OUTERMOST, the same
-    # direction §7 gives, so one rule covers hooks and chains.
     {
       id: 'point/chain#band'
       in: [
@@ -2985,7 +2252,6 @@ primary: point: {
       ]
       match: { out: { result: 'BAx' } }
     }
-    # With no bindings the base is called directly.
     {
       in: [
         { do: 'host', points: { c: { kind: 'chain' } } }
@@ -3009,13 +2275,6 @@ primary: point: {
   ]
 
 
-  # `provider` — at most one live implementation, and THE LOSERS ARE
-  # VISIBLE rather than silently ignored (§6.3).
-  #
-  # The winner is the HIGHEST band, ties by ref sort — the opposite
-  # direction from hook and chain, which run lowest first. Two rules,
-  # kept visibly different rather than one derived from the other by a
-  # reader who then gets it backwards.
   provider: set: [
     {
       id: 'point/provider#one', doc: true
@@ -3026,7 +2285,6 @@ primary: point: {
       ]
       match: { out: { result: 'A' } }
     }
-    # Highest band wins.
     {
       id: 'point/provider#highest'
       in: [
@@ -3037,7 +2295,6 @@ primary: point: {
       ]
       match: { out: { result: 'B' } }
     }
-    # And the loser is LISTED, not dropped.
     {
       id: 'point/provider#shadowed'
       in: [
@@ -3048,15 +2305,6 @@ primary: point: {
       ]
       match: { out: { result: ['provider$a'] } }
     }
-    # AT EQUAL BANDS THE TIE BREAKS BY REF SORT, NOT BY DECLARATION
-    # ORDER — the one place §6.3 does not fall through to `pos`, because
-    # a provider is picked from a set rather than composed into a
-    # sequence, and "whichever loaded first wins" is not a rule anyone
-    # can reason about across twenty ports.
-    #
-    # `provider$b` is declared FIRST here on purpose: a port breaking the
-    # tie by declaration order answers 'B' and passes every other entry
-    # in this group. Found by the python port (§18, P4).
     {
       id: 'point/provider#tie-by-ref'
       in: [
@@ -3076,7 +2324,6 @@ primary: point: {
       ]
       match: { out: { result: ['provider$b'] } }
     }
-    # With no binding the host's default answers.
     {
       in: [
         { do: 'host', points: { v: { kind: 'provider', default: 'D' } } }
@@ -3096,7 +2343,6 @@ primary: point: {
       ]
       err: true, match: { err: { code: 'plugin_point_exclusive' } }
     }
-    # One binding is fine on an exclusive point.
     {
       in: [
         { do: 'host', points: { v: { kind: 'provider', exclusive: true } } }
@@ -3108,23 +2354,6 @@ primary: point: {
   ]
 
 
-  # POSITION VERIFICATION (§6.6). Station found that a plugin can need
-  # to KNOW it is in the right place: its middleware must sit
-  # immediately outside the base transport or its "wire truth" events
-  # are fiction.
-  #
-  # `outermost` and `innermost` are NOT index 0 and index count-1 read
-  # the other way round — §6.2 composes b1(b2(b3(base))) with the FIRST
-  # binding OUTERMOST. Getting that backwards is the exact error the
-  # positional pin vocabulary exists to prevent, so both flags are
-  # pinned against a chain with a known composition.
-  #
-  # THE HOST DOES NOT POLICE THIS; it makes the fact available. A plugin
-  # that requires a position it did not get fails loudly rather than
-  # reporting nonsense, and that is the plugin's call because only it
-  # knows what its position means. Verification tells a plugin it was
-  # misplaced; a pin stops the misplacement from being expressible. The
-  # two are not substitutes.
   position: set: [
     {
       id: 'point/position#outermost', doc: true
@@ -3144,8 +2373,6 @@ primary: point: {
       ]
       match: { out: { result: { index: 1, count: 2, outermost: false, innermost: true } } }
     }
-    # A LONE binding is both, which a port special-casing one flag gets
-    # wrong.
     {
       in: [
         { do: 'ready', ref: 'probe$a' }
@@ -3193,9 +2420,6 @@ primary: point: {
 }
 
 
-# ---------------------------------------------------------------------------
-# export — keying, aliasing, ambiguity (§11).
-# ---------------------------------------------------------------------------
 
 primary: export: {
 
@@ -3208,7 +2432,6 @@ primary: export: {
       ]
       match: { out: { result: 'probe$a' } }
     }
-    # A key nothing exports is absent, not an error.
     {
       in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe$a/nope' } ]
       match: { out: { result: '__NULL__' } }
@@ -3222,14 +2445,6 @@ primary: export: {
       match: { out: { result: 'probe$a' } }
     }
 
-    # A SECOND KEY OFF ONE INSTANCE, which is what makes the map a MAP.
-    #
-    # Every other entry here reads `client`, so a port whose `exports`
-    # ignored the key and answered with the instance's first export
-    # passed all of them. `probe` exports `client` (its ref), `mark` (a
-    # constant) and `inst` (its own api) -- and `inst` cannot close this,
-    # because it is shaped differently in every port and no entry can
-    # assert on it. A constant can.
     {
       id: 'export/key#second-key', doc: true
       in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe$a/mark' } ]
@@ -3259,13 +2474,6 @@ primary: export: {
       match: { out: { result: 'probe$a' } }
     }
 
-    # A SCOPED DEFINITION NAME, and the reason the spec splits at the
-    # LAST `/`. §4's `checkname` permits `/` in a NAME — `@acme/store` is
-    # legal, and §10.2 resolves a scoped name verbatim — so splitting at
-    # the FIRST one read this as the ref `@acme` with the key
-    # `probe$a/client`, matched nothing, and answered absent. A scoped
-    # definition had no spelling for its exports at all, and every entry
-    # in this section used `probe`, which has no slash, so nothing saw it.
     {
       id: 'export/key#scoped', doc: true
       in: [
@@ -3275,7 +2483,6 @@ primary: export: {
       ]
       match: { out: { result: '@acme/probe$a' } }
     }
-    # Untagged, so the ref IS the name: the exact branch answers.
     {
       id: 'export/key#scoped-untagged'
       in: [
@@ -3309,12 +2516,6 @@ primary: export: {
   ]
 
 
-  # THE UNQUALIFIED ALIAS, and the case seneca gets wrong. `probe/client`
-  # resolves to the UNTAGGED instance if one exists; if not, and exactly
-  # one tagged instance exports the key, to that one; if two do, it is
-  # an ERROR rather than silent last-wins — with multi-instance as a
-  # headline feature, an ambiguous alias is a defect waiting for
-  # production.
   alias: set: [
     {
       id: 'export/alias#untagged-wins', doc: true
@@ -3325,7 +2526,6 @@ primary: export: {
       ]
       match: { out: { result: 'probe' } }
     }
-    # No untagged one, exactly one tagged: that one.
     {
       in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/client' } ]
       match: { out: { result: 'probe$a' } }
@@ -3337,7 +2537,6 @@ primary: export: {
       in: [ { do: 'ready', ref: 'probe$a' }, { do: 'export', key: 'probe/mark' } ]
       match: { out: { result: 'marked' } }
     }
-    # Two tagged and no untagged: ERROR, not last-wins.
     {
       id: 'export/alias#ambiguous'
       in: [
@@ -3361,13 +2560,6 @@ primary: export: {
 }
 
 
-# ---------------------------------------------------------------------------
-# depend — requirements, pending, and the reactive half (§11.3).
-#
-# ACTIVATION IS A STANDING REQUEST, NOT A ONE-SHOT EVENT. That single
-# sentence is why `pending` is a state rather than a flag, and every
-# entry here is a consequence of it.
-# ---------------------------------------------------------------------------
 
 primary: depend: {
 
@@ -3380,8 +2572,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$a': 'pending' } } }
     }
-    # THE REQUIREMENT IS ON A CAPABILITY, not on a ref: whichever
-    # instance provides `clock` satisfies it.
     {
       id: 'depend/pending#capability'
       in: [
@@ -3391,7 +2581,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
-    # AN OPTIONAL REQUIREMENT NEVER BLOCKS.
     {
       in: [
         { do: 'load', ref: 'dep$a', options: { requires: ['clock'], optional: ['clock'] } }
@@ -3402,13 +2591,7 @@ primary: depend: {
   ]
 
 
-  # `inst.capability(name)` — WHICH provider this instance is bound to.
   bound: set: [
-    # WHICH PROVIDER THIS INSTANCE TOOK (§11.1). The host's own
-    # `capability` answers with the live providers RANKED; this answers
-    # with the one THIS instance is bound to, which §11.4's reluctant
-    # rebinding makes a different question. `dep` exports the answer as
-    # `cap` when `capof` names one of its requirements.
     {
       id: 'depend/bound#selected', doc: true
       in: [
@@ -3419,9 +2602,6 @@ primary: depend: {
       ]
       match: { out: { result: 'dep$p' } }
     }
-    # RANK DECIDES WHICH ONE, and the answer is the instance's, not the
-    # first declared: `dep$hi` provides version 2 and wins over `dep$lo`
-    # at version 1 though it was declared second.
     {
       id: 'depend/bound#ranked'
       in: [
@@ -3435,10 +2615,6 @@ primary: depend: {
       ]
       match: { out: { result: 'dep$hi' } }
     }
-    # AN OPTIONAL REQUIREMENT WITH NOBODY PROVIDING IT is the case §11.3
-    # names: a plugin that works without metrics and uses metrics when
-    # it is there has to be able to ask, and gets absent rather than a
-    # refusal.
     {
       id: 'depend/bound#optional-absent'
       in: [
@@ -3461,12 +2637,6 @@ primary: depend: {
       ]
       match: { out: { result: '__NULL__' } }
     }
-    # THE NAME IS READ, not assumed. An instance with TWO satisfied
-    # requirements is the only shape that can tell a lookup from a
-    # lookup-shaped `requirements[0]`, and every other entry here has
-    # exactly one — so the shortest wrong implementation passed the lot
-    # of them. Both directions, because taking the LAST is as wrong as
-    # taking the first and neither entry alone says so.
     {
       id: 'depend/bound#named-second'
       in: [
@@ -3489,14 +2659,6 @@ primary: depend: {
       ]
       match: { out: { result: 'dep$p' } }
     }
-    # A REF REQUIREMENT ANSWERS WITH THE REF (§11.1's "a ref satisfies
-    # too"), and this is the pair that makes the instance-side question
-    # a DIFFERENT question rather than a spelling of the host's. The
-    # next entry asks `host.capability` for the same name and gets
-    # NOTHING: a ref is not a declared capability, so the host has no
-    # provider record to rank. Answering this one by ranking, the
-    # shortest wrong implementation there is, passes every other entry
-    # in this group.
     {
       id: 'depend/bound#by-ref', doc: true
       in: [
@@ -3517,12 +2679,6 @@ primary: depend: {
       ]
       match: { out: { result: [] } }
     }
-    # AND THEY PART COMPANY THE OTHER WAY TOO, which is §11.4's
-    # reluctance seen from the outside: `dep$c` binds `dep$lo`, then
-    # `dep$hi` arrives outranking it, and `dep$c` is NOT re-bound — so
-    # what this instance took and what the host ranks first are two
-    # different refs at the same instant. The next entry is the same
-    # run, asking the host.
     {
       id: 'depend/bound#reluctant', doc: true
       in: [
@@ -3536,11 +2692,6 @@ primary: depend: {
       ]
       match: { out: { result: 'dep$lo' } }
     }
-    # AND `dep` HOLDS ONE RESOURCE PER ACTIVATION, like every other
-    # probe. Nothing said so: five ports gave `dep` no `activate` at
-    # all, and the corpus could not tell, because no entry with a live
-    # `dep` had ever asserted `open`. That is the probe catalog
-    # diverging silently, which is what DOCS.md §4.3 exists to stop.
     {
       id: 'depend/bound#dep-holds'
       in: [
@@ -3567,24 +2718,6 @@ primary: depend: {
   ]
 
 
-  # A REF SATISFIES TOO (§11.1), AND THE COMPARISON IS CANONICAL
-  # (§4 rule 5).
-  #
-  # §11.1 opens by saying a dependency is on a capability and NOT on a
-  # ref, and then makes this one narrow exception: a host that genuinely
-  # needs a specific instance should not have to invent a capability for
-  # it. Until this group the rule lived only in a comment in the
-  # canonical's source — the design did not state it and no entry
-  # reached it, so the whole branch was DEAD CODE against the corpus and
-  # deleting it outright passed all 552 entries. Seventeen ports carried
-  # it because they copied the canonical, not because anything checked.
-  #
-  # The canonicalization is the half that was named as a gap, and it is
-  # the smaller half: `dep$` and `dep` are the same instance, so a port
-  # comparing the requirement string against the registry key without
-  # canonicalizing first answers `pending` where every other port
-  # answers `live`. Every requirement name elsewhere in the corpus is
-  # already canonical, which is why nothing saw it.
   byref: set: [
     {
       id: 'depend/byref#satisfies', doc: true
@@ -3594,10 +2727,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
     }
-    # THE NON-CANONICAL SPELLING OF THE SAME REF. `dep$` parses to the
-    # empty tag and formats back to `dep`, which is the only way two
-    # spellings of one ref can differ (§4) — so this is the entry, and
-    # there is no other, that a port dropping the canonicalization fails.
     {
       id: 'depend/byref#canonical-comparison'
       in: [
@@ -3606,9 +2735,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep': 'live', 'dep$c': 'live' } } }
     }
-    # LIVE, exactly as a capability is. A declared instance is a map
-    # entry and no executed code (§5.1), and it can no more satisfy a
-    # requirement than a capability nobody has provided yet.
     {
       in: [
         { do: 'declare', ref: 'dep$p', definition: 'dep' }
@@ -3625,8 +2751,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'pending' } } }
     }
-    # LOSING IT CASCADES, like any other requirement. Without this the
-    # ref path could be satisfied once at activation and never rechecked.
     {
       id: 'depend/byref#lost'
       in: [
@@ -3636,11 +2760,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'pending' } } }
     }
-    # ...AND IT CASCADES UNDER THE ORDINARY CARDINALITY AND POLICY RULES
-    # (§11.3), not always to `pending`. The entry above is the `static`
-    # mandatory default; a `dynamic` consumer is re-pointed in place and
-    # STAYS LIVE, because `dynamic` is the plugin saying it can survive a
-    # provider going away. A ref requirement is not a third axis.
     {
       id: 'depend/byref#lost-dynamic'
       in: [
@@ -3651,8 +2770,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'live' } } }
     }
-    # ...and an OPTIONAL ref requirement never gated activation in the
-    # first place, so losing it changes nothing.
     {
       id: 'depend/byref#lost-optional'
       in: [
@@ -3663,15 +2780,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'live' } } }
     }
-    # A NAME NO REF COULD HAVE IS A CAPABILITY NAME, AND ONLY THAT.
-    #
-    # The design puts a grammar on plugin NAMES (§4) and none at all on
-    # capability names, so `2fa` and `my cap` are perfectly good
-    # capabilities. Asking `canonref` whether such a name is a ref does
-    # not answer no - it RAISES `plugin_bad_name` - so a legal document
-    # killed the host at the first requirement whose name no ref could
-    # have. Every capability name in the corpus happened to be a
-    # well-formed ref, which is why seventeen implementations carried it.
     {
       id: 'depend/byref#capability-not-a-ref', doc: true
       in: [
@@ -3681,7 +2789,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
     }
-    # A space is not in the name grammar either, and is likewise fine.
     {
       in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep'
@@ -3690,8 +2797,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'live', 'dep$c': 'live' } } }
     }
-    # An UNMET one of those still just goes pending - "not a ref" must
-    # mean "compare as a capability", not "skip the requirement".
     {
       in: [
         { do: 'ready', ref: 'dep$c', definition: 'dep', options: { requires: ['2fa'] } }
@@ -3701,9 +2806,6 @@ primary: depend: {
   ]
 
 
-  # THE HOST ACTIVATES IT THE MOMENT THE REQUIREMENT ARRIVES, WITHOUT
-  # BEING ASKED AGAIN. Reconciliation is EAGER — it settles by running
-  # to a fixed point, not by scheduling.
   arrive: set: [
     {
       id: 'depend/arrive#auto', doc: true
@@ -3714,7 +2816,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live', 'dep$p': 'live' } } }
     }
-    # A CHAIN settles in one pass rather than needing N calls.
     {
       id: 'depend/arrive#chain'
       in: [
@@ -3729,9 +2830,6 @@ primary: depend: {
   ]
 
 
-  # REACTIVE DEACTIVATION, and its recursion. A live instance whose
-  # requirement is LOST goes back to `pending` — and so do its own
-  # consumers, because the loss propagates.
   lost: set: [
     {
       id: 'depend/lost#back-to-pending', doc: true
@@ -3742,7 +2840,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'pending', 'dep$p': 'loaded' } } }
     }
-    # Recursively, through the consumer's own consumers.
     {
       id: 'depend/lost#recursive'
       in: [
@@ -3780,7 +2877,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
-    # An OPTIONAL requirement never causes a loss either.
     {
       in: [
         { do: 'ready', ref: 'dep$p', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
@@ -3805,8 +2901,6 @@ primary: depend: {
       ]
       match: { out: { result: ['dep$hi', 'dep$lo'] } }
     }
-    # Deactivating one of two providers moves nobody: ANY live instance
-    # providing it satisfies a requirement for it.
     {
       in: [
         { do: 'ready', ref: 'dep$p1', definition: 'dep', options: { provides: [ { name: 'clock' } ] } }
@@ -3816,18 +2910,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
-    # §11.4: ALWAYS-RELUCTANT. "A satisfied requirement is not re-bound
-    # while it stays satisfied" - so a BETTER provider arriving after
-    # the consumer is live does not take it, and losing the one it
-    # actually selected still restarts it.
-    #
-    # THE LOG IS THE DISCRIMINATOR. A host that re-ranks on every
-    # question treats `dep$c` as bound to `dep$hi` the moment `dep$hi`
-    # goes live, so deactivating `dep$lo` moves nothing and the log ends
-    # at `dep$lo:deactivate` - the consumer silently keeps a reference
-    # to a provider it was never activated against. The statuses are
-    # identical in both readings, which is why this cannot be asserted
-    # on `status`.
     {
       id: 'depend/select#reluctant', doc: true
       in: [
@@ -3875,23 +2957,6 @@ primary: depend: {
     }
   ]
 
-  # CONSUMERS GO DOWN FIRST, NOT AFTERWARDS (§11.3). The cascade is part
-  # of the provider's own deactivation and runs BEFORE the provider's
-  # `deactivate` callback and scope unwind, so a consumer's teardown can
-  # still call the thing it depends on — flushing a buffer to the store
-  # it is about to lose is exactly what a `deactivate` callback is for.
-  #
-  # The callback log is what makes this checkable rather than asserted:
-  # a port that cascades afterwards produces the same STATUSES and a
-  # different ORDER, so only the log can tell the two apart.
-  # A CASCADED CONSUMER THAT FAILS ITS OWN TEARDOWN LANDS IN `failed`.
-  #
-  # §5.2: "Any failure during a transition - a lifecycle callback
-  # raising, or a ledger entry raising - lands the instance in `failed`."
-  # The cascade discarded the error and marked the consumer `pending`,
-  # which handed it straight back to `reconcile`: the moment the provider
-  # returned, an instance whose teardown had failed was activated again.
-  # Found by review of the go port.
   cascadefail: set: [
     {
       id: 'depend/cascadefail#consumer', doc: true
@@ -3964,10 +3029,6 @@ primary: depend: {
     }
   ]
 
-  # POLICY IS PER REQUIREMENT (§11.3), and the instance-level spelling is
-  # a document-side default for all of them. Only the per-requirement
-  # form can say "static on the store, dynamic on the metrics", which is
-  # the ordinary case rather than an exotic one.
   policy: set: [
     {
       id: 'depend/policy#per-requirement-dynamic', doc: true
@@ -3978,9 +3039,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
-    # THE CASE THE INSTANCE-LEVEL SPELLING CANNOT EXPRESS: one instance,
-    # two requirements, different policies. Losing the dynamic one leaves
-    # it live.
     {
       id: 'depend/policy#mixed-keeps-live-on-dynamic-loss', doc: true
       in: [
@@ -3994,9 +3052,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'live' } } }
     }
-    # ...and losing the STATIC one restarts it, same instance, same run
-    # shape. The pair is the point: one entry alone cannot show that the
-    # two requirements are read separately.
     {
       id: 'depend/policy#mixed-restarts-on-static-loss', doc: true
       in: [
@@ -4010,11 +3065,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'pending' } } }
     }
-    # CARDINALITY ALONE GATES ACTIVATION, NOT POLICY. `dynamic` is a
-    # statement about surviving a SWAP, not about starting with nothing
-    # to call, so a mandatory-dynamic consumer still waits in `pending`
-    # for its first provider. A port that conflated the two would let it
-    # activate holding no reference at all.
     {
       id: 'depend/policy#dynamic-still-gates-first-activation', doc: true
       in: [
@@ -4022,15 +3072,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$c': 'pending' } } }
     }
-    # An OPTIONAL STATIC requirement never gates activation, but a change
-    # still DEACTIVATES AND REACTIVATES — the third cell of §11.3's
-    # matrix, and the one that is neither "gates" nor "ignores".
-    #
-    # The reactivation is the half that is easy to miss, and it is not
-    # cosmetic: the consumer released the old provider's resources on the
-    # way down and takes fresh ones on the way back up, which is the
-    # whole reason the cell restarts rather than merely notifying. It
-    # ends `live` with its scope reopened, having been down in between.
     {
       id: 'depend/policy#optional-static-restarts', doc: true
       in: [
@@ -4062,10 +3103,6 @@ primary: depend: {
     }
   ]
 
-  # A cycle through RESTART-CAUSING requirements is
-  # `plugin_dependency_cycle`, detected AT LOAD — because the failure it
-  # describes is a non-terminating reconcile, and the only safe time to
-  # report that is before it starts.
   cycle: set: [
     {
       id: 'depend/cycle#mutual-mandatory', doc: true
@@ -4095,14 +3132,6 @@ primary: depend: {
       ]
       err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
-    # ...AND THE SPELLING DOES NOT DECIDE WHETHER IT IS ONE. The detector
-    # indexed providers by canonical ref and looked them up with the raw
-    # requirement name, so the SAME CYCLE written `dep$`/`other$` found no
-    # providers, produced no edges, and sailed past a check whose entire
-    # purpose is to refuse a non-terminating reconcile BEFORE anything
-    # runs. Two spellings of one graph, two answers - which is the
-    # divergence §4 rule 5 exists to prevent, reached through a door
-    # `depend/byref` does not open.
     {
       id: 'depend/cycle#through-refs-noncanonical', doc: true
       in: [
@@ -4111,10 +3140,6 @@ primary: depend: {
       ]
       err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
-    # STATIC OPTIONAL EDGES ARE RESTART-CAUSING, so they cycle too. An
-    # earlier draft of §11.3 excluded every optional edge and thereby
-    # admitted the non-terminating case it was trying to permit — this
-    # entry is the one that catches that reading.
     {
       id: 'depend/cycle#static-optional-still-cycles', doc: true
       in: [
@@ -4123,10 +3148,6 @@ primary: depend: {
       ]
       err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
-    # ONLY DYNAMIC OPTIONAL EDGES ARE EXCLUDED, and they are the ones the
-    # exclusion was for: two plugins that optionally and dynamically
-    # consume each other both activate happily, neither gates on the
-    # other, nothing restarts, so nothing oscillates.
     {
       id: 'depend/cycle#dynamic-optional-is-permitted', doc: true
       in: [
@@ -4145,8 +3166,6 @@ primary: depend: {
       ]
       err: true, match: { err: { code: 'plugin_dependency_cycle' } }
     }
-    # A chain is not a cycle, and this is the entry that stops a port
-    # from passing the four above by rejecting every requirement graph.
     {
       id: 'depend/cycle#chain-is-not-a-cycle', doc: true
       in: [
@@ -4172,8 +3191,6 @@ primary: depend: {
       ]
       err: true, match: { err: { code: 'plugin_dependency_held' } }
     }
-    # The error names the HOLDERS, because "something needs this" without
-    # saying what is the diagnostic §12 exists to prevent.
     {
       id: 'depend/hold#names-the-holders', doc: true
       in: [
@@ -4185,12 +3202,6 @@ primary: depend: {
       err: true
       match: { err: { message: '/holders=\\["dep\\$c"\\]/' } }
     }
-    # A MANDATORY-DYNAMIC consumer HOLDS. §11.3's word is `required`,
-    # which is cardinality, not policy: `dynamic` promises the consumer
-    # survives a SWAP, and under `hold` there is no swap - the provider
-    # goes and the consumer falls back to `pending`, which is exactly
-    # what the policy exists to prevent. Reading the holders off the
-    # cascade's restart-causing set excluded this consumer entirely.
     {
       id: 'depend/hold#mandatory-dynamic-holds', doc: true
       in: [
@@ -4201,12 +3212,6 @@ primary: depend: {
       ]
       err: true, match: { err: { code: 'plugin_dependency_held' } }
     }
-    # ...and an OPTIONAL consumer does NOT hold, whatever its policy. It
-    # said in writing that it does not need the thing; `hold` refusing a
-    # deactivation on its behalf is the policy speaking for a plugin
-    # against that plugin's own declaration. Optional-STATIC is the case
-    # that changed: it restarts, so the cascade's set contained it, and
-    # `hold` inherited a holder the design never called required.
     {
       id: 'depend/hold#optional-does-not-hold', doc: true
       in: [
@@ -4217,9 +3222,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'loaded', 'dep$c': 'live' } } }
     }
-    # An instance nothing holds deactivates normally under `hold`: the
-    # policy is a guard on removing something depended upon, not a
-    # freeze.
     {
       id: 'depend/hold#unheld-deactivates-normally'
       in: [
@@ -4229,13 +3231,6 @@ primary: depend: {
       ]
       match: { out: { status: { 'dep$p': 'loaded' } } }
     }
-    # THE HOLD CHECK IS A GUARD ON AD-HOC DEACTIVATION, NOT ON
-    # COORDINATED TEARDOWN. `close()` is removing the holders too, so it
-    # is suspended for exactly those holders — otherwise `close()` under
-    # `hold` would raise on the first provider it reached whenever a
-    # document happened to list a consumer after it, which is the policy
-    # refusing to allow the one teardown it has no reason to object to.
-    # The consumers-first order still holds.
     {
       id: 'depend/hold#close-is-coordinated', doc: true
       in: [
@@ -4249,9 +3244,6 @@ primary: depend: {
         'dep$z:deactivate', 'dep$z:close', 'dep$a:deactivate', 'dep$a:close'
       ] } }
     }
-    # Under the DEFAULT policy the same ad-hoc deactivation succeeds and
-    # cascades. Without this, every `hold` entry above would pass on a
-    # port that refused the deactivation unconditionally.
     {
       id: 'depend/hold#restart-is-the-default', doc: true
       in: [
@@ -4265,25 +3257,9 @@ primary: depend: {
 }
 
 
-# ---------------------------------------------------------------------------
-# declare — `declared` costs nothing, plus AUTO-TAG and `seq` (§5.1, §9.1).
-#
-# The last two arrived here by correction: §15.3 originally assigned them to
-# `ref` and marked that section pure, and neither is reachable from the four
-# pure functions. Auto-tagging must know what is already declared and `seq`
-# is a counter the host holds, so both need a driver (doc/plan/handover.md §5).
-# ---------------------------------------------------------------------------
 
 primary: declare: {
 
-  # `declared` COSTS NOTHING: twenty lazy instances are twenty map
-  # entries and no executed code, which is the property station needs
-  # and the reason the state exists at all.
-  # `options: {}` CLEARS, rather than being read as "no options given".
-  # `load` replaces the declared options when the spec carries them, and
-  # a port testing TRUTHINESS rather than PRESENCE cannot express
-  # "clear them all" - python's `if spec.get('options')` is false for an
-  # empty dict. Found by review of the python port.
   clear: set: [
     {
       id: 'declare/clear#empty-options', doc: true
@@ -4293,7 +3269,6 @@ primary: declare: {
         { do: 'activate', ref: 'probe$a' }
         { arg: 'x', do: 'chain', point: 'c' }
       ]
-      # The wrap default is ':' - so the cleared options are in force.
       match: { out: { result: ':x' } }
     }
     # ...while OMITTING options leaves the declared ones alone, which is
@@ -4310,11 +3285,6 @@ primary: declare: {
   ]
 
 
-  # A MALFORMED REF IS `plugin_bad_name` EVERYWHERE, including on the
-  # introspection path. `host.instance()` canonicalizes, so it raises -
-  # and a port whose lookup swallowed the parse failure reported an
-  # ordinary "no such instance" instead, which is a different answer to a
-  # different question. Found by review of the go port.
   lookup: set: [
     {
       id: 'declare/lookup#malformed', doc: true
@@ -4341,7 +3311,6 @@ primary: declare: {
       out: { status: { 'probe$a': 'declared', 'probe$b': 'declared' }
              open: 0, log: [], result: null }
     }
-    # `start: eager` (the default) does run it.
     {
       in: [ { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } } ]
       match: { out: { status: { 'probe$a': 'live' } } }
@@ -4355,11 +3324,6 @@ primary: declare: {
       ]
       match: { out: { status: { 'probe$a': 'declared' }, log: [] } }
     }
-    # ...AND THE ENTRY ABOVE NEVER CALLED `ready`. Its comment claimed
-    # the bar held and only asserted that one apply skipped the ref, so
-    # a host keeping the flag nowhere passed it — and the config switch
-    # §17.1 exists for (stripe$test off in prod) could be turned back on
-    # by any later `ready`.
     {
       id: 'declare/free#barred-stays-barred', doc: true
       in: [
@@ -4394,8 +3358,6 @@ primary: declare: {
     }
     { in: [ { do: 'declare', ref: 'probe', tag: '?' }, { do: 'declare', ref: 'probe', tag: '?' } ]
       match: { out: { result: 'probe$2' } } }
-    # LOWEST UNUSED, not next-highest: a gap is filled. A counter-based
-    # implementation passes the two entries above and fails this one.
     {
       id: 'declare/autotag#fills-gap'
       in: [
@@ -4405,7 +3367,6 @@ primary: declare: {
       ]
       match: { out: { result: 'probe$2' } }
     }
-    # It skips an existing explicit tag rather than colliding with it.
     {
       in: [ { do: 'declare', ref: 'probe$1' }, { do: 'declare', ref: 'probe', tag: '?' } ]
       match: { out: { result: 'probe$2' } }
@@ -4413,10 +3374,6 @@ primary: declare: {
   ]
 
 
-  # `seq` DISTINGUISHES ONE INCARNATION FROM THE NEXT, and `pos` is the
-  # document position. COLLAPSING THEM WOULD LET A RE-APPLIED DOCUMENT
-  # SILENTLY REORDER A CHAIN (§4 rule 4), which is why they are two
-  # numbers and why this group asserts them separately.
   seq: set: [
     {
       id: 'declare/seq#advances', doc: true
@@ -4425,7 +3382,6 @@ primary: declare: {
     }
     { in: [ { do: 'declare', ref: 'probe$a' }, { do: 'seq', ref: 'probe$a' } ]
       match: { out: { result: 0 } } }
-    # A RE-DECLARED instance gets a FRESH seq — it is a new incarnation.
     {
       id: 'declare/seq#fresh-on-reload'
       in: [
@@ -4437,9 +3393,6 @@ primary: declare: {
       ]
       match: { out: { result: 2 } }
     }
-    # And `pos` DOES NOT MOVE with it. This pair is the whole reason the
-    # two numbers exist: a counter-based tie-break would sort the
-    # re-declared instance behind everything that never moved.
     {
       id: 'declare/seq#pos-stable'
       in: [
@@ -4453,13 +3406,6 @@ primary: declare: {
   ]
 
 
-  # `define` REGISTERS, AND THE DEFINITION NEED NOT BE NAMED AFTER THE
-  # PROBE BACKING IT (DOCS.md §4.2). `probe` names the catalog entry whose
-  # callbacks are used; `name` is what the definition is called, and a ref
-  # resolves by NAME. Ten entries already passed `probe` beside an
-  # IDENTICAL `name`, so nothing distinguished the two keys and a driver
-  # ignoring `probe` outright passed every one of them — which every
-  # driver did, `define` having been a no-op until this group.
   register: set: [
     {
       id: 'declare/register#probe-differs-from-name', doc: true
@@ -4494,29 +3440,12 @@ primary: declare: {
   ]
 
 
-  # THE OPTION SHAPE IS VALIDATED WHEN IT ENTERS THE CATALOG (§10.1),
-  # not when a document exercises the key.
-  #
-  # `config/optmergebad` pins the DOMAIN — which shapes are rejected —
-  # and says in its own comment that it cannot pin the TIMING, because
-  # every entry there hands `resolveoptions` a shape already in hand. A
-  # port that took an invalid shape into its catalog and raised only at
-  # resolution passed all eleven. This group closes that: every entry
-  # below stops at `define`, with NO load and NO document, so a port
-  # that defers raises nothing and fails rather than passing quietly.
-  #
-  # Timing is the whole of §9.4's claim. A shape checked at resolution
-  # fails in a different place in every host — under the first document
-  # that touches the key, which in station is a deploy rather than a
-  # startup — and "fails once, and in the same place everywhere" is the
-  # property the stated domain exists to deliver.
   shape: set: [
     {
       id: 'declare/shape#at-registration', doc: true
       in: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': { deep: 0 } } } } ]
       err: true, match: { err: { code: 'plugin_shape_invalid' } }
     }
-    # The word form too, so the raise is not one special case of `deep`.
     {
       in: [ { do: 'define', name: 'probe', shape: { m: { '$MERGE': 'merge' } } } ]
       err: true, match: { err: { code: 'plugin_shape_invalid' } }
@@ -4534,14 +3463,6 @@ primary: declare: {
       ]
       err: true, match: { err: { code: 'plugin_unknown_definition' } }
     }
-    # ...AND A VALID SHAPE IS KEPT, not merely inspected and dropped.
-    # §10.1: "a catalog entry carries the definition's option shape, and
-    # it is readable before the definition is loaded". Validating at
-    # registration and discarding would pass every entry above while
-    # making the check pointless, so the shape is followed all the way
-    # to a resolved option: the shape's non-directive values are the
-    # level-1 defaults (§9.3, `config/optladder#1`), and the probe wraps
-    # the `c` chain with `options.wrap`.
     {
       id: 'declare/shape#reaches-resolution', doc: true
       in: [
@@ -4605,8 +3526,6 @@ primary: state: {
       ]
       match: { out: { result: 1 } }
     }
-    # Deactivating a rate limiter and reactivating it ten seconds later
-    # must not reset its window counters — several cycles, one state.
     {
       in: [
         { do: 'ready', ref: 'probe$a' }
@@ -4633,7 +3552,6 @@ primary: state: {
       ]
       match: { out: { result: 0 } }
     }
-    # Two instances of one definition do not share state.
     {
       in: [
         { do: 'ready', ref: 'probe$a' }
@@ -4647,16 +3565,6 @@ primary: state: {
 }
 
 
-# ---------------------------------------------------------------------------
-# resource — the instance scope (§8.3).
-#
-# THE CORPUS PROVES THE HOST UNWOUND WHAT THE INSTANCE REGISTERED. IT
-# CANNOT PROVE THE INSTANCE STOPPED RUNNING (§15.4). A probe that
-# squirrels a reference away in a global and keeps using it after
-# deactivation would pass every entry here. That is a limit of the
-# architecture, not a gap in the corpus, and no amount of test design
-# closes it — said here so a green suite cannot be read as claiming it.
-# ---------------------------------------------------------------------------
 
 primary: resource: {
 
@@ -4698,7 +3606,6 @@ primary: resource: {
       ]
       match: { out: { open: 0 } }
     }
-    # Closing the host unwinds everything still held.
     {
       in: [
         { do: 'ready', ref: 'greedy$a', definition: 'greedy', options: { acquire: 3 } }
@@ -4707,13 +3614,6 @@ primary: resource: {
       ]
       match: { out: { open: 0, status: {} } }
     }
-    # §8.3 unwinds the scope IN REVERSE REGISTRATION ORDER, "whether an
-    # entry came from a host call or from `release`" — and until this
-    # entry, NOTHING PINNED THE DIRECTION. An acquired handle is an
-    # idempotent counter decrement, so unwinding the handles forwards
-    # leaves the same `open` and passes every other entry in this
-    # section; the order is observable only through releases that record
-    # themselves. Found by the go port (§18, P4).
     {
       id: 'resource/scope#reverse'
       in: [
@@ -4723,16 +3623,6 @@ primary: resource: {
       ]
       match: { out: { result: [2, 1, 0] } }
     }
-    # A `release` ENTRY IS A HELD RESOURCE while it is registered and not
-    # one afterwards, exactly like an acquired handle: `open` counts what
-    # is CURRENTLY held. Registering three and unwinding them must leave
-    # the count where it started.
-    #
-    # The canonical incremented on registration and never decremented,
-    # which made every `release` a permanent leak in the counter — and
-    # `close()` on a plugin that used one could never reach `open: 0`.
-    # Invisible until an entry used `release` at all, which is what these
-    # two do.
     {
       id: 'resource/scope#release-counts'
       in: [
@@ -4756,15 +3646,6 @@ primary: resource: {
       ]
       match: { out: { open: 0, status: {} } }
     }
-    # `release` outside a lifecycle callback is an error: the scope is
-    # the activation's, and a call from anywhere else has no scope to
-    # belong to.
-    #
-    # THIS ROW USED TO ASSERT NOTHING. Every port's `stray` command was a
-    # no-op with a comment claiming it called `release`, so the entry
-    # stayed green whatever the guard did — or did not do. The probe now
-    # exports its own instance api and `stray` calls through it. Found by
-    # review of the go port.
     {
       id: 'resource/scope#stray'
       in: [
@@ -4779,12 +3660,6 @@ primary: resource: {
       ]
       match: { out: { open: 1 } } }
 
-    # ...and `acquire` in `define` is the same error, which the guard did
-    # NOT catch: it tested "a callback is running" rather than "activate
-    # is running", and §8.1 puts capture in `activate`. A scope entry
-    # registered in `define` is never unwound at all - `unload` on a
-    # merely `loaded` instance does not call it - so this was a
-    # permanent leak reachable from ordinary plugin code.
     {
       id: 'resource/scope#capture-phase'
       in: [
@@ -4801,15 +3676,6 @@ primary: resource: {
       err: true, match: { err: { code: 'plugin_release_scope' } }
     }
 
-    # A FAILING RELEASE. §8.3: "A failing release does not stop the rest.
-    # Every entry runs, in reverse order, whatever any of them does; the
-    # errors are collected and raised as one `plugin_release_failed`" -
-    # and "A failed release ends the instance in `failed`".
-    #
-    # None of that was implemented, and nothing exercised it: every
-    # release in the probe catalog was infallible, so `unwind` swallowing
-    # errors was invisible. The host reported a clean `loaded` for an
-    # instance that had failed to give back what it held.
     {
       id: 'resource/scope#release-failed'
       in: [
@@ -4833,14 +3699,6 @@ primary: resource: {
 }
 
 
-# ---------------------------------------------------------------------------
-# nest — an instance that is itself a host (§6.5).
-#
-# THE OUTER OWNS THE INNER'S LIFETIME. Station declares SDK instances as
-# plugins, and every generated SDK carries its own plugin system — so a
-# station plugin instance is itself a host of feature plugins. Two levels,
-# and the outer one owns the inner one.
-# ---------------------------------------------------------------------------
 
 primary: nest: {
 
@@ -4865,8 +3723,6 @@ primary: nest: {
       ]
       match: { out: { result: {} } }
     }
-    # The inner host's instances do not appear in the outer's status —
-    # two levels, not one flattened namespace.
     {
       id: 'nest/lifetime#isolated'
       in: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$inner'] } } ]
@@ -4875,23 +3731,6 @@ primary: nest: {
   ]
 
 
-  # A NESTED HOST IS NOT ITSELF AN OPEN RESOURCE, AND THE INNER HOST'S
-  # RESOURCES ARE ITS OWN.
-  #
-  # §6.5 says the outer instance's scope holds the inner host's
-  # teardown, and every port implements that. Whether the nest ALSO
-  # counts toward the outer's `open` was a free choice nothing pinned:
-  # the three entries above assert `result` and `status`, never `open`,
-  # so a port that counted the nest reported one more open resource than
-  # its neighbours for the same document and stayed green. `open` is the
-  # synthetic counter DOCS.md §4.5 puts in the observable precisely so
-  # "what is still held" is data rather than a sentence each port words
-  # differently, and two ports disagreeing about it is exactly the
-  # divergence it exists to expose.
-  #
-  # It counts NOTHING. The scope entry is a teardown, not an
-  # acquisition, and the inner host keeps its own counter — so the
-  # outer's `open` is its own `acquire` and no more.
   open: set: [
     {
       id: 'nest/open#nest-is-not-a-resource', doc: true
@@ -4905,9 +3744,6 @@ primary: nest: {
       in: [ { do: 'ready', ref: 'probe$a' } ]
       match: { out: { open: 1 } }
     }
-    # AND IT DOES NOT SCALE WITH THE INNER HOST'S CONTENTS. Two inner
-    # instances acquire two resources IN THE INNER HOST; a port
-    # accumulating them into the outer's counter answers 3.
     {
       id: 'nest/open#inner-resources-stay-inner'
       in: [ { do: 'ready', ref: 'probe$outer', options: { nest: ['probe$i1', 'probe$i2'] } } ]
@@ -4967,13 +3803,6 @@ primary: trace: {
 }
 
 
-# ---------------------------------------------------------------------------
-# apply — idempotent document application (§9.6).
-#
-# `apply` DECLARES EVERYTHING AND ACTIVATES ONLY WHAT ASKED FOR IT, and it
-# is RE-RUNNABLE: applying the same document twice changes nothing, which
-# is what lets a host reload config without tracking what it already did.
-# ---------------------------------------------------------------------------
 
 primary: apply: {
 
@@ -4996,20 +3825,6 @@ primary: apply: {
       ]
       match: { out: { log: [] } }
     }
-    # AND THE OPTIONS REACH THE INSTANCE ON THE FIRST APPLY.
-    #
-    # No entry anywhere observed an option that arrived through `apply`,
-    # and the canonical was silently dropping every one of them: `apply`
-    # resolves the options and hands the map to `declare`, which for a
-    # ref declared for the first time ADOPTS that map — so the refill
-    # afterwards cleared its own source and left the instance with
-    # nothing. Applying the same document a SECOND time filled them in,
-    # because by then the two maps were distinct. Every existing apply
-    # entry passed, because each asserted status, log or open and none
-    # asserted a value the options decide.
-    #
-    # `wrap` is read by the probe's `c` binding at call time, so the
-    # chain result is the option, not a copy of it.
     {
       id: 'apply/idempotent#options-first-time', doc: true
       in: [
@@ -5042,13 +3857,6 @@ primary: apply: {
   ]
 
 
-  # ADD, REMOVE, PATCH, TOGGLE — the four things a second document can do.
-  # §9.6's FIRST CLAUSE, which nothing implemented: "load what is
-  # missing, UNLOAD WHAT IS GONE, patch what changed". `apply` walked
-  # only the document's own refs, so an instance the new document
-  # DROPPED stayed live, with its bindings in every chain and its
-  # resources held - in the config-reload case the method exists for.
-  # Found by review of the go port.
   gone: set: [
     {
       id: 'apply/gone#dropped', doc: true
@@ -5068,7 +3876,6 @@ primary: apply: {
       ]
       match: { out: { result: { 'probe$b': '__UNDEF__' }, open: 1 } }
     }
-    # ...and `close` ran, which is what makes "as if never loaded" true.
     {
       in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
@@ -5092,10 +3899,6 @@ primary: apply: {
   ]
 
 
-  # §9.6's ORDERING: "deactivations and unloads first (reverse load
-  # order), then loads, then activations in load order". THREE PHASES,
-  # not one interleaved walk - and the log is the only thing that can
-  # tell them apart, which is why nothing caught it.
   phases: set: [
     {
       id: 'apply/phases#declare-all-then-activate', doc: true
@@ -5122,7 +3925,6 @@ primary: apply: {
   ]
 
   change: set: [
-    # ADD: a new ref appears.
     {
       id: 'apply/change#add', doc: true
       in: [
@@ -5131,7 +3933,6 @@ primary: apply: {
       ]
       match: { out: { status: { 'probe$a': 'live', 'probe$b': 'live' } } }
     }
-    # PATCH: options change without the instance restarting from scratch.
     {
       in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': { options: { wrap: 'A' } } } } }
@@ -5140,12 +3941,6 @@ primary: apply: {
       ]
       match: { out: { result: 'Zx' } }
     }
-    # TOGGLE to inactive RETURNS IT TO `declared`, BY UNLOADING IT
-    # (§9.6). There is no loaded->declared transition and there should
-    # not be one: going back to `declared` means "as if never loaded",
-    # and an instance that has run `define` has state and bindings only
-    # `close` can properly undo. Its state is DESTROYED, which is the
-    # honest meaning of the change.
     {
       id: 'apply/change#toggle-off'
       in: [
@@ -5154,7 +3949,6 @@ primary: apply: {
       ]
       match: { out: { status: { 'probe$a': 'declared' }, open: 0 } }
     }
-    # And the unload is VISIBLE in the log — `close` ran.
     {
       in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
@@ -5163,7 +3957,6 @@ primary: apply: {
       match: { out: { log: [
         'probe$a:define', 'probe$a:activate', 'probe$a:deactivate', 'probe$a:close' ] } }
     }
-    # Toggling to LAZY does the same thing, for the same reason.
     {
       in: [
         { do: 'apply', doc: { plugin: 1, instance: { 'probe$a': {} } } }
@@ -5171,7 +3964,6 @@ primary: apply: {
       ]
       match: { out: { status: { 'probe$a': 'declared' } } }
     }
-    # And BACK ON again, from a clean slate.
     {
       id: 'apply/change#toggle-back'
       in: [
@@ -5203,38 +3995,15 @@ primary: apply: {
 }
 
 
-# ---------------------------------------------------------------------------
-# error — the codes of §12 and the MESSAGE FORMAT.
-#
-#   plugin/<code>: <text> [<key>=<value> …]
-#
-# The bracketed detail carries the fields that apply, IN A FIXED ORDER —
-# host, ref, name, tag, point, key, capability, range, version, match,
-# candidates, cycle, holders, refs, path, cause — omitting those that do
-# not, and absent entirely when none do.
-#
-# THE ORDER IS CONTRACT, not formatting. An earlier draft named six
-# fields while other sections promised diagnostics that had nowhere to
-# go, which would have left each port inventing its own order and
-# breaking message parity. Values render as COMPACT JSON so a value
-# containing a space or a bracket cannot break the parse.
-#
-# Ports compare by CODE, never by wording — a port's language is its own
-# business, and pinning the words would make every translation a corpus
-# change. The FORMAT is what is pinned, because a parseable message is
-# what makes a log searchable across twenty languages.
-# ---------------------------------------------------------------------------
 
 primary: error: {
 
   format: set: [
-    # The prefix and code, verbatim.
     {
       id: 'error/format#prefix', doc: true
       in: [ { do: 'activate', ref: 'nope$a' } ]
       err: true, match: { err: { message: '/^plugin\\/plugin_not_loaded: /' } }
     }
-    # The detail bracket, with the field that applies.
     {
       in: [ { do: 'activate', ref: 'nope$a' } ]
       err: true, match: { err: { message: '/\\[ref="nope\\$a"\\]/' } }
@@ -5246,7 +4015,6 @@ primary: error: {
       in: [ { do: 'emit', point: 'nope' } ]
       err: true, match: { err: { message: '/\\[point="nope"\\]/' } }
     }
-    # A list field renders as a JSON ARRAY.
     {
       id: 'error/format#list-field'
       in: [
@@ -5259,7 +4027,6 @@ primary: error: {
   ]
 
 
-  # The codes themselves, each reached through the path that raises it.
   codes: set: [
     { id: 'error/codes#not-loaded', doc: true
       in: [ { do: 'activate', ref: 'nope$a' } ], err: true, match: { err: { code: 'plugin_not_loaded' } } }
@@ -5299,13 +4066,6 @@ primary: error: {
         { do: 'declare', ref: 'station$a' }
       ], err: true, match: { err: { code: 'plugin_ref_reserved' } } }
 
-    # ...but THE HOST ITSELF MUST STILL BE ABLE TO DECLARE IT. §9.1:
-    # "The host declares those instances itself, after the user merge,
-    # and always wins." Every path to `declare` was barred, including the
-    # embedding host's, so `reserved: ['station']` made it impossible for
-    # station to install the adapter it had reserved the name for -
-    # a feature that defeated its own purpose. Found by review of the go
-    # port.
     { id: 'error/codes#reserved-host-path'
       in: [
         { do: 'host', reserved: ['probe'] }

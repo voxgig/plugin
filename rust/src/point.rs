@@ -1,12 +1,3 @@
-//! Extension points (§6). Three kinds, chosen because they are what the
-//! two existing systems actually needed, and no more.
-//!
-//! A PLUGIN NEVER MUTATES THE HOST. That inversion is what makes
-//! deactivation possible: sdkgen's `utility.fetcher = wrapped` is not
-//! undoable, but "this instance holds slot 3 of the request chain" is
-//! undoable in O(1). OSGi named it the whiteboard pattern in 2004, in a
-//! paper called *Listeners Considered Harmful*, and for exactly this
-//! reason.
 
 use std::rc::Rc;
 
@@ -16,11 +7,6 @@ use crate::value::Value;
 /// The next link of a chain (§6.2), or the base at the end of it.
 pub type NextFn = Rc<dyn Fn(&[Value]) -> Result<Value, PluginError>>;
 
-/// EVERY binding has one signature, whatever kind of point it is on: a
-/// hook and a provider ignore the `next` they are handed, a chain uses it.
-/// One signature is what lets `bound` return a single list the three
-/// callers share, rather than three parallel registries that can disagree
-/// about which instance holds slot 3.
 pub type BindFn = Rc<dyn Fn(Option<&NextFn>, &[Value]) -> Result<Value, PluginError>>;
 
 #[derive(Clone)]
@@ -31,11 +17,6 @@ pub struct Bound {
     pub band: i64,
 }
 
-/// §6.1: "fan-out" is not one answer but four. In a language with
-/// asynchrony, "call every binding" hides a decision - start them all and
-/// wait, await each in turn, or do not wait - and a design that leaves it
-/// unsaid gets four different answers from four ports, in the concurrency
-/// behaviour of production code no corpus entry happens to cover.
 pub const MODES: [&str; 4] = ["emit", "parallel", "serial", "bail"];
 
 /// Fan-out. Return values are ignored except in `bail`.
@@ -75,13 +56,6 @@ pub fn point_emit(bindings: &[Bound], mode: &str, arg: &Value) -> Result<Value, 
     })
 }
 
-/// Composition: b1(b2(b3(base))), FIRST BINDING OUTERMOST (§6.2).
-///
-/// Recomputed by the host whenever the live set changes, and cached
-/// between changes. Plugins receive `next` as an argument; they never see
-/// or store the previous value of anything. A plugin that stashes `next`
-/// and calls it after deactivation is a bug the host cannot prevent, and
-/// this says so rather than pretending otherwise.
 pub fn compose(bindings: &[Bound], base: NextFn) -> NextFn {
     let mut nxt = base;
     for b in bindings.iter().rev() {
@@ -92,9 +66,6 @@ pub fn compose(bindings: &[Bound], base: NextFn) -> NextFn {
     nxt
 }
 
-/// At most one live implementation (§6.3). The winner is the highest band,
-/// ties broken by ref sort, and THE LOSERS ARE VISIBLE rather than
-/// silently ignored.
 pub struct Picked {
     pub winner: Option<Bound>,
     pub shadowed: Vec<String>,

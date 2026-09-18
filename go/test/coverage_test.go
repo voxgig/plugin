@@ -1,13 +1,3 @@
-/* EVERY CORPUS SECTION IS RUN.
- *
- * The per-section tests already fail on a GROUP with no subject. This
- * closes the level above: a whole SECTION the runner never mentions is
- * a section silently not run, and it would pass a suite that claims
- * P4's exit ("both pass every corpus section").
- *
- * It also counts the entries, so a section that decodes to an empty set
- * cannot masquerade as a passing one. */
-
 package plugintest
 
 import (

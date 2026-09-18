@@ -1,6 +1,3 @@
-/* The P2 pure sections: env, version, capability, graph, resolve — plus
- * config, whose two functions the group name selects. */
-
 package plugintest
 
 import (

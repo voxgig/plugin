@@ -1,18 +1,5 @@
-/* The definition catalog (§10.1).
- *
- * A definition is registered once and may back many instances. Option
- * shapes are validated AT REGISTRATION, not when a document happens to
- * exercise a key — so a malformed shape fails once, and in the same
- * place everywhere (§9.4). */
-
 package plugin
 
-// Definition is what a plugin author writes.
-//
-// GO RETURNS ERRORS FROM LIFECYCLE CALLBACKS (§18, P4). The canonical
-// throws; a Go callback returns `error`, and the host treats a non-nil
-// return exactly as the canonical treats a throw — including
-// `plugin_activate_failed`'s unwind and the `failed` status.
 type Definition struct {
 	Name        string
 	Shape       any
@@ -27,12 +14,6 @@ type Catalog struct {
 	defs map[string]Definition
 }
 
-// MakeCatalog builds a catalog, adding each definition in turn.
-//
-// GO IS TIER S (§10.3): "package `init()` registration ... or an
-// explicit list handed to makeHost", and both spellings land here. A Go
-// developer's experience is "add the import, add one line to the config"
-// rather than "write a factory".
 func MakeCatalog(defs ...Definition) (*Catalog, error) {
 	c := &Catalog{defs: map[string]Definition{}}
 	for _, d := range defs {

@@ -1,7 +1,3 @@
-/* The canonical surface `make parity` checks (AGENTS.md §4). Small on
- * purpose (§19): everything else is methods on the host and instance
- * types, because a library that grows a second public entry point per
- * feature is a library twenty ports pay for twice. */
 
 export { makehost } from './Host'
 export { makecatalog } from './Catalog'

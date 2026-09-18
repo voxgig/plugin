@@ -1,19 +1,8 @@
-/* Identity: name+tag, written `name$tag` (§4).
- *
- * The four pure functions, and the whole of what `ref` pins. They are
- * the first thing a new port implements and the first corpus section it
- * passes. */
 
 import { Ref, fail } from './Types'
 
 /** §4: `^[a-zA-Z@][a-zA-Z0-9.~_\-/]*$`, max 1024. */
 const NAME_RE = /^[a-zA-Z@][a-zA-Z0-9.~_\-\/]*$/
-/** §4: `^[a-zA-Z0-9.~_-]+$`, max 1024, or empty.
- *
- * The asymmetry with a name is deliberate: a tag MAY start with a digit
- * because auto-tagging assigns integer tags (`stripe$1`), and a tag
- * admits neither `@` nor `/` because a name is a package specifier and
- * a tag is not. */
 const TAG_RE = /^[a-zA-Z0-9.~_-]+$/
 
 const MAX = 1024
@@ -33,17 +22,11 @@ export function checktag(tag: string): boolean {
   return TAG_RE.test(tag)
 }
 
-/** `name$tag` -> the pair. Canonicalizing: `stripe$` and `stripe` both
- * give tag ''. */
 export function parseref(str: string): Ref {
   if ('string' !== typeof str) {
     fail('plugin_bad_name', 'ref must be a string')
   }
 
-  // Split on the FIRST `$`. Nothing in the grammar decides this — `$` is
-  // in neither character class — so the corpus is the arbiter (§4 rule
-  // 5), and it picks the split that blames the part actually at fault:
-  // `a$b$c` is a good name with a bad tag, not the reverse.
   const cut = str.indexOf('$')
   const name = -1 === cut ? str : str.substring(0, cut)
   const tag = -1 === cut ? '' : str.substring(cut + 1)
@@ -58,9 +41,6 @@ export function parseref(str: string): Ref {
   return { name, tag }
 }
 
-/** The pair -> `name$tag`. An empty tag NEVER writes the separator,
- * which is the half of canonicalization formatref owns: parse tolerates
- * `stripe$`, format never produces it, so a round trip is idempotent. */
 export function formatref(name: string, tag?: string): string {
   const t = null == tag ? '' : tag
   if (!checkname(name)) {
@@ -79,16 +59,6 @@ export function canonref(str: string): string {
   return formatref(r.name, r.tag)
 }
 
-/** The canonical ref this string denotes, or `undefined` if it denotes
- * none — the TOLERANT half of `canonref`, and the one a requirement
- * name needs.
- *
- * A REQUIREMENT NAME IS A CAPABILITY NAME FIRST (§11.1), and capability
- * names are free-form: the design puts no grammar on them, so `2fa` and
- * `my cap` are perfectly good ones and neither is a well-formed ref.
- * `canonref` RAISES on those, so asking it "is this a ref?" made a legal
- * document kill the host at the first requirement whose name no ref
- * could have. Answering `undefined` is the whole difference. */
 export function tryref(str: string): string | undefined {
   if ('string' !== typeof str) return undefined
   const cut = str.indexOf('$')
