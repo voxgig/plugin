@@ -340,3 +340,11 @@ Cross-repo sequencing, and what this repo owes station and when, is in
 [station-and-plugin-plan.md](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md).
 The agreed position between the two designs is
 [station-and-plugin.md](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin.md).
+
+## Source code comments
+
+Follow [COMMENT-POLICY.md](COMMENT-POLICY.md): comments are sparse and terse,
+only for intricate or surprising code. Names carry intent; documents carry
+requirements. Run `make comments comments-test` after editing source.
+
+Durable implementation rationale is in [COMMENT-NOTES.md](COMMENT-NOTES.md).

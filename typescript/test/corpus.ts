@@ -1,15 +1,3 @@
-/* The corpus runner.
- *
- * Reads spec/plugin.json — the COMMITTED artifact, not the aontu source
- * — exactly as every other port's runner does. No port needs a Node
- * toolchain to run its tests, and this one does not get a private door
- * into the source either.
- *
- * A group name selects the subject. That is the whole dispatch, and it
- * is deliberately dumb: a runner that inferred the subject from the
- * entry's shape would silently run the wrong function when an entry was
- * mistyped, which is the failure the closed Entry shape exists to catch
- * at build time. */
 
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
@@ -103,11 +91,6 @@ function isMap(v: any): boolean {
   return null != v && 'object' === typeof v && !Array.isArray(v)
 }
 
-/** Run one entry against a subject and report the disagreement, if any.
- *
- * The three combinations the spec format allows are enforced here as
- * well as at build time, because a runner that quietly accepted `err`
- * beside `out` would let a contradictory entry pass. */
 export function check(e: Entry, subject: (e: Entry) => any): string | null {
   if (undefined !== e.err && undefined !== e.out) {
     return 'entry has both err and out'
@@ -125,9 +108,6 @@ export function check(e: Entry, subject: (e: Entry) => any): string | null {
   if (undefined !== e.err) {
     if (null == raised) return 'expected a raise, got: ' + JSON.stringify(value)
     if (true !== e.err) {
-      // Errors compare by CODE (§12). Message wording is a port's own
-      // business, and pinning it would make every translation a corpus
-      // change.
       if (raised.code !== e.err) {
         return 'expected code ' + e.err + ', got ' + raised.code + ' (' + raised.message + ')'
       }

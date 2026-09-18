@@ -1,17 +1,3 @@
-/* Versions and ranges (§11.2).
- *
- * TWO FIELDS AND ONE PREDICATE. A capability declares `version`, a
- * concrete version. A requirement declares `range`. A requirement is
- * satisfied when the names match, the `match` passes, and:
- *
- *   the provider's `version` falls inside the requirement's `range`.
- *
- * That is the whole rule. There is no third field and no second
- * comparison — an earlier draft added a provider-side `compat` range,
- * which left three values and no statement of how they combine, and
- * three defensible readings of one declaration is worse than the
- * ambiguity it was introduced to fix. */
-
 package plugin
 
 import (
@@ -27,21 +13,8 @@ type Range struct {
 
 var versionRe = regexp.MustCompile(`^(\d+)(?:\.(\d+))?(?:\.(\d+))?$`)
 
-// componentMax bounds a version component, like §4's 1024 bounds a ref.
-//
-// The grammar admits an unbounded digit sequence and every language then
-// disagrees past its integer range: JavaScript silently loses precision,
-// Go's Atoi errors (and this port was ignoring that, yielding 0), C
-// overflows. `Satisfies("0", "9223372036854775808")` was false in the
-// canonical and TRUE here, from the same corpus.
-//
-// 2^31-1, because every port has a signed 32-bit integer.
 const componentMax = 2147483647
 
-// ParseRange accepts two forms and no more (§11.2):
-//
-//	'2.1'    >= 2.1.0 and < 3.0.0
-//	'~2.1'   >= 2.1.0 and < 2.2.0
 func ParseRange(rng string) (Range, error) {
 	bad := func() (Range, error) {
 		return Range{}, Fail("plugin_bad_range", "invalid range: "+rng,
@@ -154,5 +127,3 @@ func at(l []int, i int) int {
 	}
 	return 0
 }
-
-

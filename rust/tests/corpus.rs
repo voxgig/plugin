@@ -1,11 +1,3 @@
-//! The whole suite: pure sections by direct call, driver sections by
-//! command list, and a coverage guard above both.
-//!
-//! One `#[test]`, not one per section, for the same reason the other ports
-//! have a plain runner: a conformance suite whose only job is to run one
-//! corpus and report which entries disagree does not need a framework
-//! around it, and 539 separate test cases would bury the one line that
-//! says which entry is wrong.
 
 mod support;
 
@@ -191,8 +183,6 @@ fn corpus_conformance() {
         &[("candidates", s_candidates), ("from", s_from)],
     );
 
-    // `config` picks its subject by group PREFIX rather than by name,
-    // because the two functions split the section cleanly.
     run.sections += 1;
     for (group, set) in section(&spec, "config") {
         let subject: Subject = if group.starts_with("norm") {
@@ -236,12 +226,6 @@ fn corpus_conformance() {
         }
     }
 
-    // -- coverage ------------------------------------------------------
-    //
-    // EVERY CORPUS SECTION IS RUN. The per-section dispatch already fails
-    // on a GROUP with no subject; this closes the level above, because a
-    // whole SECTION the runner never mentions is a section silently not
-    // run.
 
     let primary = spec.get("primary");
 

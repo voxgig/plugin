@@ -1,15 +1,3 @@
-//! The driver (DOCS.md §4).
-//!
-//! Every port implements this same small thing and nothing else is
-//! port-specific: the probe catalog, the command interpreter, and the
-//! canonical observable.
-//!
-//! ONE RUST-ONLY NOTE. Every probe closure captures the `Inst` it was
-//! handed, and the `Inst` holds the entry the closure is stored in: an
-//! `Rc` cycle that is never collected. It is deliberate and it is bounded
-//! - a driver process runs 539 entries and exits - and the alternative
-//! (`Weak` everywhere) would put lifetime plumbing into the one file whose
-//! job is to read like the other ports.
 
 use std::rc::Rc;
 
@@ -33,9 +21,6 @@ fn num(value: &Value) -> f64 {
     value.as_num().unwrap_or(0.0)
 }
 
-/// §4.3's six probes. Their behaviour is as much the contract as the
-/// runner is - this is where twenty implementations of `noisy` are made to
-/// fail at the same callback in the same way.
 pub fn probes() -> Vec<Definition> {
     let mut out = Vec::new();
 
@@ -47,8 +32,6 @@ pub fn probes() -> Vec<Definition> {
         }
         let band = i.options().get("band");
 
-        // One hook binding (`p`) and one chain wrap (`c`) - the workhorse
-        // shape DOCS.md §4.3 specifies.
         let hook = i.clone();
         let hookfn: BindFn = Rc::new(move |_next, _args| {
             let n = num(&hook.state_get("count"));
@@ -112,9 +95,6 @@ pub fn probes() -> Vec<Definition> {
         boom(i, "define")
     }));
     noisy.activate = Some(Rc::new(|i: &Inst| {
-        // Acquire BEFORE the raise, so a failing activate has something to
-        // leak if the scope does not unwind - which is the whole point of
-        // the entry that asserts open == 0 afterwards.
         i.acquire()?;
         reenter(i, "activate")?;
         boom(i, "activate")
@@ -127,9 +107,6 @@ pub fn probes() -> Vec<Definition> {
     let mut greedy = Definition::named("greedy");
     greedy.define = Some(Rc::new(|i: &Inst| {
         i.state_set("count", Value::Num(0.0));
-        // §8.1 puts resource capture in `activate`. `early` NAMES the call
-        // that reaches for it in `define`, because `acquire` and `release`
-        // carry the guard separately.
         let early = i.options().get("early");
         match early.as_str() {
             Some("acquire") => {
@@ -202,7 +179,6 @@ pub fn probes() -> Vec<Definition> {
     }));
     out.push(greedy);
 
-    // -- dep: declares requirements ------------------------------------
     let mut dep = Definition::named("dep");
     dep.define = Some(Rc::new(|i: &Inst| {
         i.state_set("count", Value::Num(0.0));
@@ -257,7 +233,6 @@ pub fn probes() -> Vec<Definition> {
     }));
     out.push(provider);
 
-    // -- the recorders: `slow` and the three ordering extras ------------
     for name in ["slow", "other", "adapter", "late"] {
         let mut d = Definition::named(name);
         d.define = Some(Rc::new(|i: &Inst| {
@@ -324,11 +299,6 @@ fn reenter(inst: &Inst, callback: &str) -> Result<(), PluginError> {
     Ok(())
 }
 
-/// The points every driver host declares. DOCS.md §4.3 defines `probe` as
-/// binding one hook point (`p`) and wrapping one chain point (`c`), so a
-/// host without them cannot load the probe at all - they are part of the
-/// contract's baseline rather than a fixture convenience. `v` is the
-/// provider point the `provider` probe defaults to.
 pub fn withpoints(extra: &Value) -> Value {
     let mut out = Value::map();
 
@@ -423,23 +393,7 @@ fn docmd(host: &Host, cmd: &Value) -> Step {
 
     match verb {
         "host" => Ok((newhost(cmd)?, None)),
-        // §10.1's static registration: the definition ENTERS THE CATALOG
-        // here, and registration is where its option shape is validated
-        // (§9.4) - before any load, so a malformed shape fails at one
-        // moment in every host rather than whenever a document happens
-        // to exercise the key.
-        //
-        // The catalog is pre-seeded with the probe set, so re-registering
-        // a probe by name is the identity this command has always been;
-        // `shape` is what makes it do work. A name the probe set does not
-        // hold registers a bare definition - enough to reach the catalog,
-        // and never loaded.
         "define" => {
-            // §4.2's three keys, all of them live. `probe` names the
-            // PROBE whose callbacks back the definition and `name` is what
-            // the definition is called - two keys that ten entries passed
-            // as equal strings, so a driver ignoring `probe` passed them
-            // all.
             let name = cmd.get("name");
             let name = name.as_str().unwrap_or("").to_string();
             let source = cmd.get("probe");
@@ -628,13 +582,8 @@ fn docall(host: &Host, cmd: &Value, eref: &Value, point: Option<&str>) -> Step {
                 }),
             ))
         }
-        // Reached through the instance api, which is where §6.6 puts it -
-        // a plugin asks about itself.
         "position" => Ok((host.clone(), Some(host.positionof(name, point)?))),
         "stray" => {
-            // A release from OUTSIDE a lifecycle callback. THIS BRANCH
-            // USED TO DO NOTHING, and its corpus row stayed green whatever
-            // `release` did with its guard.
             let exported = host.exports(&format!("{}/inst", name))?;
             match exported {
                 Value::Opaque(o) => match o.downcast_ref::<Inst>() {

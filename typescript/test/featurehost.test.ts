@@ -1,18 +1,3 @@
-// RUN: npm test
-//
-// P3 item 2 (§17.2): the bridge runs an UNMODIFIED sdkgen feature class
-// as a plugin.
-//
-// The feature classes below are written the way sdkgen generates them —
-// `init(ctx, options)`, hook methods named after hook points, and a
-// transport wrap done by assigning `ctx.utility.fetcher`. Nothing in
-// them knows about plugin. That is the claim: the vocabularies map, and
-// the mapping is mechanical.
-//
-// P3's exit names the property that makes the bridge worth having: the
-// bridge "runs RetryFeature unmodified, AND DEACTIVATES IT — which
-// sdkgen alone cannot do", because sdkgen's wrap is an irreversible
-// assignment to a slot.
 
 import { describe, test } from 'node:test'
 import { deepStrictEqual, equal, ok, throws } from 'node:assert'
@@ -66,8 +51,6 @@ class LogFeature {
   }
 }
 
-// An sdkgen-shaped feature that serves a `__replace__` seam: one
-// method, named for the seam, returning the replacement.
 class CodecFeature {
   name = 'codec'
   Encode(v: any) { return 'encoded:' + v }
@@ -86,8 +69,6 @@ class CtxFeature {
   }
 }
 
-// ...and one carrying the lifecycle methods §17.2 expects an adopting
-// sdkgen to add, which today's generated features do not have.
 class PhasedFeature {
   name = 'phased'
   log: string[] = []
@@ -140,10 +121,8 @@ describe('featurehost-bridge', () => {
 
     const ctx: any = {}
     host.emit('PreRequest', ctx)
-    // Both features' PreRequest ran, in resolved order.
     deepStrictEqual(ctx.seen, ['retry', 'log'])
 
-    // A hook only one of them declares reaches only that one.
     host.emit('PostOperation', {})
     const log: any = host.exports('log$a/feature')
     deepStrictEqual(log.lines, ['init:info', 'done'])
@@ -174,10 +153,6 @@ describe('featurehost-bridge', () => {
     host.deactivate('retry$a')
     equal('loaded', host.list()['retry$a'])
 
-    // The wrap is GONE from the chain - the base answers directly - and
-    // the hook binding is gone with it. sdkgen assigns
-    // `ctx.utility.fetcher` and has nowhere to put the old value back;
-    // a binding just comes out.
     equal('base:2', host.call(REQUEST_POINT, 2))
     equal(1, feature.attempts, 'the wrap must not run after deactivate')
 
@@ -210,9 +185,6 @@ describe('featurehost-bridge', () => {
   })
 
   test('the declared hook vocabulary is the SDK s, named as today', () => {
-    // §17.2: "13 hook points, named exactly as today". The core model
-    // declares eleven; the rest come from the features installed, which
-    // is why featurepoints takes them rather than hard-coding a count.
     equal(11, SDK_HOOKS.length)
     for (const h of ['PostConstruct', 'PreRequest', 'PreResponse', 'PostOperation']) {
       ok(-1 !== SDK_HOOKS.indexOf(h), h + ' is part of the vocabulary')
@@ -224,7 +196,6 @@ describe('featurehost-bridge', () => {
     equal('hook', points['Custom'].kind, 'an SDK s own extra hook is declarable')
   })
 
-  // ---- what review found the first version got wrong ----------------
 
   test('a repeated hook name binds ONCE, not twice', () => {
     // `hooks` is "what this SDK's features declare", and a feature may
@@ -240,10 +211,6 @@ describe('featurehost-bridge', () => {
   })
 
   test('a replacement seam is a PROVIDER point, not a hook', () => {
-    // §17.2: "`provider` points for the seams `__replace__` currently
-    // serves". At most one wins, the losers are visible, the host keeps
-    // a default - which is what a replacement means and what a chain
-    // cannot express.
     const points = featurepoints((n: number) => n, { replace: ['Encode'] })
     equal('provider', points['Encode'].kind)
 
@@ -270,7 +237,6 @@ describe('featurehost-bridge', () => {
     const feature: any = host.exports('ctxread$a/feature')
     equal(client, feature.sawclient, 'the SDK s own client, not the instance')
     deepStrictEqual(log, ['init'], 'the SDK s own utility survives the trap')
-    // ...and the fetcher trap still works alongside it.
     equal('base:4', host.call(REQUEST_POINT, 4))
   })
 
@@ -283,10 +249,6 @@ describe('featurehost-bridge', () => {
   })
 
   test('a feature s own activate/deactivate are wired, in phase', () => {
-    // §17.2 splits `init` into define (declare bindings) and activate
-    // (capture). An unmodified feature has no such split - which is why
-    // the bridge's claim is about BINDINGS - but one that grows the
-    // methods gets them called where the model puts them.
     const host = bridge([{ name: 'phased', cls: PhasedFeature }])
     host.ready('phased$a')
     const feature: any = host.exports('phased$a/feature')
@@ -304,17 +266,10 @@ describe('featurehost-bridge', () => {
   })
 
   test('a FAILED instance still gets its feature s close on unload', () => {
-    // §5.2: `unload` is the only exit from `failed`, and it runs
-    // `close`. The bridge read the feature back through `exports`,
-    // which §11 hides for a failed instance — so `close` saw undefined
-    // and did nothing, in exactly the case where a feature holding a
-    // connection most needs it. The feature lives in the instance's own
-    // state, which survives every status.
     const host = bridge([{ name: 'broken', cls: BrokenFeature }])
     throws(() => host.ready('broken$a'), /activate failed/)
     equal('failed', host.list()['broken$a'])
 
-    // The export is gone, as §11 says it must be...
     equal(undefined, host.exports('broken$a/feature'))
 
     // ...and `close` still reaches the feature. THE FEATURE'S OWN LOG
@@ -329,12 +284,6 @@ describe('featurehost-bridge', () => {
   })
 
   test('sequential and nested calls each reach their own next', () => {
-    // The shared `current` slot is correct for every synchronous path:
-    // the binding sets it immediately before the wrap runs. The known
-    // limit is an AWAITING wrap overtaken by a second request, which
-    // needs a per-invocation channel the feature would have to be
-    // modified to accept - stated in FeatureHost.ts rather than
-    // pretended away.
     const host = bridge([
       { name: 'retry', cls: RetryFeature },
       { name: 'log', cls: LogFeature },
@@ -347,7 +296,6 @@ describe('featurehost-bridge', () => {
     const feature: any = host.exports('retry$a/feature')
     equal(2, feature.attempts)
 
-    // ...and the chain recomposes under it between calls.
     host.deactivate('retry$a')
     equal('base:3', host.call(REQUEST_POINT, 3))
     equal(2, feature.attempts)

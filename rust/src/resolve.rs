@@ -1,10 +1,3 @@
-//! Dynamic resolution (§10.2) - name to candidate module ids.
-//!
-//! PURE. It returns the ids a host WOULD try, in order; it does not load
-//! anything. That separation is what lets the corpus pin resolution in
-//! every language including those with no dynamic loading at all, and it
-//! is why §15.4 puts real module loading in per-port integration tests
-//! rather than here.
 
 use crate::value::Value;
 
@@ -70,11 +63,6 @@ pub fn resolve_candidates(name: &str, sources: &Value) -> Vec<String> {
     out
 }
 
-/// A MODULE PATH IS NOT A NAME (§10.2). The ref grammar starts a name with
-/// a letter or `@`, so `./local/thing` is not a ref and never reaches
-/// candidate generation - seneca allows a path where a plugin name goes,
-/// and this design deliberately does not, because a ref is an ADDRESS
-/// WITHIN A HOST and a path is a LOCATION ON A DISK.
 pub fn resolve_from(from: &Value) -> Vec<Value> {
     vec![from.clone()]
 }

@@ -1,9 +1,3 @@
-/* The definition catalog (§10.1).
- *
- * A definition is registered once and may back many instances. Option
- * shapes are validated AT REGISTRATION, not when a document happens to
- * exercise a key — so a malformed shape fails once, and in the same
- * place everywhere (§9.4). */
 
 import { fail } from './Types'
 import { checkname } from './Ref'

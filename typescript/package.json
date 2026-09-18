@@ -24,7 +24,7 @@
     "build": "tsc --build src test",
     "watch": "tsc --build src test -w",
     "typecheck": "tsc --build src test --force",
-    "test": "node --enable-source-maps --test \"dist-test/**/*.test.js\"",
+    "test": "node ../tools/comment-gate.cjs && node --enable-source-maps --test \"dist-test/**/*.test.js\"",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$TEST_PATTERN\" --test \"dist-test/**/*.test.js\"",
     "test-cov": "rm -rf ./coverage && mkdir -p ./coverage && node --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --enable-source-maps --test \"dist-test/**/*.test.js\" && genhtml ./coverage/lcov.info -o ./coverage && open ./coverage/index.html",
     "doc": "echo doc",
