@@ -2,7 +2,7 @@
 
 How the Voxgig Plugin documentation is written. This guide is normative
 for the root [`README.md`](./README.md) and [`DOCS.md`](./DOCS.md) and for
-every port's `README.md` — 19 pages, the ones a reader lands on from
+every port's `README.md` — 25 pages, the ones a reader lands on from
 GitHub, npm, PyPI and the rest. It exists so that a page written next
 year sounds like a page written this year, and so that a reviewer can
 point at a rule instead of arguing taste.

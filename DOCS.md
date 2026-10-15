@@ -711,10 +711,9 @@ which values are rejected. Each looked like a test and tested nothing.
 
 ## Per-language documentation
 
-Seventeen ports carry a `README.md` with the exact local spelling, the
-build, and the places the port diverges: the canonical
+All twenty-three ports carry a `README.md` with the exact local
+spelling, the build, and the places the port diverges: the canonical
 [`typescript/`](./typescript/README.md) first, then `go/`, `python/`,
 `javascript/`, `ruby/`, `php/`, `perl/`, `rust/`, `java/`, `lua/`,
-`csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`, and
-`scala/`. The six tier-4 ports (`c/`, `cpp/`, `ocaml/`, `haskell/`,
-`zig/`, and `lean/`) do not carry one yet.
+`csharp/`, `elixir/`, `clojure/`, `dart/`, `kotlin/`, `swift/`,
+`scala/`, `c/`, `cpp/`, `ocaml/`, `haskell/`, `zig/`, and `lean/`.

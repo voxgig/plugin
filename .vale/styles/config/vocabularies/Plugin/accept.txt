@@ -25,10 +25,13 @@ labour
 # The ports, named the way their directories are: lowercase, as the
 # pages write them everywhere. A port is `php/`, and the prose says php.
 clojure
+cpp
 csharp
+haskell
 javascript(?:'s)?
 kotlin
 [Ll]ua
+ocaml
 perl(?:'s)?
 php(?:'s)?
 scala(?:'s)?

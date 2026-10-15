@@ -246,7 +246,7 @@ voxgig/struct's `AGENTS.md` carries the longer version of this note.
 
 [`STYLE-GUIDE.md`](STYLE-GUIDE.md) is normative for the reader-facing
 pages: the root `README.md` and `DOCS.md`, and every port's `README.md`
-(19 pages). Two gates enforce it and both run in CI
+(25 pages). Two gates enforce it and both run in CI
 (`.github/workflows/docs.yml`) and under `make test`:
 
 | Gate | Checks |
