@@ -38,14 +38,14 @@ The canonical may not use reflection-backed APIs, `Proxy`, dynamic
 property interception, decorators, or meta-level interception of the
 host's own operations, and its lifecycle reconciliation must be eager.
 **A canonical that reaches for a JavaScript convenience is a bill
-twenty ports pay.**
+twenty-two ports pay.**
 
-Nothing here uses any of them. When adding to it, keep it that way: the
-cost of removing one at P4 is fourteen ports rewriting around it.
+Nothing here uses any of them. When adding to it, keep it that way:
+removing one now means twenty-two ports rewriting around it.
 
 ## Status
 
-**All 572 corpus entries pass, across all 19 sections** — `apply`,
+**All 591 corpus entries pass, across all 19 sections** — `apply`,
 `capability`, `config`, `declare`, `depend`, `env`, `error`, `export`,
 `graph`, `lifecycle`, `nest`, `order`, `point`, `ref`, `resolve`,
 `resource`, `state`, `trace` and `version`.

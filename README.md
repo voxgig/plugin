@@ -36,10 +36,10 @@ dependency: every one writes its own JSON parser and its own test
 runner, because §16 permits exactly one dependency and no port of it
 exists in those languages.
 
-The pair went before the other fourteen ports on purpose — go for
-static-only registration, typed extension points and explicit errors;
-python as the closest dynamic analogue that is not JavaScript — because
-a model change costs two ports now and sixteen later.
+The pair went first on purpose — go for static-only registration,
+typed extension points and explicit errors; python as the closest
+dynamic analogue that is not JavaScript — because a model change then
+cost two ports rather than the sixteen planned at the time.
 
 Between them they found **six defects in the canonical**, every one of
 them the canonical failing to implement its own design rather than the
