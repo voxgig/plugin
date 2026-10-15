@@ -429,12 +429,18 @@ a counting exercise in twenty languages.
 
 ### 4.2 The command vocabulary
 
-**Seventeen verbs.** Design §15.2 lists sixteen and omits `ready`,
-which §5.1 defines and §15.3 explicitly requires the `declare` section
-to pin ("`ready` walking the staircase"). The list is incomplete
-against the design's own section table rather than deliberately
-excluding it, so the vocabulary carries it and the correction is owed
-to §15.2.
+**Twenty-five verbs**, each one dispatched by the canonical driver and
+used by the corpus. Design §15.2 lists sixteen. It omits `ready`, which
+§5.1 defines and §15.3 explicitly requires the `declare` section to pin
+("`ready` walking the staircase"), and nine more that later sections
+need: `declare` and `hostdeclare` for the declaration itself, `chain`
+and `shadowed` for the point kinds of §6, `capability` and `trace` for
+observation (§11.1, §13), and `seq`, `pos` and `inner` for an
+instance's own record. It also lists `env`, which no driver implements:
+the `env` section is pure data, run through `applyenv`. The list is
+incomplete against the design's own section table rather than
+deliberately excluding these, so the vocabulary carries them and the
+correction is owed to §15.2.
 
 Every port implements all of them; a section that never uses one still
 needs it present, because the next section will.
@@ -443,21 +449,28 @@ needs it present, because the next section will.
 |---|---|---|
 | `host` | `reserved?`, `keys?`, `defaults?`, `profile?`, `points?`, `dependency?` | rebuild the host with these construction options, discarding the current one. `points` declares extension points and their `kind`/`pin` (§7). `dependency` is `restart` (the default) or `hold` (§11.3). Only valid as the **first** command. |
 | `define` | `name`, `probe?`, `shape?` | register a definition in the catalog (§10.1). `name` is what the definition is CALLED — the name a ref resolves by. `probe` names the probe whose callbacks back it (§4.3), defaulting to `name` itself, so `{name: 'noisy'}` gets the `noisy` probe and `{name: 'adapter', probe: 'noisy'}` registers noisy's behaviour under another name. `shape` is the option shape, **validated here rather than at resolution** (§9.4), which is what `declare/shape` pins. |
+| `declare` | `ref`, `tag?`, `options?`, `order?`, `definition?` | declare the instance without loading it, leaving it `declared` (§5.1); a `tag` of `?` asks the host to assign one. The canonical ref becomes `result`. |
 | `load` | `ref`, `options?`, `order?`, `definition?` | declare if absent, then load. `order` is the instance's ordering block (§4.4); `definition` names the catalog entry when it differs from the ref's name. |
-| `ready` | `ref` | run the whole forward path in one call (§5.1) |
-| `hostdeclare` | `ref`, `options?`, `order?`, `definition?` | §9.1's **host-owned** declaration: the embedding host installing the instance whose name it reserved. Bypasses the reservation check that every other input layer goes through. |
+| `ready` | `ref`, `options?`, `order?`, `definition?` | declare if absent, then run the whole forward path in one call (§5.1) |
+| `hostdeclare` | `ref`, `tag?`, `options?`, `order?`, `definition?` | §9.1's **host-owned** declaration: the embedding host installing the instance whose name it reserved. Bypasses the reservation check that every other input layer goes through. The canonical ref becomes `result`. |
 | `activate` | `ref` | `loaded` → `live`, or `pending` |
 | `deactivate` | `ref` | → `loaded` |
 | `unload` | `ref` | → absent |
 | `apply` | `doc`, `profile?` | apply a declarative document (§9.6) |
 | `options` | `ref`, `patch` | runtime patch at the top of the ladder |
 | `call` | `ref`, `method?`, `args?` | invoke a probe's own method; the value becomes `result` |
-| `emit` | `point`, `arg?` | fire a hook point; every live binding runs in resolved order |
+| `emit` | `point`, `arg?` | fire a hook point; every live binding runs in resolved order, and the value becomes `result` |
+| `chain` | `point`, `arg?` | call a chain point through its wrappers (§6.2); the value becomes `result` |
 | `provider` | `point`, `arg?` | invoke a provider point; the winner's value becomes `result` |
-| `export` | `key?` | read the export map, or one key |
+| `shadowed` | `point` | the refs a provider point's winner shadows (§6.3); the list becomes `result` |
+| `export` | `key?` | read the export map, or one key; the value becomes `result` |
 | `order` | `point?` | the resolved order; the value becomes `result` |
 | `list` | — | the status map; the value becomes `result` |
-| `env` | `vars` | set `VOXGIG_PLUGIN_*` for subsequent commands |
+| `capability` | `name` | the live providers of a capability, ranked (§11.1); the list becomes `result` |
+| `trace` | — | the lifecycle event records (§13); the list becomes `result` |
+| `seq` | `ref` | the instance's declaration counter, which distinguishes one incarnation from the next (§4 rule 4), or `null` when it is not declared; the value becomes `result` |
+| `pos` | `ref` | the instance's position in declaration order (§4 rule 4), or `null`; the value becomes `result` |
+| `inner` | `ref` | the status map of the instance's nested host (§6.5), or `null` when it has none; the value becomes `result` |
 | `close` | — | tear the host down, unwinding every instance |
 
 Any command may additionally carry **`catch: true`** (§4.1): its raise
@@ -595,7 +608,7 @@ one expected value work in twenty languages.
   `"<ref>:<callback>"`. Order is the assertion; a set would pass a port
   that unwinds in the wrong direction.
 - **`result`** — the value of the last command that produces one
-  (`call`, `provider`, `export`, `order`, `list`), else `null`.
+  (each command whose §4.2 row names what becomes `result`), else `null`.
 
 Object identity is never observable. Where §5.4 requires that
 `host.instance(ref)` returns the same object across activation cycles,
