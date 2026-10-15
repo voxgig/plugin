@@ -11,17 +11,17 @@ conformance corpus as the runner is (design §15.2).
 
 ## Status: complete
 
-Every section is written. The driver contract (§4) is the one still
-called a draft, and draft here means COVERAGE rather than stability: it
-specifies what the nineteen corpus sections need and is meant to be
-relied on. A future phase extends it; it does not rewrite it.
+Every section is written, the driver contract (§4) included: it
+specifies what the nineteen corpus sections need, all twenty-three
+ports run it, and it is meant to be relied on. A new corpus section
+extends it in the same change; it does not rewrite it.
 
 | section | state |
 |---|---|
 | 1. Tutorial | written |
 | 2. How-to guides | written |
 | 3. Reference — the canonical API | written, extended per phase |
-| 4. The driver contract | written (draft coverage) |
+| 4. The driver contract | written |
 | 5. Explanation | written |
 
 [`docs/design/plugin.md`](./docs/design/plugin.md) remains the authority
@@ -371,23 +371,24 @@ languages.
 
 ## 4. The driver contract
 
-**P1, in draft. This one has a consumer waiting.**
+**Complete: it covers every driver section in the corpus.**
 
-Design §15.3 marks `lifecycle`, `order` and eleven other sections as
-*driver* rather than pure data. A port cannot run them from corpus files
-alone: it needs the probe catalog, the command vocabulary, and the
+Design §15.3 marks eleven of the nineteen sections as *driver* rather
+than pure data, and `error` as both. A port cannot run them from corpus
+files alone: it needs the probe catalog, the command vocabulary, and the
 canonical observable, and none of those belong in the corpus. They are
 here.
 
-voxgig/station is owed `lifecycle` and `order` before P1 exits
+The contract first shipped with `lifecycle` and `order`, the two
+sections voxgig/station was owed early
 ([the plan](https://github.com/voxgig/station/blob/main/docs/design/station-and-plugin-plan.md)
-§3, C2), and shipping them without this contract would hand its other
-fifteen ports two suites they could each implement differently — which
-is precisely the drift an early corpus exists to prevent.
-
-**Draft status is about coverage, not stability.** What is written below
-is what `lifecycle` and `order` need, and it is meant to be relied on.
-P2 extends it for the remaining driver sections; it does not rewrite it.
+§3, C2), because shipping them without it would have handed station's
+ports two suites they could each implement differently — which is
+precisely the drift an early corpus exists to prevent. The other driver
+sections followed against the same contract, and all twenty-three ports
+run the whole of it. One question it records is still open, whether a
+host should ever await a callback (§4.3, `slow`), and that is a
+question for the design rather than a gap in the contract.
 
 ### 4.1 How a driver entry runs
 
