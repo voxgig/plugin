@@ -431,17 +431,12 @@ a counting exercise in twenty languages.
 ### 4.2 The command vocabulary
 
 **Twenty-five verbs**, each one dispatched by the canonical driver and
-used by the corpus. Design §15.2 lists sixteen. It omits `ready`, which
-§5.1 defines and §15.3 explicitly requires the `declare` section to pin
-("`ready` walking the staircase"), and nine more that later sections
-need: `declare` and `hostdeclare` for the declaration itself, `chain`
-and `shadowed` for the point kinds of §6, `capability` and `trace` for
-observation (§11.1, §13), and `seq`, `pos` and `inner` for an
-instance's own record. It also lists `env`, which no driver implements:
-the `env` section is pure data, run through `applyenv`. The list is
-incomplete against the design's own section table rather than
-deliberately excluding these, so the vocabulary carries them and the
-correction is owed to §15.2.
+used by the corpus, as design §15.2 lists them. `ready` is §5.1's
+forward path, which the `declare` section pins; `declare` and
+`hostdeclare` make the declaration itself; `chain` and `shadowed` serve
+the point kinds of §6; `capability` and `trace` observe (§11.1, §13);
+and `seq`, `pos` and `inner` read an instance's own record. There is
+no `env` verb: the `env` section is pure data, run through `applyenv`.
 
 Every port implements all of them; a section that never uses one still
 needs it present, because the next section will.

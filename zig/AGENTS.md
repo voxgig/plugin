@@ -89,7 +89,7 @@ that lacks it. `value.List(T)` is the list; `test/corpus.zig` parks the
 I/O and environment `main` was handed; `test/run.zig` picks the `main`
 signature and writes stdout through one helper. **Add a fourth
 difference the same way**, behind `modern`, and never a second switch.
-Both toolchains must stay green: 572/572 on each is the bar.
+Both toolchains must stay green: 591/591 on each is the bar.
 
 ## The consumer root: `src/plugin.zig`
 

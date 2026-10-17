@@ -401,7 +401,7 @@ The rest:
   language is a **port** of it. Never "reference implementation"; the
   corpus is the reference.
 - **the corpus** — `spec/plugin.aon` and the `spec/plugin.json` compiled
-  from it, 572 entries in 19 **sections**. It is the **contract**: a
+  from it, 591 entries in 19 **sections**. It is the **contract**: a
   port that disagrees with it is wrong, and the JSON is never hand-edited.
   Never "the test suite", which is a port's own runner.
 - **a corpus entry** — one named case, `ref/name#trailing-newline`. Not

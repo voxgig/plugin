@@ -2133,7 +2133,7 @@ disagrees with it is wrong.
 > **The corpus is in omni's format; the runners are not omni yet.** The
 > entry fields, the `set` groups and the sentinels here are omni's, and
 > `make omni-check` proves the committed corpus runs green under omni's
-> own runner — 572 entries, 19 sections. But every port still ships a
+> own runner — 591 entries, 19 sections. But every port still ships a
 > hand-written runner for it. [`docs/ADR.md`](../ADR.md) ADR-3 records
 > what moved, what did not, and the dependency question the migration has
 > to answer first.
@@ -2198,8 +2198,11 @@ port-specific:
 - **A synthetic resource counter** the driver owns, so "what is open" is
   data.
 - **A command interpreter** over the vocabulary: `host`, `define`,
-  `load`, `activate`, `deactivate`, `unload`, `apply`, `options`,
-  `call`, `emit`, `provider`, `export`, `order`, `list`, `env`, `close`.
+  `declare`, `load`, `ready`, `hostdeclare`, `activate`, `deactivate`,
+  `unload`, `apply`, `options`, `call`, `emit`, `chain`, `provider`,
+  `shadowed`, `export`, `order`, `list`, `capability`, `trace`, `seq`,
+  `pos`, `inner`, `close`. The `env` section needs no verb: it is pure
+  data, run through `applyenv`.
 - **A canonical observable**: sorted keys, refs not object identities,
   errors as `{code}`.
 
